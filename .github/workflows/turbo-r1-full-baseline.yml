@@ -52,6 +52,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Original project version check
         run: npm run version:check
+      - name: Assert original UI source freeze (16 protected files)
+        run: node scripts/engineering/verify-ui-freeze.mjs
       - name: Full workspace typecheck
         run: npm run typecheck
       - name: Full repository test suite
