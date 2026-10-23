@@ -48,6 +48,10 @@ jobs:
         run: npm run version:check
       - name: R1 Memory HTTP contracts
         run: npm run test -w @memmy/memory -- tests/contract/memory-rest-service.test.ts tests/contract/rest-panel-events.test.ts tests/contract/external-evidence-http.test.ts
+      - name: R2 HTTP recordEvent privacy contract
+        run: npm run test -w @memmy/memory -- tests/contract/turbo-r2-search-no-event.test.ts
+      - name: Memory TypeScript typecheck
+        run: npm run memory:lint
       - name: R1 Memory lifecycle and worker regression
         run: npm run test -w @memmy/memory -- tests/service/lifecycle/memory-lifecycle.test.ts tests/service/worker/worker-runtime.test.ts
       - name: R1 built-in local memory smoke
