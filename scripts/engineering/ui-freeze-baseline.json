@@ -1,0 +1,23 @@
+{
+  "title": "Original Memmy Desktop UI Freeze — selected key source files",
+  "baseline_commit": "74b26fc78ebd14a784981ba8e83bebf878c20865",
+  "limitation": "Hash freeze of key UI source files only; cannot replace visual screenshots, runtime feature parity or native OS GUI E2E.",
+  "blobs": {
+    "App/frontend/desktop/src/styles.css": "052de285142ce37a0fed60d72a33ecbec299f3c0",
+    "App/frontend/desktop/src/theme/tokens.css": "3166fb7dd6c0ac2d6c26259d9ab0b4b3f82a7e02",
+    "App/frontend/desktop/src/app/routes.ts": "df4263bb468d0a4a91713ad151d5fc208858d477",
+    "App/frontend/desktop/src/app/router.tsx": "38c0627d3bc2433e075bb893f86dc62daa8a5939",
+    "App/frontend/desktop/src/pages/settings-nav.ts": "99beca9214419b8349f3489185a67bc65c93c0ff",
+    "App/frontend/desktop/src/pages/memory-page.tsx": "368442286e2ae4855e416b62fc408afb4b352ac1",
+    "App/frontend/desktop/src/pages/home-page.tsx": "5a243095b982d5d6d92c7c9b54db74569a06a2f5",
+    "App/frontend/desktop/src/pages/pet-page.tsx": "3b1508b65b1e4915cbc1c2244c5a77e38d70d289",
+    "App/frontend/desktop/src/pages/browser-panel.tsx": "bb3199e6a19397f4be0a09275b236709d1543758",
+    "App/frontend/desktop/src/pages/settings-page.tsx": "cd221f1c8c8c5627f40b05766e7b08a5d69c3ea5",
+    "App/frontend/desktop/src/pages/agent-thread-panel.tsx": "298de41d47f9075632f2476eeafa4fdf53bf5530",
+    "App/frontend/desktop/src/components/windows-titlebar.tsx": "7c33911164bafec94577bca5b02068142b9b173a",
+    "App/frontend/desktop/src/prototype-utilities.css": "b09dde981a000abe2708dd620f1ef41a75ae1c2d",
+    "App/frontend/desktop/src/theme/theme-provider.tsx": "da972e86b5768298f3d2fb5276c8c5bfcc2b2a2d",
+    "App/frontend/desktop/src/pages/app-frame.tsx": "cd4558dede336757871d09d47324e05c1f86f776",
+    "App/frontend/desktop/src/pages/agent-thread-toolbar.tsx": "3fad74ac53a16755281059492c94ff2f4a36e4a4"
+  }
+}
