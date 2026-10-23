@@ -1,0 +1,79 @@
+name: Turbo R1 full baseline (Linux)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/turbo-r1-full-baseline.yml"
+      - "docs/engineering/turbo/**"
+      - "Memory/**"
+      - "AgentSourceCore/**"
+      - "App/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: turbo-r1-full-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-test-build:
+    name: Full Typecheck / Unit / Build (not installer E2E)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 95
+    env:
+      CI: "true"
+      MEMMY_TELEMETRY_DISABLED: "1"
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Record SHA and environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "SHA=$(git rev-parse HEAD)"
+            node --version
+            npm --version
+            uname -a
+          } | tee "$RUNNER_TEMP/full-baseline-env.txt"
+      - name: Reproducible install
+        run: npm ci --no-audit --no-fund
+      - name: Original project version check
+        run: npm run version:check
+      - name: Full workspace typecheck
+        run: npm run typecheck
+      - name: Full repository test suite
+        run: npm test
+      - name: Full repository build
+        run: npm run build
+      - name: Publish gate report
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Turbo R1 full baseline"
+            echo "Head SHA: \`$GITHUB_SHA\`"
+            echo "Check exact step outcomes above; no test has been marked pass unless execution completed."
+            echo "This Linux source build is not a macOS/Windows signed installer E2E test."
+            echo "CI: No personal ~/.memmy database should be mounted."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload environment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-r1-full-baseline-environment
+          path: ${{ runner.temp }}/full-baseline-env.txt
+          if-no-files-found: error
+          retention-days: 14
