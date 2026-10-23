@@ -159,7 +159,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_REVIEW",
       "acceptance_criteria": "Approved trust boundaries and data access policy",
       "required_evidence": [
         "changes_or_static_findings",
@@ -179,7 +179,10 @@
       ],
       "release_blocking": true,
       "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/11",
-      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/blob/codex/r1-audit-governance-baseline/docs/engineering/turbo/R1-THREAT-MODEL.md"
+      ]
     },
     {
       "id": "R1.06",
@@ -189,7 +192,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "Failing tests with isolated fixtures and side-effect assertions",
       "required_evidence": [
         "changes_or_static_findings",
@@ -209,7 +212,12 @@
       ],
       "release_blocking": false,
       "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/12",
-      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/17",
+        "https://github.com/TheerasakPing/memmy-agent/actions/runs/39981344561"
+      ],
+      "evidence_note": "Known-failure security canaries; neither isolation nor QA signoff achieved"
     },
     {
       "id": "R1.07",
@@ -219,7 +227,7 @@
       "independent_reviewer": "A1",
       "qa_agent": "A6",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "Immutable execution logs with skips/exit codes",
       "required_evidence": [
         "changes_or_static_findings",
@@ -239,7 +247,12 @@
       ],
       "release_blocking": false,
       "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/13",
-      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/21",
+        "https://github.com/TheerasakPing/memmy-agent/actions/runs/40035100761"
+      ],
+      "evidence_note": "Full typecheck/test/build still running; not pass until full result"
     },
     {
       "id": "R1.08",
@@ -249,7 +262,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "macOS/Windows screenshots and acceptance journey index",
       "required_evidence": [
         "changes_or_static_findings",
@@ -269,7 +282,11 @@
       ],
       "release_blocking": false,
       "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/14",
-      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/21"
+      ],
+      "evidence_note": "16-file source freeze successful; native screenshot/GUI E2E still not run"
     },
     {
       "id": "R1.09",
@@ -1817,5 +1834,6 @@
     }
   ],
   "issue_tracking": "GitHub Issues enabled: Phase epics #2-6; R1 individual work tasks #7-16; R2-R5 tasks remain in phase epics until execution",
-  "r1_security_pr": "https://github.com/TheerasakPing/memmy-agent/pull/17"
+  "r1_security_pr": "https://github.com/TheerasakPing/memmy-agent/pull/17",
+  "latest_status_note": "R1 audit ongoing; draft PRs #1 #17 #20 #21 #22 #23, no product main merge and no human QA/Supervisor acceptance"
 }
