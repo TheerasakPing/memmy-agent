@@ -50,6 +50,8 @@ jobs:
           } | tee "$RUNNER_TEMP/full-baseline-env.txt"
       - name: Reproducible install
         run: npm ci --no-audit --no-fund
+      - name: Install separate Agent CLI dependencies
+        run: npm --prefix App/memmy-agent ci --ignore-scripts --no-audit --no-fund
       - name: Original project version check
         run: npm run version:check
       - name: Assert original UI source freeze (16 protected files)
