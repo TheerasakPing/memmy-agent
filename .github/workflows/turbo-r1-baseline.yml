@@ -49,7 +49,7 @@ jobs:
       - name: R1 Memory HTTP contracts
         run: npm run test -w @memmy/memory -- tests/contract/memory-rest-service.test.ts tests/contract/rest-panel-events.test.ts tests/contract/external-evidence-http.test.ts
       - name: R1 security canaries (expected-failure negative assertions)
-        run: npm run test -w @memmy/memory -- tests/contract/turbo-r1-known-isolation-gaps.test.ts
+        run: npm run test -w @memmy/memory -- tests/contract/turbo-r1-known-isolation-gaps.test.ts tests/contract/turbo-r1-tenant-http-canary.test.ts
       - name: R1 Memory lifecycle and worker regression
         run: npm run test -w @memmy/memory -- tests/service/lifecycle/memory-lifecycle.test.ts tests/service/worker/worker-runtime.test.ts
       - name: R1 built-in local memory smoke
