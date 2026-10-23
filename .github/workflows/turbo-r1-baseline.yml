@@ -7,6 +7,7 @@ on:
       - ".github/workflows/turbo-r1-baseline.yml"
       - "docs/engineering/turbo/**"
       - "Memory/**"
+      - "tests/smoke/**"
       - "AgentSourceCore/**"
       - "App/backend/**"
       - "package.json"
