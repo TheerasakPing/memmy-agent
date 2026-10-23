@@ -500,6 +500,8 @@ export interface MemorySearchRequest extends RequestEnvelope {
   limit?: number;
   contextBudget?: number;
   includeInjectedContext?: boolean;
+  /** When false, suppress persistence of a retrieval/recall event (not all telemetry). */
+  recordEvent?: boolean;
   verbose?: boolean;
 }
 
