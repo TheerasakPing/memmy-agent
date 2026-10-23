@@ -802,6 +802,7 @@ async function routeRequest(
         ? Math.max(0, Math.trunc(request.contextBudget))
         : undefined,
       includeInjectedContext: typeof request.includeInjectedContext === "boolean" ? request.includeInjectedContext : undefined,
+      recordEvent: request.recordEvent === false ? false : undefined,
       verbose: request.verbose === true
     };
     return publicSearchResponse(await trackExternalToolCall(
