@@ -40,6 +40,10 @@ concurrency:
 
 jobs:
   sync:
+    # Upstream-only by default. Forks can opt in explicitly once their own
+    # project IDs, token and policies are configured; never inherit the
+    # upstream Yunxiao project mappings unintentionally.
+    if: ${{ github.repository == 'MemTensor/memmy-agent' || vars.YUNXIAO_ENABLE_ON_FORK == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
