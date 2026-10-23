@@ -46,6 +46,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Verify version alignment
         run: npm run version:check
+      - name: Validate 60-task ownership and review gates
+        run: node scripts/engineering/validate-checklist.mjs
       - name: R1 Memory HTTP contracts
         run: npm run test -w @memmy/memory -- tests/contract/memory-rest-service.test.ts tests/contract/rest-panel-events.test.ts tests/contract/external-evidence-http.test.ts
       - name: R1 Memory lifecycle and worker regression
