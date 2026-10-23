@@ -57,7 +57,9 @@
         "S11"
       ],
       "dependencies": [],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/7",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.02",
@@ -85,7 +87,9 @@
       "dependencies": [
         "R1.01"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/8",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.03",
@@ -113,7 +117,9 @@
       "dependencies": [
         "R1.02"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/9",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.04",
@@ -141,7 +147,9 @@
       "dependencies": [
         "R1.03"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/10",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.05",
@@ -169,7 +177,9 @@
       "dependencies": [
         "R1.04"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/11",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.06",
@@ -197,7 +207,9 @@
       "dependencies": [
         "R1.05"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/12",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.07",
@@ -225,7 +237,9 @@
       "dependencies": [
         "R1.06"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/13",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.08",
@@ -253,7 +267,9 @@
       "dependencies": [
         "R1.07"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/14",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.09",
@@ -281,7 +297,9 @@
       "dependencies": [
         "R1.08"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/15",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R1.10",
@@ -309,7 +327,9 @@
       "dependencies": [
         "R1.09"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/16",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
     },
     {
       "id": "R2.01",
@@ -338,7 +358,8 @@
       "dependencies": [
         "R1.10"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.02",
@@ -367,7 +388,8 @@
       "dependencies": [
         "R2.01"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.03",
@@ -396,7 +418,8 @@
       "dependencies": [
         "R2.02"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.04",
@@ -425,7 +448,8 @@
       "dependencies": [
         "R2.03"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.05",
@@ -454,7 +478,8 @@
       "dependencies": [
         "R2.04"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.06",
@@ -483,7 +508,8 @@
       "dependencies": [
         "R2.05"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.07",
@@ -512,7 +538,8 @@
       "dependencies": [
         "R2.06"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.08",
@@ -541,7 +568,8 @@
       "dependencies": [
         "R2.07"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.09",
@@ -570,7 +598,8 @@
       "dependencies": [
         "R2.08"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.10",
@@ -599,7 +628,8 @@
       "dependencies": [
         "R2.09"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.11",
@@ -628,7 +658,8 @@
       "dependencies": [
         "R2.10"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.12",
@@ -657,7 +688,8 @@
       "dependencies": [
         "R2.11"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.13",
@@ -686,7 +718,8 @@
       "dependencies": [
         "R2.12"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R2.14",
@@ -715,7 +748,8 @@
       "dependencies": [
         "R2.13"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
     },
     {
       "id": "R3.01",
@@ -744,7 +778,8 @@
       "dependencies": [
         "R2.14"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.02",
@@ -773,7 +808,8 @@
       "dependencies": [
         "R3.01"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.03",
@@ -802,7 +838,8 @@
       "dependencies": [
         "R3.02"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.04",
@@ -831,7 +868,8 @@
       "dependencies": [
         "R3.03"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.05",
@@ -860,7 +898,8 @@
       "dependencies": [
         "R3.04"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.06",
@@ -889,7 +928,8 @@
       "dependencies": [
         "R3.05"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.07",
@@ -918,7 +958,8 @@
       "dependencies": [
         "R3.06"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.08",
@@ -947,7 +988,8 @@
       "dependencies": [
         "R3.07"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.09",
@@ -976,7 +1018,8 @@
       "dependencies": [
         "R3.08"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.10",
@@ -1005,7 +1048,8 @@
       "dependencies": [
         "R3.09"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.11",
@@ -1034,7 +1078,8 @@
       "dependencies": [
         "R3.10"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.12",
@@ -1063,7 +1108,8 @@
       "dependencies": [
         "R3.11"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R3.13",
@@ -1092,7 +1138,8 @@
       "dependencies": [
         "R3.12"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
     },
     {
       "id": "R4.01",
@@ -1119,7 +1166,8 @@
       "dependencies": [
         "R3.13"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.02",
@@ -1146,7 +1194,8 @@
       "dependencies": [
         "R4.01"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.03",
@@ -1173,7 +1222,8 @@
       "dependencies": [
         "R4.02"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.04",
@@ -1200,7 +1250,8 @@
       "dependencies": [
         "R4.03"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.05",
@@ -1227,7 +1278,8 @@
       "dependencies": [
         "R4.04"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.06",
@@ -1254,7 +1306,8 @@
       "dependencies": [
         "R4.05"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.07",
@@ -1281,7 +1334,8 @@
       "dependencies": [
         "R4.06"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.08",
@@ -1308,7 +1362,8 @@
       "dependencies": [
         "R4.07"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.09",
@@ -1335,7 +1390,8 @@
       "dependencies": [
         "R4.08"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.10",
@@ -1362,7 +1418,8 @@
       "dependencies": [
         "R4.09"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.11",
@@ -1389,7 +1446,8 @@
       "dependencies": [
         "R4.10"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.12",
@@ -1416,7 +1474,8 @@
       "dependencies": [
         "R4.11"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R4.13",
@@ -1443,7 +1502,8 @@
       "dependencies": [
         "R4.12"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
     },
     {
       "id": "R5.01",
@@ -1473,7 +1533,8 @@
       "dependencies": [
         "R4.13"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.02",
@@ -1503,7 +1564,8 @@
       "dependencies": [
         "R5.01"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.03",
@@ -1533,7 +1595,8 @@
       "dependencies": [
         "R5.02"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.04",
@@ -1563,7 +1626,8 @@
       "dependencies": [
         "R5.03"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.05",
@@ -1593,7 +1657,8 @@
       "dependencies": [
         "R5.04"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.06",
@@ -1623,7 +1688,8 @@
       "dependencies": [
         "R5.05"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.07",
@@ -1653,7 +1719,8 @@
       "dependencies": [
         "R5.06"
       ],
-      "release_blocking": true
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.08",
@@ -1683,7 +1750,8 @@
       "dependencies": [
         "R5.07"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.09",
@@ -1713,7 +1781,8 @@
       "dependencies": [
         "R5.08"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     },
     {
       "id": "R5.10",
@@ -1743,7 +1812,10 @@
       "dependencies": [
         "R5.09"
       ],
-      "release_blocking": false
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
     }
-  ]
+  ],
+  "issue_tracking": "GitHub Issues enabled: Phase epics #2-6; R1 individual work tasks #7-16; R2-R5 tasks remain in phase epics until execution",
+  "r1_security_pr": "https://github.com/TheerasakPing/memmy-agent/pull/17"
 }
