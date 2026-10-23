@@ -15,6 +15,7 @@ import {
 } from "../../Memory/src/index.js";
 import { createLocalBackend, type LocalBackend } from "../../App/backend/src/index.js";
 import { createHttpMemoryClient } from "../../App/backend/src/adapters/outbound/memory-client/index.js";
+import type { LlmMessage } from "../../Memory/src/model/types.js";
 
 const MEMORY_TOKEN = "memory-layer-smoke-token";
 const BACKEND_TOKEN = "backend-smoke-token";
@@ -339,7 +340,7 @@ function createSmokeSummaryLlm(): LlmClient {
     async complete() {
       return JSON.stringify({ title: "Smoke turn", summary: "Verified smoke summary" });
     },
-    async completeJson<T extends Record<string, unknown>>(messages) {
+    async completeJson<T extends Record<string, unknown>>(messages: LlmMessage[]) {
       const system = messages
         .filter((message) => message.role === "system")
         .map((message) => message.content)
