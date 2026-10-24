@@ -12,7 +12,9 @@
     "tauri:build": "tauri build",
     "tauri:rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri:rust:check": "cargo check --manifest-path src-tauri/Cargo.toml",
-    "preview:dev": "node preview-dev.mjs"
+    "preview:dev": "node preview-dev.mjs",
+    "bundle:audit": "node packaging/audit-bundle.mjs",
+    "bundle:audit:test": "node --test packaging/audit-bundle.test.mjs"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"
