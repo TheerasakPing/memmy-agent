@@ -50,7 +50,7 @@ jobs:
         run: npm run memory:lint
       - name: Tenant ownership security contract
         run: npm run test -w @memmy/memory -- tests/contract/turbo-r2-tenant-ownership.test.ts
-      - name: Known-failure tenant Panel leak (XFAIL, NOT security-complete)
+      - name: Tenant Panel read isolation (positive and negative)
         run: npm run test -w @memmy/memory -- tests/contract/turbo-r2-known-panel-scope-gap.test.ts
       - name: Legacy REST compatibility
         run: npm run test -w @memmy/memory -- tests/contract/memory-rest-service.test.ts
