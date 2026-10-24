@@ -7,7 +7,7 @@ A repeatable audited contract is implemented in `App/shell/tauri/packaging/audit
 ## Next build milestones (A6 owner / A2 runtime / A1 security / A5 QA / LEAD signoff)
 
 1. Build separate signed, relocatable, architecture-matched runtime binary and collect production node modules + native SQLite addons. No Homebrew PATH dependency.
-2. Stage `Contents/Resources/memmy-runtime` while keeping the same fixed, audited launch entrypoints. Update Rust to resolve app resource paths and eliminate `cfg(debug_assertions)` sidecar-only launch restriction only after signing and validation.
+2. Stage `Contents/Resources/runtime` while keeping the same fixed, audited launch entrypoints. Update Rust to resolve app resource paths and eliminate `cfg(debug_assertions)` sidecar-only launch restriction only after signing and validation.
 3. Add Tauri build resources specification, immutable content/hash validation, provenance and notarization; ensure no credentials, development `.env`, caches or legacy user databases enter a bundle.
 4. Run the **real installed bundle** offline and online after moving it outside the repository, verify child start, real Memory + Local API + Gateway, denied remote origins, graceful shutdown, no process leaks, crash recovery and app-data isolation.
 5. Repeat per architecture on Windows 11 x64 and Linux and independently review all 85 bridge APIs, original UI/E2E. CI actions issue #26 blocks trusted cross-platform automation.

@@ -19,19 +19,19 @@ export function auditBundle(bundle, platform = process.platform) {
     if (!existsSync(root)) errors.push('Linux package root missing');
   }
   // Runtime must live INSIDE the actual app/bundle, not in the developer checkout.
-  const resources = platform === 'darwin' ? 'Contents/Resources/memmy-runtime' : 'memmy-runtime';
+  const resources = platform === 'darwin' ? 'Contents/Resources/runtime' : 'runtime';
   for (const [part, label] of [
-    ['bin/node', 'bundled Node runtime'],
-    ['sidecar/memory.mjs', 'Memory startup shim'],
-    ['sidecar/backend.mjs', 'Local API startup shim'],
-    ['sidecar/gateway.mjs', 'Agent startup shim'],
+    ['node', 'bundled Node runtime'],
+    ['App/shell/tauri/sidecar/memory.mjs', 'Memory startup shim'],
+    ['App/shell/tauri/sidecar/backend.mjs', 'Local API startup shim'],
+    ['App/shell/tauri/sidecar/gateway.mjs', 'Agent startup shim'],
     ['Memory/dist/src/server/index.js', 'compiled Memory Service'],
     ['App/backend/dist/src/index.js', 'compiled Local API'],
     ['App/memmy-agent/dist/main.js', 'compiled Agent Gateway'],
     ['node_modules/better-sqlite3/build/Release/better_sqlite3.node', 'SQLite native addon']
   ]) requireFile(join(resources, part), label);
   if (platform === 'darwin') {
-    const nodePath = join(root, resources, 'bin/node');
+    const nodePath = join(root, resources, 'node');
     if (existsSync(nodePath) && (statSync(nodePath).mode & 0o111) === 0) errors.push('bundled Node is not executable');
   }
   return { ok: errors.length === 0, errors, checked: root };

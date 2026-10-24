@@ -24,10 +24,10 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
   try {
     const names = [
       'Contents/MacOS/memmy-turbo-tauri', 'Contents/Info.plist',
-      ...['bin/node', 'sidecar/memory.mjs', 'sidecar/backend.mjs', 'sidecar/gateway.mjs',
+      ...['node', 'App/shell/tauri/sidecar/memory.mjs', 'App/shell/tauri/sidecar/backend.mjs', 'App/shell/tauri/sidecar/gateway.mjs',
          'Memory/dist/src/server/index.js','App/backend/dist/src/index.js',
          'App/memmy-agent/dist/main.js','node_modules/better-sqlite3/build/Release/better_sqlite3.node']
-         .map((x) => join('Contents/Resources/memmy-runtime', x))
+         .map((x) => join('Contents/Resources/runtime', x))
     ];
     for (const name of names) {
       const path = join(dir, name);
