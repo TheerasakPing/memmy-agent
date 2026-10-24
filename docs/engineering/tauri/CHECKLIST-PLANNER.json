@@ -136,7 +136,7 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "Rust can supervise both real isolated Memory service and Local API in opt-in development mode; 3/3 Node sidecar smoke, real Rust lifecycle smoke, all original React routes; Agent Gateway, signed production sidecars, three-OS GUI E2E and independent QA/LEAD still pending.",
+      "progressNote": "Rust starts/stops actual Memory SQLite, Local API and Agent Gateway with verified authenticated WebUI bootstrap in dev opt-in; Node smoke 4/4, Rust 9/9, WebSocket CORS 44/44. Production installer, browser/pet 69 methods, independent review and E2E missing.",
       "subtasks": [
         {
           "id": "T2.01.A",

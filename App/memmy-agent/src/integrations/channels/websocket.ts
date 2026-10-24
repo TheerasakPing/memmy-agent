@@ -5348,6 +5348,12 @@ function corsHeadersForRequest(config: WebSocketConfig, request: { headers?: htt
 function isAllowedCorsOrigin(origin: string, config: WebSocketConfig): boolean {
   if (!origin) return false;
   if (origin === "null") return Boolean(config.tokenIssueSecret.trim() || config.token.trim());
+  // Native Tauri v2 app origins; accept these exact local webview origins only
+  // when the Gateway is secured by a bootstrap secret. Never trust arbitrary
+  // *://*.localhost or a remote origin as a side effect of this exception.
+  if (["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"].includes(origin)) {
+    return Boolean(config.tokenIssueSecret.trim() || config.token.trim());
+  }
   try {
     const url = new URL(origin);
     if (url.protocol !== "http:" && url.protocol !== "https:") return false;

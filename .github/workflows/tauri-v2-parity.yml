@@ -34,6 +34,8 @@ jobs:
       - run: npm run typecheck -w @memmy/frontend-desktop
       - run: npm run build -w @memmy/backend
       - run: npm run memory:build
+      - run: npm --prefix App/memmy-agent ci --ignore-scripts --no-audit --no-fund
+      - run: npm --prefix App/memmy-agent run build
       - run: npm run sidecar:test -w @memmy/tauri-shell
       - run: npm exec -w @memmy/frontend-desktop -- vitest run src/tests/tauri-bridge.test.ts
 
