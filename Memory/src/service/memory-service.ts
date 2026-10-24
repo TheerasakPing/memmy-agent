@@ -2139,11 +2139,9 @@ export class MemoryService {
   }
 
   getMemory(id: string, request: RequestEnvelope = {}): MemoryGetResponse {
-    // Existing single-user shared Memory remains unchanged. Restricted tenant
-    // requests must prove durable ownership, including for legacy records.
-    if (request.namespace?.tenantId) {
-      this.assertMemoryInScope(this.requireExistingMemory(id), request.namespace);
-    }
+    // EpisodeReadModel enforces both memory and episode ownership via the
+    // tenant-aware assertion delegates; a direct memory-only guard here would
+    // incorrectly reject valid episode_... IDs.
     return this.episodeReadModel.getMemory(id, this.withTimeZone(request));
   }
 
