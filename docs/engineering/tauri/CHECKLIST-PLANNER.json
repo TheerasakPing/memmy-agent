@@ -1,0 +1,236 @@
+{
+  "name": "Tauri v2 React parity migration",
+  "sourceCommit": "74b26fc78ebd14a784981ba8e83bebf878c20865",
+  "releaseReady": false,
+  "supervisorSignoff": false,
+  "tasks": [
+    {
+      "id": "T0.01",
+      "title": "Pin original React routes and bridge methods",
+      "owner": "A7",
+      "independentReviewer": "A5",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "IN_PROGRESS",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T0.02",
+      "title": "Rust/Tauri2 shell with React source reuse",
+      "owner": "A3",
+      "independentReviewer": "A1",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "IN_PROGRESS",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T0.03",
+      "title": "Native dimensions, chrome and screenshot match",
+      "owner": "A6",
+      "independentReviewer": "A4",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T1.01",
+      "title": "Complete all 85 bridge methods",
+      "owner": "A3",
+      "independentReviewer": "A1",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T1.02",
+      "title": "Pet window, tray, alerts and startup",
+      "owner": "A6",
+      "independentReviewer": "A4",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T1.03",
+      "title": "Embedded browser and computer-use security",
+      "owner": "A1",
+      "independentReviewer": "A3",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T2.01",
+      "title": "Rust-managed Memory and Agent lifecycle",
+      "owner": "A2",
+      "independentReviewer": "A1",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T2.02",
+      "title": "Native data migration, rollback and secrets",
+      "owner": "A2",
+      "independentReviewer": "A1",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T2.03",
+      "title": "R1/R2 tenant isolation on new native runtime",
+      "owner": "A1",
+      "independentReviewer": "A2",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T3.01",
+      "title": "Rust retrieval acceleration and parity",
+      "owner": "A2",
+      "independentReviewer": "A3",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T4.01",
+      "title": "Windows/macOS/Linux signed native installers",
+      "owner": "A6",
+      "independentReviewer": "A5",
+      "qa": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    },
+    {
+      "id": "T4.02",
+      "title": "Exact UI and functional E2E/Smoke signoff",
+      "owner": "A5",
+      "independentReviewer": "A1",
+      "qa": "A6",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "requiredEvidence": [
+        "commit_sha",
+        "unit_and_contract",
+        "e2e_smoke_or_documented_blocker",
+        "ui_feature_parity",
+        "security_and_rollback",
+        "independent_review",
+        "qa_approval",
+        "supervisor_signoff"
+      ]
+    }
+  ]
+}

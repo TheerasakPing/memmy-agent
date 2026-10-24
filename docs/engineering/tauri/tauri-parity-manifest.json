@@ -1,0 +1,504 @@
+{
+  "schemaVersion": 1,
+  "source": "App/shell/desktop/src/preload/preload.cts:MemmyPreloadApi",
+  "frontend": "App/frontend/desktop/src/main.tsx",
+  "uiPolicy": "reuse original React entrypoint, CSS, pages, routes, tabs and components",
+  "immutableUiSha256": {
+    "App/frontend/desktop/src/app.tsx": "2b037d3b5602ba5d0bdd11495f74d30711fb891088e586fd559725fd89e37a88",
+    "App/frontend/desktop/src/app/routes.ts": "4f84959a28bb1fba850ea62f8811ef962f53a9d886c2e475b8a81cf802024791",
+    "App/frontend/desktop/src/styles.css": "1291731d72a050bb924cd79fbd95fb8163a96e85e939e904eeee92f1dfff32e4",
+    "App/frontend/desktop/src/pages/app-frame.tsx": "5c56107f6c542935e8eeca0b7242c2575e7e0e1075e71f7fb66ec5f76bdf4562"
+  },
+  "fullFeatureParity": false,
+  "counts": {
+    "legacyMethods": 85,
+    "nativeMethods": 8,
+    "remainingMethods": 77,
+    "routes": 14
+  },
+  "routes": [
+    {
+      "path": "/welcome",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/token-detail",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/login",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/api-key",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/api-key-models",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/api-key-optional",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/onboarding",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/main",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/pet",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/tools",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/memory",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/knowledge",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/memory-sources",
+      "status": "original-react-reused"
+    },
+    {
+      "path": "/settings",
+      "status": "original-react-reused"
+    }
+  ],
+  "methods": [
+    {
+      "name": "notifyRendererReady",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "getRuntimeConfig",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "onAgentGatewayStartupIssue",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getAppInfo",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "getInstallationId",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "checkForUpdates",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "downloadUpdate",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onUpdateDownloadProgress",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "openUpdateInstaller",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "openExternal",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "clearBrowserData",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "markEmbeddedBrowserUserNavigation",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserHistory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "importLegacyBrowserHistory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "removeBrowserHistory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "removeSelectedBrowserHistory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "revealBrowserExtension",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserExtensionDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "dragBrowserExtension",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "prepareBrowserExtension",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "listInstalledBrowserExtensions",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserExtensionInstallation",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "listRunningExternalBrowsers",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getNativeAppAllowAll",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setNativeAppAllowAll",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserAllowAll",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setBrowserAllowAll",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onBrowserAllowAllChanged",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserDownloadSettings",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "chooseBrowserDownloadDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "resetBrowserDownloadDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setBrowserAskBeforeDownload",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserAccessRules",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setBrowserAccessRule",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserUseSitePolicies",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "upsertBrowserUseSitePolicy",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "removeBrowserUseSitePolicy",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getBrowserSidebarSurface",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onBrowserSidebarSurface",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "sendBrowserSidebarAction",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getComputerHistoryPermissionSessionId",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "guideMemmyPermission",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "restartForComputerHistoryPermissions",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "openComputerHistoryMarkdown",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "openAgentTool",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "openMailto",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "copyImageToClipboard",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "saveImage",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "saveFile",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "exportMemoryDatabase",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "installCliTools",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "restartMemoryService",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "openLogsDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "exportDiagnosticsReport",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getLogLevel",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setLogLevel",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getLaunchAtLogin",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setLaunchAtLogin",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getMicrophoneAccessStatus",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "requestMicrophoneAccess",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getFullDiskAccessStatus",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "selectProjectDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "selectEmptyProjectDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "readWorkspaceDirectory",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "writeWorkspaceFile",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "notifyTaskDone",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "notifyUpdateAvailable",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setPetWindow",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "hidePetWindow",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onRouteTargetRequest",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onEmbeddedBrowserOpen",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onEmbeddedBrowserClose",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "copyEmbeddedBrowserTabMention",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "selectEmbeddedBrowserTab",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setMenuBarIcon",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "setComputerHistoryTrayIndicator",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "onMainWindowActionRequest",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "getMainWindowFullScreen",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "onMainWindowFullScreenChanged",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "completeMainWindowAction",
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
+    },
+    {
+      "name": "movePetWindow",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "startPetWindowDrag",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "stopPetWindowDrag",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "syncPetWindowLayout",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    },
+    {
+      "name": "sendAnalyticsClientId",
+      "status": "NOT_MIGRATED",
+      "acceptance": "must port and run original behavior E2E"
+    }
+  ]
+}
