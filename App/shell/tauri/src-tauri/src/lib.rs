@@ -1,6 +1,7 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
 use std::fs;
+mod native_os;
 use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_opener::OpenerExt;
 
@@ -95,13 +96,26 @@ fn desktop_complete_window_action(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None
+        ))
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             desktop_runtime_config,
             desktop_app_info,
             desktop_check_for_updates,
             desktop_open_external,
             desktop_fullscreen,
-            desktop_complete_window_action
+            desktop_complete_window_action,
+            native_os::desktop_notify_task_done,
+            native_os::desktop_notify_update_available,
+            native_os::desktop_get_launch_at_login,
+            native_os::desktop_set_launch_at_login,
+            native_os::desktop_get_installation_id,
+            native_os::desktop_select_project_directory,
+            native_os::desktop_select_empty_project_directory
         ])
         .run(tauri::generate_context!())
         .expect("Memmy Turbo Tauri shell failed");

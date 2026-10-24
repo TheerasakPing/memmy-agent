@@ -46,6 +46,14 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     await api.openMailto("mailto:team@example.com");
     expect(await api.getMainWindowFullScreen()).toMatchObject({ isFullScreen: false });
     await api.completeMainWindowAction({ id: "test", resolution: "minimize" });
+    await api.notifyTaskDone({ title: "Finished", body: "Agent completed", silent: true });
+    await api.notifyUpdateAvailable({ title: "Update", body: "New build", silent: false });
+    await api.setLaunchAtLogin(true);
+    await api.getLaunchAtLogin();
+    expect(invoke).toHaveBeenCalledWith("desktop_notify_task_done", {
+      payload: { title: "Finished", body: "Agent completed", silent: true }
+    });
+    expect(invoke).toHaveBeenCalledWith("desktop_set_launch_at_login", { enabled: true });
     expect(invoke).toHaveBeenCalledWith("desktop_open_external", { address: "https://memmy.bot/" });
     expect(invoke).toHaveBeenCalledWith("desktop_complete_window_action", { resolution: "minimize" });
     await expect(api.openExternal("file:///secret")).rejects.toThrow(/not allowed/);
@@ -54,7 +62,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(8);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(13);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.setPetWindow).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
