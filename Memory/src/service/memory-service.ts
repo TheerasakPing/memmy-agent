@@ -3536,9 +3536,25 @@ export class MemoryService {
 
   private assertMemoryInScope(memory: MemoryRow, namespace?: RuntimeNamespace): void {
     const internal = memory.properties.internal_info;
-    if (namespace?.tenantId) {
+    const isExternalEvidence = isRecord(internal.external_evidence)
+      || isRecord(internal.external_evidence_candidate);
+    // External Evidence/History Skills already store durable producer identity
+    // in their own provenanced namespace, not in the new manual tenant_id field.
+    // Preserve that established isolation contract, including error semantics.
+    const producerNamespace = isExternalEvidence ? externalEvidenceNamespaceForMemory(memory) : undefined;
+    if (namespace && producerNamespace
+      && (producerNamespace.tenantId || null) !== (namespace.tenantId || null)) {
+      throw new MemoryServiceError("forbidden", "external evidence belongs to a different namespace");
+    }
+    if (namespace?.tenantId && producerNamespace
+      && (producerNamespace.userId !== namespace.userId
+        || (namespace.projectId && producerNamespace.projectId !== namespace.projectId))) {
+      throw new MemoryServiceError("forbidden", "external evidence belongs to a different namespace");
+    }
+    if (namespace?.tenantId && !isExternalEvidence) {
       // Session-derived traces inherit the durable ownership of their parent
       // session; manually added memories persist tenant_id in internal_info.
+      // Legacy unowned generic memories deliberately fail closed for scoped keys.
       const session = memory.sessionId ? this.repos.runtime.getSession(memory.sessionId) : undefined;
       const storedTenant = typeof internal.tenant_id === "string"
         ? internal.tenant_id
@@ -3549,13 +3565,6 @@ export class MemoryService {
           && memory.info.project_id !== namespace.projectId)) {
         throw new MemoryServiceError("forbidden", "memory belongs to another tenant");
       }
-    }
-    // The local panel is shared across source/user/profile settings. History
-    // keeps its original user ID across config changes; preserve panel deletion
-    // while still separating explicit tenant identities.
-    if (namespace && (isRecord(internal.external_evidence) || isRecord(internal.external_evidence_candidate))
-      && (externalEvidenceNamespaceForMemory(memory).tenantId || null) !== (namespace.tenantId || null)) {
-      throw new MemoryServiceError("forbidden", "external evidence belongs to a different namespace");
     }
   }
 
