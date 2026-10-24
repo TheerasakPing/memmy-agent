@@ -36,7 +36,9 @@ for (const name of native) if (!bridgedNames.includes(name)) {
   throw new Error("listed Tauri method not implemented in renderer bridge: " + name);
 }
 const rustHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/lib.rs"), "utf8");
-const nativeModule = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/native_os.rs"), "utf8");
+const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs"].map((name) =>
+  readFileSync(resolve(root, `App/shell/tauri/src-tauri/src/${name}`), "utf8")
+).join("\n");
 for (const [, command] of bridgeObject.matchAll(/"(desktop_[a-z0-9_]+)"/g)) {
   if (!(rustHost + nativeModule).includes(`fn ${command}(`)) {
     throw new Error(`renderer references non-existent Rust command: ${command}`);

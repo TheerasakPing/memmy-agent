@@ -31,10 +31,20 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "notifyUpdateAvailable",
   "selectProjectDirectory",
   "selectEmptyProjectDirectory",
+  "readWorkspaceDirectory",
+  "writeWorkspaceFile",
+  "setPetWindow",
+  "hidePetWindow",
+  "onRouteTargetRequest",
+  "syncPetWindowLayout",
+  "startPetWindowDrag",
+  "setMenuBarIcon",
+  "setComputerHistoryTrayIndicator",
   "openExternal",
   "openMailto",
   "getMainWindowFullScreen",
   "onMainWindowFullScreenChanged",
+  "onMainWindowActionRequest",
   "completeMainWindowAction"
 ] as const;
 
@@ -73,6 +83,11 @@ export function installTauriBridge(host: TauriWindow): boolean {
       invoke<void>("desktop_notify_update_available", { payload }),
     selectProjectDirectory: () => invoke<{ canceled: boolean; path?: string }>("desktop_select_project_directory"),
     selectEmptyProjectDirectory: () => invoke<{ canceled: boolean; path?: string }>("desktop_select_empty_project_directory"),
+    readWorkspaceDirectory: (rootPath: string, relativePath = "") =>
+      invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["readWorkspaceDirectory"]>>>(
+        "desktop_read_workspace_directory", { rootPath, relativePath }),
+    writeWorkspaceFile: (rootPath: string, filePath: string, contents: string) =>
+      invoke<void>("desktop_write_workspace_file", { rootPath, filePath, contents }),
     openExternal: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     openMailto: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     getMainWindowFullScreen: () => invoke<{ isFullScreen: boolean }>("desktop_fullscreen"),
@@ -97,8 +112,44 @@ export function installTauriBridge(host: TauriWindow): boolean {
         unsubscribe?.();
       };
     },
+    setPetWindow: (enabled: boolean, target?: { route?: string; hash?: string; agentChatId?: string; petIntent?: "user" }) =>
+      invoke<void>("desktop_set_pet_window", { enabled, target }),
+    hidePetWindow: () => invoke<void>("desktop_hide_pet_window"),
+    onRouteTargetRequest: (callback: (target: { route?: string; hash?: string; agentChatId?: string }) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Tauri route event bridge unavailable");
+      let removed = false;
+      let unsubscribe: (() => void) | undefined;
+      void listen<{ route?: string; hash?: string; agentChatId?: string }>(
+        "memmy:route-target-request", (event) => callback(event.payload)
+      ).then((stop) => { if (removed) stop(); else unsubscribe = stop; });
+      return () => { removed = true; unsubscribe?.(); };
+    },
+    syncPetWindowLayout: (layout: { width: number; height: number; mascotOffsetX: number; mascotOffsetY: number }) => {
+      void invoke<void>("desktop_sync_pet_window_layout", { layout }).catch((error) =>
+        console.error("Tauri pet layout rejected", error));
+    },
+    startPetWindowDrag: (_pointer: { clientX: number; clientY: number }) => {
+      void invoke<void>("desktop_start_pet_window_drag").catch((error) =>
+        console.error("Tauri pet native drag rejected", error));
+    },
+    setMenuBarIcon: (enabled: boolean) => invoke<{ enabled: boolean }>("desktop_set_menu_bar_icon", { enabled }),
+    setComputerHistoryTrayIndicator: (indicator: { enabled: boolean; recording: boolean }) => {
+      void invoke<void>("desktop_set_computer_history_tray_indicator", { indicator }).catch((error) =>
+        console.error("Tauri tray indicator rejected", error));
+    },
+    onMainWindowActionRequest: (callback: (request: { id: string; action: "close" | "minimize" }) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Tauri main action event bridge unavailable");
+      let removed = false;
+      let unsubscribe: (() => void) | undefined;
+      void listen<{ id: string; action: "close" | "minimize" }>(
+        "memmy:main-window-action-request", (event) => callback(event.payload)
+      ).then((stop) => { if (removed) stop(); else unsubscribe = stop; });
+      return () => { removed = true; unsubscribe?.(); };
+    },
     completeMainWindowAction: (response: { id: string; resolution: "close" | "hide" | "minimize" | "pet" | "quit" }) =>
-      invoke<void>("desktop_complete_window_action", { resolution: response.resolution })
+      invoke<void>("desktop_complete_window_action", { responseId: response.id, resolution: response.resolution })
   } as unknown as NonNullable<Window["memmy"]>;
   host.memmy = bridge;
   return true;
