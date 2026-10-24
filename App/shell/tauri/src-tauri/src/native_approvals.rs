@@ -1,17 +1,24 @@
 //! Shared native approval preferences consumed by the managed Agent Gateway.
 //! Default-deny on corrupt data; webview may only change values from the main
 //! window. Stores are *not* evidence of fully working Computer Use or Browser.
-use std::{fs, path::{Path, PathBuf}, sync::Mutex};
-use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
 use crate::native_browser_store::{atomic_json, browser_folder, check_data_file};
+use serde::{Deserialize, Serialize};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
+use tauri::{AppHandle, Emitter, State, WebviewWindow};
 
 #[derive(Default)]
 pub struct ApprovalLock(Mutex<()>);
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct ApprovalDocument { version: u8, enabled: bool }
+struct ApprovalDocument {
+    version: u8,
+    enabled: bool,
+}
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct BrowserApprovalState {
@@ -31,12 +38,21 @@ fn read_grant(path: &Path) -> bool {
 }
 
 fn write_grant(path: &Path, enabled: bool) -> Result<(), String> {
-    atomic_json(path, &ApprovalDocument { version: 1, enabled }, 4096)
+    atomic_json(
+        path,
+        &ApprovalDocument {
+            version: 1,
+            enabled,
+        },
+        4096,
+    )
 }
 
 fn native_file(app: &AppHandle) -> Result<PathBuf, String> {
     let browser = browser_folder(app)?;
-    Ok(browser.parent().ok_or("application data root unavailable")?
+    Ok(browser
+        .parent()
+        .ok_or("application data root unavailable")?
         .join("computer-use/allow-all-apps.json"))
 }
 
@@ -47,7 +63,11 @@ fn browser_file(app: &AppHandle) -> Result<PathBuf, String> {
 fn current(browser: &Path, native: &Path) -> BrowserApprovalState {
     let enabled = read_grant(browser);
     let inherited = read_grant(native);
-    BrowserApprovalState { enabled, inherited, effective: enabled || inherited }
+    BrowserApprovalState {
+        enabled,
+        inherited,
+        effective: enabled || inherited,
+    }
 }
 
 fn ensure_main(window: &WebviewWindow) -> Result<(), String> {
@@ -59,7 +79,9 @@ fn ensure_main(window: &WebviewWindow) -> Result<(), String> {
 
 #[tauri::command]
 pub fn desktop_get_native_app_allow_all(
-    app: AppHandle, window: WebviewWindow, lock: State<'_, ApprovalLock>,
+    app: AppHandle,
+    window: WebviewWindow,
+    lock: State<'_, ApprovalLock>,
 ) -> Result<bool, String> {
     ensure_main(&window)?;
     let _guard = lock.0.lock().map_err(|_| "approval state unavailable")?;
@@ -68,7 +90,9 @@ pub fn desktop_get_native_app_allow_all(
 
 #[tauri::command]
 pub fn desktop_set_native_app_allow_all(
-    app: AppHandle, window: WebviewWindow, lock: State<'_, ApprovalLock>,
+    app: AppHandle,
+    window: WebviewWindow,
+    lock: State<'_, ApprovalLock>,
     enabled: bool,
 ) -> Result<bool, String> {
     ensure_main(&window)?;
@@ -84,7 +108,9 @@ pub fn desktop_set_native_app_allow_all(
 
 #[tauri::command]
 pub fn desktop_get_browser_allow_all(
-    app: AppHandle, window: WebviewWindow, lock: State<'_, ApprovalLock>,
+    app: AppHandle,
+    window: WebviewWindow,
+    lock: State<'_, ApprovalLock>,
 ) -> Result<BrowserApprovalState, String> {
     ensure_main(&window)?;
     let _guard = lock.0.lock().map_err(|_| "approval state unavailable")?;
@@ -93,7 +119,9 @@ pub fn desktop_get_browser_allow_all(
 
 #[tauri::command]
 pub fn desktop_set_browser_allow_all(
-    app: AppHandle, window: WebviewWindow, lock: State<'_, ApprovalLock>,
+    app: AppHandle,
+    window: WebviewWindow,
+    lock: State<'_, ApprovalLock>,
     enabled: bool,
 ) -> Result<BrowserApprovalState, String> {
     ensure_main(&window)?;
@@ -120,15 +148,27 @@ mod tests {
     #[test]
     fn default_is_deny_and_native_consent_is_inherited() {
         let (root, browser, native) = paths();
-        assert_eq!(current(&browser, &native),
-            BrowserApprovalState { enabled:false, inherited:false, effective:false });
+        assert_eq!(
+            current(&browser, &native),
+            BrowserApprovalState {
+                enabled: false,
+                inherited: false,
+                effective: false
+            }
+        );
         write_grant(&browser, true).unwrap();
         assert!(current(&browser, &native).effective);
         write_grant(&browser, false).unwrap();
         assert!(!current(&browser, &native).effective);
         write_grant(&native, true).unwrap();
-        assert_eq!(current(&browser, &native),
-            BrowserApprovalState { enabled:false, inherited:true, effective:true });
+        assert_eq!(
+            current(&browser, &native),
+            BrowserApprovalState {
+                enabled: false,
+                inherited: true,
+                effective: true
+            }
+        );
         write_grant(&native, false).unwrap();
         assert!(!current(&browser, &native).effective);
         fs::remove_dir_all(root).unwrap();
@@ -138,7 +178,10 @@ mod tests {
         let (root, browser, native) = paths();
         fs::create_dir_all(browser.parent().unwrap()).unwrap();
         for raw in [
-            "{}", "null", "true", "{\"enabled\":true}",
+            "{}",
+            "null",
+            "true",
+            "{\"enabled\":true}",
             "{\"version\":2,\"enabled\":true}",
             "{\"version\":1,\"enabled\":\"true\"}",
             "{\"version\":1,\"enabled\":true,\"extra\":true}",
@@ -148,7 +191,8 @@ mod tests {
         }
         fs::write(&browser, vec![b' '; 4097]).unwrap();
         assert!(!read_grant(&browser));
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             fs::remove_file(&browser).unwrap();
             std::os::unix::fs::symlink("/etc/hosts", &browser).unwrap();
             assert!(!read_grant(&browser));
