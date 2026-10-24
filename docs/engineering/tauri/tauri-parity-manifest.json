@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 43,
-    "remainingMethods": 42,
+    "nativeMethods": 48,
+    "remainingMethods": 37,
     "routes": 14
   },
   "routes": [
@@ -192,28 +192,28 @@
     },
     {
       "name": "getNativeAppAllowAll",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setNativeAppAllowAll",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getBrowserAllowAll",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setBrowserAllowAll",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "onBrowserAllowAllChanged",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getBrowserDownloadSettings",
