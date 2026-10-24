@@ -66,7 +66,7 @@ fn safe_parent(folder: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn check_data_file(path: &Path, limit: u64) -> Result<bool, String> {
+pub(crate) fn check_data_file(path: &Path, limit: u64) -> Result<bool, String> {
     match fs::symlink_metadata(path) {
         Ok(info) => {
             if info.file_type().is_symlink() || !info.is_file() || info.len() > limit {
@@ -99,7 +99,11 @@ fn load_history(path: &Path) -> Result<Vec<HistoryEntry>, String> {
         .collect())
 }
 
-fn atomic_json<T: Serialize>(path: &Path, content: &T, limit: u64) -> Result<(), String> {
+pub(crate) fn atomic_json<T: Serialize>(
+    path: &Path,
+    content: &T,
+    limit: u64,
+) -> Result<(), String> {
     let bytes = serde_json::to_vec(content).map_err(|_| "could not encode browser data")?;
     if bytes.len() as u64 > limit {
         return Err("browser store would exceed size budget".into());
@@ -132,7 +136,7 @@ fn atomic_json<T: Serialize>(path: &Path, content: &T, limit: u64) -> Result<(),
     result
 }
 
-fn browser_folder(app: &AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn browser_folder(app: &AppHandle) -> Result<PathBuf, String> {
     let parent = app
         .path()
         .app_local_data_dir()

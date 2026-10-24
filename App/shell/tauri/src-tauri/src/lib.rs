@@ -6,6 +6,7 @@ mod native_diagnostics;
 mod native_os;
 mod native_pet;
 mod native_runtime;
+mod native_site_policy;
 mod native_tray;
 mod native_workspace;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
@@ -282,6 +283,9 @@ pub fn run() {
             native_browser_store::desktop_remove_selected_browser_history,
             native_browser_store::desktop_get_browser_access_rules,
             native_browser_store::desktop_set_browser_access_rule,
+            native_site_policy::desktop_get_browser_use_site_policies,
+            native_site_policy::desktop_upsert_browser_use_site_policy,
+            native_site_policy::desktop_remove_browser_use_site_policy,
             native_browser_store::desktop_get_browser_download_settings,
             native_browser_store::desktop_choose_browser_download_directory,
             native_browser_store::desktop_reset_browser_download_directory,

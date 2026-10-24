@@ -56,6 +56,9 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "setBrowserAskBeforeDownload",
   "getBrowserAccessRules",
   "setBrowserAccessRule",
+  "getBrowserUseSitePolicies",
+  "upsertBrowserUseSitePolicy",
+  "removeBrowserUseSitePolicy",
   "getMainWindowFullScreen",
   "onMainWindowFullScreenChanged",
   "onMainWindowActionRequest",
@@ -138,6 +141,12 @@ export function installTauriBridge(host: TauriWindow): boolean {
     getBrowserAccessRules: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserAccessRules"]>>>>("desktop_get_browser_access_rules"),
     setBrowserAccessRule: (origin: string, decision: "allow" | "deny" | "ask") =>
       invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["setBrowserAccessRule"]>>>>("desktop_set_browser_access_rule", { origin, decision }),
+    getBrowserUseSitePolicies: () =>
+      invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserUseSitePolicies"]>>>>("desktop_get_browser_use_site_policies"),
+    upsertBrowserUseSitePolicy: (rule: Parameters<NonNullable<NonNullable<Window["memmy"]>["upsertBrowserUseSitePolicy"]>>[0]) =>
+      invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["upsertBrowserUseSitePolicy"]>>>>("desktop_upsert_browser_use_site_policy", { rule }),
+    removeBrowserUseSitePolicy: (pattern: string) =>
+      invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["removeBrowserUseSitePolicy"]>>>>("desktop_remove_browser_use_site_policy", { pattern }),
     openExternal: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     openMailto: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     getMainWindowFullScreen: () => invoke<{ isFullScreen: boolean }>("desktop_fullscreen"),
