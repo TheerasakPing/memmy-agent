@@ -113,6 +113,12 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     api.setComputerHistoryTrayIndicator?.({enabled:true, recording:true});
     expect(invoke).toHaveBeenCalledWith("desktop_set_menu_bar_icon",{enabled:true});
     api.syncPetWindowLayout({width:160,height:160,mascotOffsetX:0,mascotOffsetY:0});
+    api.startPetWindowDrag({ clientX: 12, clientY: 13 });
+    api.movePetWindow({ clientX: 42, clientY: 40 });
+    api.stopPetWindowDrag();
+    expect(invoke).toHaveBeenCalledWith("desktop_start_pet_window_drag", { pointer: { clientX: 12, clientY: 13 } });
+    expect(invoke).toHaveBeenCalledWith("desktop_move_pet_window", { pointer: { clientX: 42, clientY: 40 } });
+    expect(invoke).toHaveBeenCalledWith("desktop_stop_pet_window_drag", undefined);
     expect(invoke).toHaveBeenCalledWith("desktop_set_pet_window", { enabled:true, target:undefined });
     expect(invoke).toHaveBeenCalledWith("desktop_write_workspace_file", {
       rootPath: "/tmp/my-workspace", filePath: "/tmp/my-workspace/readme.md", contents: "example"
@@ -195,9 +201,9 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(48);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(50);
     expect(host.memmy?.installCliTools).toBeUndefined();
-    expect(host.memmy?.movePetWindow).toBeUndefined();
+    expect(host.memmy?.getComputerHistoryPermissionSessionId).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
   });
 });

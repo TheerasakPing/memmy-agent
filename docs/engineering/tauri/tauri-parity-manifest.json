@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 48,
-    "remainingMethods": 37,
+    "nativeMethods": 50,
+    "remainingMethods": 35,
     "routes": 14
   },
   "routes": [
@@ -477,8 +477,8 @@
     },
     {
       "name": "movePetWindow",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "startPetWindowDrag",
@@ -487,8 +487,8 @@
     },
     {
       "name": "stopPetWindowDrag",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "syncPetWindowLayout",

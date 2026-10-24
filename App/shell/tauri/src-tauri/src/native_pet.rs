@@ -1,8 +1,10 @@
 //! Tauri v2 dedicated pet webview: reuses the original React renderer, with
 //! the legacy memmyMode=pet launch query and independent floating window.
 use serde::Deserialize;
+use std::sync::Mutex;
 use tauri::{
-    AppHandle, Emitter, Manager, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
 };
 
 #[derive(Deserialize)]
@@ -225,19 +227,223 @@ pub fn desktop_sync_pet_window_layout(
         .map_err(|_| "cannot reveal pet window".to_string())
 }
 
+#[derive(Default)]
+pub struct PetDragState(Mutex<Option<PhysicalPosition<i32>>>);
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PetPointer {
+    client_x: f64,
+    client_y: f64,
+}
+
+fn validated_drag_offset(
+    pointer: &PetPointer,
+    scale: f64,
+    size: PhysicalSize<u32>,
+) -> Result<PhysicalPosition<i32>, String> {
+    if !pointer.client_x.is_finite()
+        || !pointer.client_y.is_finite()
+        || !scale.is_finite()
+        || scale <= 0.0
+        || scale > 8.0
+        || pointer.client_x < 0.0
+        || pointer.client_y < 0.0
+        || pointer.client_x * scale >= f64::from(size.width)
+        || pointer.client_y * scale >= f64::from(size.height)
+    {
+        return Err("invalid pet drag pointer".into());
+    }
+    Ok(PhysicalPosition::new(
+        (pointer.client_x * scale).round() as i32,
+        (pointer.client_y * scale).round() as i32,
+    ))
+}
+
+fn clamp_window_location(
+    cursor: PhysicalPosition<f64>,
+    offset: PhysicalPosition<i32>,
+    monitor_position: PhysicalPosition<i32>,
+    monitor_size: PhysicalSize<u32>,
+    window_size: PhysicalSize<u32>,
+) -> Result<PhysicalPosition<i32>, String> {
+    if !cursor.x.is_finite()
+        || !cursor.y.is_finite()
+        || monitor_size.width == 0
+        || monitor_size.height == 0
+    {
+        return Err("pet cursor or monitor unavailable".into());
+    }
+    let desired_x = cursor.x - f64::from(offset.x);
+    let desired_y = cursor.y - f64::from(offset.y);
+    let left = f64::from(monitor_position.x);
+    let top = f64::from(monitor_position.y);
+    let right = left + f64::from(monitor_size.width.saturating_sub(window_size.width));
+    let bottom = top + f64::from(monitor_size.height.saturating_sub(window_size.height));
+    Ok(PhysicalPosition::new(
+        desired_x.clamp(left, right) as i32,
+        desired_y.clamp(top, bottom) as i32,
+    ))
+}
+
 #[tauri::command]
-pub fn desktop_start_pet_window_drag(window: WebviewWindow) -> Result<(), String> {
+pub fn desktop_start_pet_window_drag(
+    window: WebviewWindow,
+    drag: State<'_, PetDragState>,
+    pointer: PetPointer,
+) -> Result<(), String> {
     if window.label() != "pet" {
         return Err("only pet webview can initiate drag".into());
     }
+    let offset = validated_drag_offset(
+        &pointer,
+        window.scale_factor().map_err(|_| "pet scale unavailable")?,
+        window
+            .inner_size()
+            .map_err(|_| "pet geometry unavailable")?,
+    )?;
+    *drag.0.lock().map_err(|_| "pet drag lock unavailable")? = Some(offset);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn desktop_move_pet_window(
+    window: WebviewWindow,
+    drag: State<'_, PetDragState>,
+    pointer: PetPointer,
+) -> Result<(), String> {
+    if window.label() != "pet" {
+        return Err("only pet webview can move itself".into());
+    }
+    let size = window
+        .inner_size()
+        .map_err(|_| "pet geometry unavailable")?;
+    // Match the React event contract but use the authoritative OS cursor position.
+    let _ = validated_drag_offset(
+        &pointer,
+        window.scale_factor().map_err(|_| "pet scale unavailable")?,
+        size,
+    )?;
+    let offset = *drag.0.lock().map_err(|_| "pet drag lock unavailable")?;
+    let offset = offset.ok_or("pet drag has not started")?;
+    let cursor = window
+        .cursor_position()
+        .map_err(|_| "system cursor unavailable")?;
+    let monitor = window
+        .available_monitors()
+        .map_err(|_| "desktop monitors unavailable")?
+        .into_iter()
+        .find(|m| {
+            let at = m.position();
+            let sz = m.size();
+            cursor.x >= f64::from(at.x)
+                && cursor.x < f64::from(at.x) + f64::from(sz.width)
+                && cursor.y >= f64::from(at.y)
+                && cursor.y < f64::from(at.y) + f64::from(sz.height)
+        })
+        .ok_or("pet drag cursor is outside visible monitors")?;
+    let next = clamp_window_location(
+        cursor,
+        offset,
+        *monitor.position(),
+        *monitor.size(),
+        window
+            .outer_size()
+            .map_err(|_| "pet window size unavailable")?,
+    )?;
     window
-        .start_dragging()
-        .map_err(|_| "native pet drag failed".into())
+        .set_position(next)
+        .map_err(|_| "cannot move floating pet".to_string())
+}
+
+#[tauri::command]
+pub fn desktop_stop_pet_window_drag(
+    window: WebviewWindow,
+    drag: State<'_, PetDragState>,
+) -> Result<(), String> {
+    if window.label() != "pet" {
+        return Err("only pet webview can stop dragging".into());
+    }
+    *drag.0.lock().map_err(|_| "pet drag lock unavailable")? = None;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn pet_drag_checks_pointer_and_keeps_window_inside_monitor() {
+        let area = PhysicalSize::new(200, 180);
+        let point = PetPointer {
+            client_x: 10.0,
+            client_y: 25.0,
+        };
+        let offset = validated_drag_offset(&point, 2.0, area).unwrap();
+        assert_eq!(offset, PhysicalPosition::new(20, 50));
+        for point in [
+            PetPointer {
+                client_x: f64::NAN,
+                client_y: 0.0,
+            },
+            PetPointer {
+                client_x: -1.0,
+                client_y: 3.0,
+            },
+            PetPointer {
+                client_x: 101.0,
+                client_y: 0.0,
+            },
+        ] {
+            assert!(validated_drag_offset(&point, 2.0, area).is_err());
+        }
+        let monitor = PhysicalSize::new(1200, 800);
+        let pet = PhysicalSize::new(200, 180);
+        assert_eq!(
+            clamp_window_location(
+                PhysicalPosition::new(430.0, 240.0),
+                offset,
+                PhysicalPosition::new(0, 0),
+                monitor,
+                pet
+            )
+            .unwrap(),
+            PhysicalPosition::new(410, 190)
+        );
+        assert_eq!(
+            clamp_window_location(
+                PhysicalPosition::new(1400.0, 900.0),
+                offset,
+                PhysicalPosition::new(0, 0),
+                monitor,
+                pet
+            )
+            .unwrap(),
+            PhysicalPosition::new(1000, 620)
+        );
+        assert_eq!(
+            clamp_window_location(
+                PhysicalPosition::new(-200.0, -300.0),
+                offset,
+                PhysicalPosition::new(0, 0),
+                monitor,
+                pet
+            )
+            .unwrap(),
+            PhysicalPosition::new(0, 0)
+        );
+        assert_eq!(
+            clamp_window_location(
+                PhysicalPosition::new(-900.0, 70.0),
+                offset,
+                PhysicalPosition::new(-1600, 0),
+                monitor,
+                pet
+            )
+            .unwrap(),
+            PhysicalPosition::new(-920, 20)
+        );
+    }
+
     #[test]
     fn pet_renderer_url_and_layout_are_strictly_validated() {
         assert_eq!(build_pet_query(None).unwrap(), "?memmyMode=pet");
