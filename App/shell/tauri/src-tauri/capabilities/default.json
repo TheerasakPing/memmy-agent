@@ -2,6 +2,6 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
   "description": "Main UI can call narrow, validated Rust commands. No arbitrary shell or filesystem access.",
-  "windows": ["main"],
+  "windows": ["main", "pet"],
   "permissions": ["core:default"]
 }
