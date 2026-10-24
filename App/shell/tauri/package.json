@@ -1,0 +1,15 @@
+{
+  "name": "@memmy/tauri-shell",
+  "private": true,
+  "version": "1.2.4",
+  "description": "Rust + Tauri v2 desktop migration, reusing the original Memmy React renderer",
+  "scripts": {
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "tauri:rust:check": "cargo check --manifest-path src-tauri/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

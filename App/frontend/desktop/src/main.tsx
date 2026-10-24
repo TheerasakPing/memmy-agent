@@ -1,3 +1,4 @@
+import "./tauri-bridge.js";
 import { lazy, StrictMode, Suspense, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { App } from "./app.js";
@@ -20,7 +21,8 @@ import "./styles.css";
 
 const MemoryPagePreview = lazy(() => import("./pages/memory-page.js").then(({ MemoryPage }) => ({ default: MemoryPage })));
 
-if (typeof window !== "undefined" && window.memmy) {
+if (typeof window !== "undefined" && window.memmy && !(window as Window & { __TAURI__?: unknown }).__TAURI__) {
+  // Electron-only log IPC hooks must not execute in Tauri's Rust webview.
   Object.assign(console, rendererLog.functions);
 }
 
