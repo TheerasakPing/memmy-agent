@@ -24,6 +24,9 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "getRuntimeConfig",
   "onAgentGatewayStartupIssue",
   "getAppInfo",
+  "getLogLevel",
+  "setLogLevel",
+  "openLogsDirectory",
   "checkForUpdates",
   "getInstallationId",
   "getLaunchAtLogin",
@@ -104,6 +107,9 @@ export function installTauriBridge(host: TauriWindow): boolean {
       if (lastStartupIssue) callback(lastStartupIssue);
       return () => { startupIssues.delete(callback); };
     },
+    getLogLevel: () => invoke<"error" | "warn" | "info" | "debug">("desktop_get_log_level"),
+    setLogLevel: (level: "error" | "warn" | "info" | "debug") => invoke<void>("desktop_set_log_level", { level }),
+    openLogsDirectory: () => invoke<void>("desktop_open_logs_directory"),
     getAppInfo: () => invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["getAppInfo"]>>>("desktop_app_info"),
     checkForUpdates: () => invoke("desktop_check_for_updates"),
     getInstallationId: () => invoke<string>("desktop_get_installation_id"),
