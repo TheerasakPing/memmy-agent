@@ -57,6 +57,23 @@ describe("R2 scoped tenant ownership — local shared-memory unchanged", () => {
       const props = JSON.parse(row.properties_json) as { internal_info: { tenant_id?: string } };
       expect(props.internal_info.tenant_id).toBe("tenant-A");
 
+      // Identical request ID/adapter from a second tenant must never upsert
+      // into the first tenant's Memory, even for the same user/project.
+      const otherAdd = await send("POST", "/memory/add", "intruder-key", {
+        requestId: "r2-tenant-add-1",
+        adapterId: "r2-isolation-test",
+        layer: "L2",
+        content: "Tenant B owns a different fact",
+        deferProcessing: true
+      });
+      expect(otherAdd.status).toBe(200);
+      const otherCreated = await otherAdd.json() as { id: string };
+      expect(otherCreated.id).not.toBe(created.id);
+      const otherRow = db.db.prepare("SELECT properties_json FROM memories WHERE id = ?").get(otherCreated.id) as { properties_json: string };
+      expect((JSON.parse(otherRow.properties_json) as { internal_info: {tenant_id:string} }).internal_info.tenant_id).toBe("tenant-B");
+      const ownerRowAfterOther = db.db.prepare("SELECT memory_value FROM memories WHERE id = ?").get(created.id) as { memory_value: string };
+      expect(ownerRowAfterOther.memory_value).toContain("Tenant A owns this fact");
+
       const ownerRead = await send("GET", `/memory/${created.id}`, "owner-key");
       expect(ownerRead.status).toBe(200);
       const otherRead = await send("GET", `/memory/${created.id}`, "intruder-key");
@@ -111,6 +128,8 @@ describe("R2 scoped tenant ownership — local shared-memory unchanged", () => {
         answer: "Tenant A answer",
         status: "succeeded"
       });
+      expect(service.getMemory(turn.episodeId, { namespace: owner }).item).toBeTruthy();
+      expect(() => service.getMemory(turn.episodeId, { namespace: other })).toThrow(/tenant/);
       expect(() => service.deletePanelTask(turn.episodeId, { namespace: other })).toThrow(/tenant/);
       expect(() => service.redactRawTurn(turn.rawTurnId, { namespace: other })).toThrow(/tenant/);
       expect(db.db.prepare("SELECT id FROM episodes WHERE id = ?").get(turn.episodeId)).toBeTruthy();
