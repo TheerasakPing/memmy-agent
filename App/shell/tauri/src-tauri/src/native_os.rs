@@ -48,21 +48,30 @@ fn persistent_install_id(directory: &Path) -> Result<String, String> {
 
 #[tauri::command]
 pub fn desktop_get_installation_id(app: AppHandle) -> Result<String, String> {
-    let directory = app.path().app_local_data_dir().map_err(|_| "app data unavailable")?;
+    let directory = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "app data unavailable")?;
     persistent_install_id(&directory)
 }
 
 #[tauri::command]
 pub fn desktop_get_launch_at_login(app: AppHandle) -> Result<bool, String> {
-    app.autolaunch().is_enabled().map_err(|_| "autostart state unavailable".into())
+    app.autolaunch()
+        .is_enabled()
+        .map_err(|_| "autostart state unavailable".into())
 }
 
 #[tauri::command]
 pub fn desktop_set_launch_at_login(app: AppHandle, enabled: bool) -> Result<bool, String> {
     if enabled {
-        app.autolaunch().enable().map_err(|_| "cannot enable autostart")?;
+        app.autolaunch()
+            .enable()
+            .map_err(|_| "cannot enable autostart")?;
     } else {
-        app.autolaunch().disable().map_err(|_| "cannot disable autostart")?;
+        app.autolaunch()
+            .disable()
+            .map_err(|_| "cannot disable autostart")?;
     }
     desktop_get_launch_at_login(app)
 }
@@ -83,9 +92,16 @@ fn send_notification(app: &AppHandle, payload: NativeNotification) -> Result<(),
     }
     // The delivery ID is metadata, not an instruction to execute/route anything.
     let _ = &payload.delivery_id;
-    let mut note = app.notification().builder().title(payload.title).body(payload.body);
-    if payload.silent { note = note.silent(); }
-    note.show().map_err(|_| "notification could not be displayed".into())
+    let mut note = app
+        .notification()
+        .builder()
+        .title(payload.title)
+        .body(payload.body);
+    if payload.silent {
+        note = note.silent();
+    }
+    note.show()
+        .map_err(|_| "notification could not be displayed".into())
 }
 
 #[tauri::command]
@@ -94,26 +110,34 @@ pub fn desktop_notify_task_done(app: AppHandle, payload: NativeNotification) -> 
 }
 
 #[tauri::command]
-pub fn desktop_notify_update_available(app: AppHandle, payload: NativeNotification) -> Result<(), String> {
+pub fn desktop_notify_update_available(
+    app: AppHandle,
+    payload: NativeNotification,
+) -> Result<(), String> {
     send_notification(&app, payload)
 }
 
 #[tauri::command]
 pub async fn desktop_select_project_directory(app: AppHandle) -> Result<serde_json::Value, String> {
-    let path = tauri::async_runtime::spawn_blocking(move || {
-        app.dialog().file().blocking_pick_folder()
-    }).await.map_err(|_| "folder dialog failed")?;
+    let path =
+        tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_folder())
+            .await
+            .map_err(|_| "folder dialog failed")?;
     match path {
         None => Ok(serde_json::json!({"canceled": true})),
         Some(folder) => {
-            let folder = folder.into_path().map_err(|_| "selected path was not a local folder")?;
+            let folder = folder
+                .into_path()
+                .map_err(|_| "selected path was not a local folder")?;
             Ok(serde_json::json!({"canceled": false, "path": folder.to_string_lossy()}))
         }
     }
 }
 
 #[tauri::command]
-pub async fn desktop_select_empty_project_directory(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn desktop_select_empty_project_directory(
+    app: AppHandle,
+) -> Result<serde_json::Value, String> {
     // Legacy selector allows existing folders; emptiness belongs to the
     // original renderer workflow, not to a silently changed native picker.
     desktop_select_project_directory(app).await

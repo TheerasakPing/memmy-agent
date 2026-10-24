@@ -76,3 +76,12 @@ cargo test --manifest-path App/shell/tauri/src-tauri/Cargo.toml
 # Only after the Rust host and frontend tests pass (native UI runtime still incomplete):
 MEMMY_LEGAL_CN_BASE_URL=https://memmy.cn MEMMY_LEGAL_INTL_BASE_URL=https://memmy.bot npm run tauri:dev -w @memmy/tauri-shell
 ```
+
+## T1 follow-up (Draft PR #30)
+
+- The follow-up retains the original 14 React routes and source layouts.
+- 16/85 native bridge methods are now wired, leaving 69 incomplete; native parity remains unapproved.
+- Rust folder selection, OS notifications, autostart, persistent installation identity and fullscreen events have been added.
+- Node 22 full React suite: **2,624/2,624 tests passed**, after building declared migrations dependencies. Rust 2/2 and bridge 4/4 passed.
+- Source contract generator checks TypeScript methods and matching Rust IPC handlers, preventing phantom parity counts.
+- Current evidence and release blockers: [T1-OS-PARITY-2026-10-24.md](T1-OS-PARITY-2026-10-24.md).

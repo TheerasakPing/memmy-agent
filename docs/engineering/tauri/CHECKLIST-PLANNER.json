@@ -68,7 +68,7 @@
       "independentReviewer": "A1",
       "qa": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",
@@ -87,7 +87,7 @@
       "independentReviewer": "A4",
       "qa": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",

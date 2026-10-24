@@ -2,7 +2,7 @@
 //! routed through typed, auditable Rust commands; no generic shell invoke.
 use std::fs;
 mod native_os;
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use tauri_plugin_opener::OpenerExt;
 
 fn is_loopback_runtime_config(value: &serde_json::Value) -> bool {
@@ -12,7 +12,9 @@ fn is_loopback_runtime_config(value: &serde_json::Value) -> bool {
     let Some(token) = value.get("localToken").and_then(serde_json::Value::as_str) else {
         return false;
     };
-    if token.trim().is_empty() { return false; }
+    if token.trim().is_empty() {
+        return false;
+    }
     let Ok(url) = url::Url::parse(base) else {
         return false;
     };
@@ -30,17 +32,28 @@ fn desktop_runtime_config(app: AppHandle) -> Result<serde_json::Value, String> {
     // The new native runtime must create this file after launching its loopback
     // backend with a random session token. Do not load Electron data directories
     // or silently create a fake token; native backend migration is a release gate.
-    let directory = app.path().app_local_data_dir().map_err(|_| "app data directory unavailable")?;
+    let directory = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|_| "app data directory unavailable")?;
     let path = directory.join("runtime-config.json");
     let raw = fs::read_to_string(&path).map_err(|_| {
         "Tauri runtime not provisioned: native backend startup is still pending".to_string()
     })?;
-    let value: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|_| "invalid native runtime config")?;
+    let value: serde_json::Value =
+        serde_json::from_str(&raw).map_err(|_| "invalid native runtime config")?;
     if !is_loopback_runtime_config(&value) {
         return Err("native runtime config rejected: loopback/token contract invalid".into());
     }
     Ok(value)
+}
+
+fn electron_compatible_platform() -> &'static str {
+    match std::env::consts::OS {
+        "macos" => "darwin",
+        "windows" => "win32",
+        other => other,
+    }
 }
 
 #[tauri::command]
@@ -48,7 +61,7 @@ fn desktop_app_info(app: AppHandle) -> serde_json::Value {
     serde_json::json!({
         "name": "Memmy",
         "version": app.package_info().version.to_string(),
-        "platform": std::env::consts::OS,
+        "platform": electron_compatible_platform(),
         "arch": std::env::consts::ARCH,
         "isPackaged": !cfg!(debug_assertions),
         "isWindowsStore": false
@@ -71,20 +84,21 @@ fn desktop_open_external(app: AppHandle, address: String) -> Result<(), String> 
     if !matches!(parsed.scheme(), "https" | "http" | "mailto") {
         return Err("external URL scheme is not allowed".into());
     }
-    app.opener().open_url(address, None::<&str>).map_err(|_| "failed to open external URL".into())
+    app.opener()
+        .open_url(address, None::<&str>)
+        .map_err(|_| "failed to open external URL".into())
 }
 
 #[tauri::command]
 fn desktop_fullscreen(window: WebviewWindow) -> Result<serde_json::Value, String> {
-    let is_full_screen = window.is_fullscreen().map_err(|_| "window state unavailable")?;
+    let is_full_screen = window
+        .is_fullscreen()
+        .map_err(|_| "window state unavailable")?;
     Ok(serde_json::json!({ "isFullScreen": is_full_screen }))
 }
 
 #[tauri::command]
-fn desktop_complete_window_action(
-    window: WebviewWindow,
-    resolution: String
-) -> Result<(), String> {
+fn desktop_complete_window_action(window: WebviewWindow, resolution: String) -> Result<(), String> {
     match resolution.as_str() {
         "minimize" | "hide" => window.minimize().map_err(|_| "minimize failed".into()),
         "close" | "quit" => window.close().map_err(|_| "close failed".into()),
@@ -99,9 +113,19 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None
+            None,
         ))
         .plugin(tauri_plugin_dialog::init())
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Resized(_)) {
+                if let Ok(is_full_screen) = window.is_fullscreen() {
+                    let _ = window.emit(
+                        "memmy:window-fullscreen-changed",
+                        serde_json::json!({"isFullScreen": is_full_screen}),
+                    );
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             desktop_runtime_config,
             desktop_app_info,
@@ -123,7 +147,17 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::is_loopback_runtime_config;
+    use super::{electron_compatible_platform, is_loopback_runtime_config};
+
+    #[test]
+    fn reports_electron_compatible_platform_contract() {
+        let expected = match std::env::consts::OS {
+            "macos" => "darwin",
+            "windows" => "win32",
+            other => other,
+        };
+        assert_eq!(electron_compatible_platform(), expected);
+    }
     use serde_json::json;
 
     #[test]
@@ -131,8 +165,13 @@ mod tests {
         assert!(is_loopback_runtime_config(&json!({
             "baseUrl": "http://127.0.0.1:3100", "localToken": "random-session-token"
         })));
-        for base in ["https://example.com/", "http://10.0.0.3:3100/", "file:///tmp/",
-            "http://127.0.0.1:3000/token", "http://localhost:3000/?token=secret"] {
+        for base in [
+            "https://example.com/",
+            "http://10.0.0.3:3100/",
+            "file:///tmp/",
+            "http://127.0.0.1:3000/token",
+            "http://localhost:3000/?token=secret",
+        ] {
             assert!(!is_loopback_runtime_config(&json!({
                 "baseUrl": base, "localToken": "token"
             })));
