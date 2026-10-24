@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: turbo-r2-tenant-${{ github.ref }}-${{ matrix.os || 'validation' }}
+  group: turbo-r2-tenant-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
