@@ -73,6 +73,7 @@ try {
     databasePath: join(safeDirectory, "app-state.sqlite"),
     memmyConfigPath: process.env.MEMMY_CONFIG,
     runtimeConfigPath,
+    memoryBaseUrl: parsedMemoryUrl.origin,
     skipAgentMcpReload: true,
     // Never add arbitrary remote web origins to the native Local API.
     allowedOrigins: [
