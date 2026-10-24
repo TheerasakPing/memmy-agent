@@ -7,6 +7,7 @@ on:
       - 'App/frontend/desktop/src/tests/tauri-bridge.test.ts'
       - 'App/frontend/desktop/src/main.tsx'
       - 'App/shell/tauri/**'
+      - 'App/backend/src/index.ts'
       - 'docs/engineering/tauri/**'
       - 'scripts/engineering/tauri-parity.mjs'
       - '.github/workflows/tauri-v2-parity.yml'
@@ -29,6 +30,8 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/engineering/tauri-parity.mjs --check
       - run: npm run typecheck -w @memmy/frontend-desktop
+      - run: npm run build -w @memmy/backend
+      - run: npm run sidecar:test -w @memmy/tauri-shell
       - run: npm exec -w @memmy/frontend-desktop -- vitest run src/tests/tauri-bridge.test.ts
 
   tauri-rust:

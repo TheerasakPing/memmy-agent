@@ -1,7 +1,8 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
-use std::fs;
+use std::sync::Arc;
 mod native_os;
+mod native_runtime;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use tauri_plugin_opener::OpenerExt;
 
@@ -28,24 +29,18 @@ fn is_loopback_runtime_config(value: &serde_json::Value) -> bool {
 }
 
 #[tauri::command]
-fn desktop_runtime_config(app: AppHandle) -> Result<serde_json::Value, String> {
-    // The new native runtime must create this file after launching its loopback
-    // backend with a random session token. Do not load Electron data directories
-    // or silently create a fake token; native backend migration is a release gate.
+async fn desktop_runtime_config(
+    app: AppHandle,
+    supervisor: tauri::State<'_, Arc<native_runtime::NativeRuntime>>,
+) -> Result<serde_json::Value, String> {
     let directory = app
         .path()
         .app_local_data_dir()
         .map_err(|_| "app data directory unavailable")?;
-    let path = directory.join("runtime-config.json");
-    let raw = fs::read_to_string(&path).map_err(|_| {
-        "Tauri runtime not provisioned: native backend startup is still pending".to_string()
-    })?;
-    let value: serde_json::Value =
-        serde_json::from_str(&raw).map_err(|_| "invalid native runtime config")?;
-    if !is_loopback_runtime_config(&value) {
-        return Err("native runtime config rejected: loopback/token contract invalid".into());
-    }
-    Ok(value)
+    let runtime = supervisor.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || runtime.config(&directory))
+        .await
+        .map_err(|_| "native runtime supervisor failed".to_string())?
 }
 
 fn electron_compatible_platform() -> &'static str {
@@ -109,6 +104,7 @@ fn desktop_complete_window_action(window: WebviewWindow, resolution: String) -> 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(Arc::new(native_runtime::NativeRuntime::default()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
@@ -117,6 +113,14 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_dialog::init())
         .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(runtime) = window
+                    .app_handle()
+                    .try_state::<Arc<native_runtime::NativeRuntime>>()
+                {
+                    runtime.stop();
+                }
+            }
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Resized(_)) {
                 if let Ok(is_full_screen) = window.is_fullscreen() {
                     let _ = window.emit(

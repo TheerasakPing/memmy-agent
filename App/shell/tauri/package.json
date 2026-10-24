@@ -5,6 +5,8 @@
   "description": "Rust + Tauri v2 desktop migration, reusing the original Memmy React renderer",
   "scripts": {
     "tauri:dev": "tauri dev",
+    "backend:build": "npm --prefix ../../.. run build -w @memmy/backend",
+    "sidecar:test": "node --test sidecar/backend.test.mjs",
     "tauri:build": "tauri build",
     "tauri:rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri:rust:check": "cargo check --manifest-path src-tauri/Cargo.toml"
