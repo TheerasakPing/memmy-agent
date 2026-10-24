@@ -2281,29 +2281,31 @@ export class RuntimeRepository {
     return counts;
   }
 
-  countEpisodes(userId?: string, query?: string, sourceAgent?: string): number {
+  countEpisodes(userId?: string, query?: string, sourceAgent?: string, tenantId?: string, projectId?: string): number {
     const built = buildEpisodeWhere(userId, query, sourceAgent);
+    const tenantScope = tenantId ? tenantOwnedEpisodeWhere(tenantId, projectId) : undefined;
     const row = this.db
       .prepare(
         `SELECT COUNT(*) AS count
          FROM episodes
-         WHERE ${built.where}`
+         WHERE ${built.where}${tenantScope ? ` AND ${tenantScope.where}` : ""}`
       )
-      .get(...built.params) as { count: number } | undefined;
+      .get(...built.params, ...(tenantScope?.params ?? [])) as { count: number } | undefined;
     return Number(row?.count ?? 0);
   }
 
-  listEpisodes(userId?: string, limit = 50, offset = 0, query?: string, sourceAgent?: string): EpisodeRecord[] {
+  listEpisodes(userId?: string, limit = 50, offset = 0, query?: string, sourceAgent?: string, tenantId?: string, projectId?: string): EpisodeRecord[] {
     const built = buildEpisodeWhere(userId, query, sourceAgent);
+    const tenantScope = tenantId ? tenantOwnedEpisodeWhere(tenantId, projectId) : undefined;
     const rows = this.db
       .prepare(
         `SELECT *
          FROM episodes
-         WHERE ${built.where}
+         WHERE ${built.where}${tenantScope ? ` AND ${tenantScope.where}` : ""}
          ORDER BY opened_at DESC, updated_at DESC, id DESC
          LIMIT ? OFFSET ?`
       )
-      .all(...built.params, limit, offset) as SqlEpisodeRow[];
+      .all(...built.params, ...(tenantScope?.params ?? []), limit, offset) as SqlEpisodeRow[];
     return rows.map(episodeFromSql);
   }
 
@@ -7033,6 +7035,20 @@ function buildMemoryWhere(filter: MemoryFilter): { where: string; params: SqlVal
       params.push(normalized, normalized, normalized);
     }
   }
+}
+
+/** Fail-closed tenant scope based on durable session ownership, before pagination or raw-turn assembly. */
+function tenantOwnedEpisodeWhere(tenantId: string, projectId?: string): { where: string; params: SqlValue[] } {
+  return {
+    where: `EXISTS (
+      SELECT 1 FROM sessions AS tenant_owner
+      WHERE tenant_owner.id = episodes.session_id
+        AND tenant_owner.user_id = episodes.user_id
+        AND json_extract(tenant_owner.meta_json, '$.memmy_tenant_id') = ?
+        ${projectId ? "AND tenant_owner.project_id = ?" : ""}
+    )`,
+    params: projectId ? [tenantId, projectId] : [tenantId]
+  };
 }
 
 function buildEpisodeWhere(userId?: string, query?: string, sourceAgent?: string): { where: string; params: SqlValue[] } {
