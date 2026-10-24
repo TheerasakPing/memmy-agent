@@ -146,6 +146,23 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(unsubscribe).toHaveBeenCalledTimes(2);
   });
 
+  it("replays a validated Agent Gateway issue to listeners registered after bootstrap", async () => {
+    const { host, invoke } = setup();
+    invoke.mockImplementation(async (command: string) => {
+      if (command === "desktop_runtime_config") return {
+        baseUrl: "http://127.0.0.1:3000", localToken: "native-token",
+        agentGateway: { startupIssue: "model_config_invalid" }
+      };
+      return undefined;
+    });
+    installTauriBridge(host);
+    await host.memmy!.getRuntimeConfig();
+    const callback = vi.fn();
+    const stop = host.memmy!.onAgentGatewayStartupIssue!(callback);
+    expect(callback).toHaveBeenCalledExactlyOnceWith("model_config_invalid");
+    stop();
+  });
+
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
