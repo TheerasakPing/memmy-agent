@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Memmy Turbo",
-  "version": "1.2.4",
-  "identifier": "com.theerasakping.memmy.turbo",
+  "productName": "Memmy Turbo Preview",
+  "version": "1.2.5-alpha.1",
+  "identifier": "com.theerasakping.memmy.turbo.preview",
   "build": {
     "frontendDist": "../../../frontend/desktop/dist",
     "devUrl": "http://127.0.0.1:19000",
@@ -21,7 +21,10 @@
         "minHeight": 640,
         "decorations": true,
         "titleBarStyle": "Overlay",
-        "trafficLightPosition": { "x": 14, "y": 14 },
+        "trafficLightPosition": {
+          "x": 14,
+          "y": 14
+        },
         "backgroundColor": "#f1f8f7",
         "resizable": true
       }
@@ -33,6 +36,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"]
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }

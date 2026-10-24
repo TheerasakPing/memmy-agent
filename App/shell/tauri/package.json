@@ -1,12 +1,13 @@
 {
   "name": "@memmy/tauri-shell",
   "private": true,
-  "version": "1.2.4",
+  "version": "1.2.5-alpha.1",
   "description": "Rust + Tauri v2 desktop migration, reusing the original Memmy React renderer",
   "scripts": {
     "tauri:dev": "tauri dev",
     "backend:build": "npm --prefix ../../.. run build -w @memmy/backend",
-    "sidecar:test": "node --test sidecar/backend.test.mjs",
+    "memory:build": "npm --prefix ../../.. run memory:build",
+    "sidecar:test": "node --test sidecar/backend.test.mjs sidecar/memory.test.mjs",
     "tauri:build": "tauri build",
     "tauri:rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri:rust:check": "cargo check --manifest-path src-tauri/Cargo.toml"

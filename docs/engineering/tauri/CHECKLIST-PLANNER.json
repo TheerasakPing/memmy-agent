@@ -136,7 +136,59 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "T2 local API dev supervisor and authenticated loopback handshake tested; Memory and Agent lifecycle, signed production sidecars and external QA not done"
+      "progressNote": "Rust can supervise both real isolated Memory service and Local API in opt-in development mode; 3/3 Node sidecar smoke, real Rust lifecycle smoke, all original React routes; Agent Gateway, signed production sidecars, three-OS GUI E2E and independent QA/LEAD still pending.",
+      "subtasks": [
+        {
+          "id": "T2.01.A",
+          "title": "Rust-owned development Local API",
+          "owner": "A2",
+          "qa": "A5",
+          "supervisor": "LEAD",
+          "implementation": "IMPLEMENTED",
+          "automatedSmoke": "PASSED_LOCAL",
+          "independentReview": "PENDING"
+        },
+        {
+          "id": "T2.01.B",
+          "title": "Rust-owned real Memory development lifecycle",
+          "owner": "A2",
+          "qa": "A5",
+          "supervisor": "LEAD",
+          "implementation": "IMPLEMENTED",
+          "automatedSmoke": "PASSED_LOCAL",
+          "independentReview": "PENDING"
+        },
+        {
+          "id": "T2.01.C",
+          "title": "Rust-owned Agent Gateway lifecycle",
+          "owner": "A4",
+          "qa": "A5",
+          "supervisor": "LEAD",
+          "implementation": "NOT_STARTED",
+          "automatedSmoke": "NOT_RUN",
+          "independentReview": "PENDING"
+        },
+        {
+          "id": "T2.01.D",
+          "title": "Signed bundled sidecars and safe release packaging",
+          "owner": "A6",
+          "qa": "A5",
+          "supervisor": "LEAD",
+          "implementation": "NOT_STARTED",
+          "automatedSmoke": "NOT_RUN",
+          "independentReview": "PENDING"
+        },
+        {
+          "id": "T2.01.E",
+          "title": "Production runtime kill/recovery and UX E2E across three platforms",
+          "owner": "A5",
+          "qa": "A1",
+          "supervisor": "LEAD",
+          "implementation": "NOT_STARTED",
+          "automatedSmoke": "NOT_RUN",
+          "independentReview": "PENDING"
+        }
+      ]
     },
     {
       "id": "T2.02",
