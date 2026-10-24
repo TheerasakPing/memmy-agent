@@ -1,0 +1,77 @@
+name: Turbo R1 baseline (isolated tests)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/turbo-r1-baseline.yml"
+      - "docs/engineering/turbo/**"
+      - "Memory/**"
+      - "tests/smoke/**"
+      - "AgentSourceCore/**"
+      - "App/backend/**"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  memory-contracts:
+    name: R1 Memory contracts / unit / smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CI: "true"
+      MEMMY_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout pinned PR SHA
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22 / npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Print immutable baseline evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "sha=$(git rev-parse HEAD)" | tee "$RUNNER_TEMP/r1-baseline.txt"
+          node --version | tee -a "$RUNNER_TEMP/r1-baseline.txt"
+          npm --version | tee -a "$RUNNER_TEMP/r1-baseline.txt"
+          uname -a | tee -a "$RUNNER_TEMP/r1-baseline.txt"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify version alignment
+        run: npm run version:check
+      - name: R1 Memory HTTP contracts
+        run: npm run test -w @memmy/memory -- tests/contract/memory-rest-service.test.ts tests/contract/rest-panel-events.test.ts tests/contract/external-evidence-http.test.ts
+      - name: R2 tenant isolation negative and local compatibility contracts
+        run: npm run test -w @memmy/memory -- tests/contract/turbo-r2-tenant-ownership.test.ts
+      - name: R2 Memory typecheck
+        run: npm run memory:lint
+      - name: R1 Memory lifecycle and worker regression
+        run: npm run test -w @memmy/memory -- tests/service/lifecycle/memory-lifecycle.test.ts tests/service/worker/worker-runtime.test.ts
+      - name: R1 built-in local memory smoke
+        run: npm run smoke:memory-layer
+      - name: Report scope and limitations
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### Memmy Turbo R1 baseline"
+            echo "Commit: \`$GITHUB_SHA\`"
+            echo "- Tests above are source/contract/smoke only."
+            echo "- Not proof of signed desktop installer, Windows 11 or macOS E2E."
+            echo "- Security negative tests are separate R1 acceptance tasks."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload baseline evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-r1-baseline
+          path: ${{ runner.temp }}/r1-baseline.txt
+          if-no-files-found: warn
+          retention-days: 14

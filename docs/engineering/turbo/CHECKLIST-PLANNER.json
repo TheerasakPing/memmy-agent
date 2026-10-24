@@ -1,0 +1,1844 @@
+{
+  "program": "Memmy Agent Turbo R1-R5",
+  "upstream": "MemTensor/memmy-agent",
+  "fork": "TheerasakPing/memmy-agent",
+  "pinned_sha": "74b26fc78ebd14a784981ba8e83bebf878c20865",
+  "generated_at": "2026-10-23",
+  "stage": "R1 source audit / governance branch",
+  "note": "Assignments are planner roles, not proof that live agents are running.",
+  "ui_default": "unchanged",
+  "old_feature_parity": "mandatory",
+  "completed_tests": 0,
+  "test_status": "NOT_RUN",
+  "required_reviewers": [
+    "module independent reviewer",
+    "QA",
+    "LEAD supervisor"
+  ],
+  "counts": {
+    "R1": 10,
+    "R2": 14,
+    "R3": 13,
+    "R4": 13,
+    "R5": 10
+  },
+  "roles": {
+    "LEAD": "Supervisor / Tech Lead",
+    "A1": "Security Agent",
+    "A2": "Memory Engine and Rust Performance Agent",
+    "A3": "Integration and Handoff Agent",
+    "A4": "Planner / Orchestration Agent",
+    "A5": "QA / E2E Agent",
+    "A6": "Desktop and Release Agent",
+    "A7": "Documentation and SOP Agent"
+  },
+  "tasks": [
+    {
+      "id": "R1.01",
+      "phase": "R1",
+      "title": "Pin SHA and repository/package inventory",
+      "owner_agent": "LEAD",
+      "independent_reviewer": "A5",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "STATIC_REVIEW_COMPLETE",
+      "acceptance_criteria": "Static module inventory, version and source links",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/7",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+    },
+    {
+      "id": "R1.02",
+      "phase": "R1",
+      "title": "Map memory layers/schema/retrieval",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "STATIC_REVIEW_COMPLETE",
+      "acceptance_criteria": "Trace four memory layers, index and schema version",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.01"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/8",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+    },
+    {
+      "id": "R1.03",
+      "phase": "R1",
+      "title": "Identify initial auth and isolation risk",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "STATIC_REVIEW_COMPLETE",
+      "acceptance_criteria": "Record exact source anchors and threat hypotheses",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.02"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/9",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+    },
+    {
+      "id": "R1.04",
+      "phase": "R1",
+      "title": "Catalog existing CI/workflows and source tests",
+      "owner_agent": "A5",
+      "independent_reviewer": "A1",
+      "qa_agent": "A6",
+      "supervisor": "LEAD",
+      "status": "STATIC_REVIEW_COMPLETE",
+      "acceptance_criteria": "Native OS runner and test script inventory",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.03"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/10",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+    },
+    {
+      "id": "R1.05",
+      "phase": "R1",
+      "title": "Threat model local/remote/scoped/anonymous",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "IN_REVIEW",
+      "acceptance_criteria": "Approved trust boundaries and data access policy",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.04"
+      ],
+      "release_blocking": true,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/11",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/blob/codex/r1-audit-governance-baseline/docs/engineering/turbo/R1-THREAT-MODEL.md"
+      ]
+    },
+    {
+      "id": "R1.06",
+      "phase": "R1",
+      "title": "Reproduce namespace/episode/raw-turn negative tests",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "IN_PROGRESS",
+      "acceptance_criteria": "Failing tests with isolated fixtures and side-effect assertions",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.05"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/12",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/17",
+        "https://github.com/TheerasakPing/memmy-agent/actions/runs/39981344561"
+      ],
+      "evidence_note": "Known-failure security canaries; neither isolation nor QA signoff achieved"
+    },
+    {
+      "id": "R1.07",
+      "phase": "R1",
+      "title": "Baseline npm ci/typecheck/test/build",
+      "owner_agent": "A5",
+      "independent_reviewer": "A1",
+      "qa_agent": "A6",
+      "supervisor": "LEAD",
+      "status": "IN_PROGRESS",
+      "acceptance_criteria": "Immutable execution logs with skips/exit codes",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.06"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/13",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/21",
+        "https://github.com/TheerasakPing/memmy-agent/actions/runs/40035100761"
+      ],
+      "evidence_note": "Full typecheck/test/build still running; not pass until full result"
+    },
+    {
+      "id": "R1.08",
+      "phase": "R1",
+      "title": "Snapshot original UI and existing feature flows",
+      "owner_agent": "A6",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "IN_PROGRESS",
+      "acceptance_criteria": "macOS/Windows screenshots and acceptance journey index",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.07"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/14",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/21"
+      ],
+      "evidence_note": "16-file source freeze successful; native screenshot/GUI E2E still not run"
+    },
+    {
+      "id": "R1.09",
+      "phase": "R1",
+      "title": "Benchmark SQLite retrieval/evolution",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Latency, Recall@10, index freshness and queue metrics",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.08"
+      ],
+      "release_blocking": false,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/15",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+    },
+    {
+      "id": "R1.10",
+      "phase": "R1",
+      "title": "R1 independent signoff",
+      "owner_agent": "LEAD",
+      "independent_reviewer": "A5",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "A5 + Security evidence and dispositions",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S08",
+        "S09",
+        "S11"
+      ],
+      "dependencies": [
+        "R1.09"
+      ],
+      "release_blocking": true,
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/16",
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/2"
+    },
+    {
+      "id": "R2.01",
+      "phase": "R2",
+      "title": "Define namespace and scoped authorization policy",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Explicit tenant/user/project/local policy",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R1.10"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.02",
+      "phase": "R2",
+      "title": "Wire scoped API keys to packaged runtime",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Configured keys enforced by real server entry point",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.01"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.03",
+      "phase": "R2",
+      "title": "Enforce episode/raw-turn scope with safe local semantics",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "IN_PROGRESS",
+      "acceptance_criteria": "Cross-tenant mutations denied, local flow intact",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.02"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3",
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/18",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/24"
+      ],
+      "evidence_note": "Tenant metadata + read/governance boundaries implemented in draft; selected HTTP/DB regression tests committed but CI not yet observed; Search/Panel/SSE/Export still uncovered; release blocked"
+    },
+    {
+      "id": "R2.04",
+      "phase": "R2",
+      "title": "Fix read-only search recordEvent semantics",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "HTTP no-write test for recordEvent false",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.03"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.05",
+      "phase": "R2",
+      "title": "Review SSE/query-token and API log secret exposure",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No secret tokens in persisted logs",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.04"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.06",
+      "phase": "R2",
+      "title": "Implement queue fairness/priority aging",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No starvation under continuous high-priority load",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.05"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.07",
+      "phase": "R2",
+      "title": "Cross-agent import provenance dedup",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Duplicated Codex/Cursor turns single-captured",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.06"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.08",
+      "phase": "R2",
+      "title": "Build transactional index outbox and replay",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Crash restart yields consistent index",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.07"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.09",
+      "phase": "R2",
+      "title": "Backup/restore SQLite migration path",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No user data loss and rollback evidence",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.08"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.10",
+      "phase": "R2",
+      "title": "Evidence-backed memory provenance",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Stored assertions reference source evidence",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.09"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.11",
+      "phase": "R2",
+      "title": "Contradiction resolution with version history",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Conflicting facts retained and recoverable",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.10"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.12",
+      "phase": "R2",
+      "title": "User/project/agent memory bank isolation",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Test negative cross-scope search and writes",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.11"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.13",
+      "phase": "R2",
+      "title": "Memory redaction propagated to all indexes",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Redacted content absent in all search paths",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.12"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R2.14",
+      "phase": "R2",
+      "title": "R2 Security + QA exit gate",
+      "owner_agent": "LEAD",
+      "independent_reviewer": "A5",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No P0 leakage, regression matrix accepted",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S07",
+        "S08",
+        "S09",
+        "S10"
+      ],
+      "dependencies": [
+        "R2.13"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+    },
+    {
+      "id": "R3.01",
+      "phase": "R3",
+      "title": "Stabilize native SourceTurn identity contracts",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Stable turn/tool ids with source namespace",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R2.14"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.02",
+      "phase": "R3",
+      "title": "Hook and history-scan idempotency",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No double capture with repeated hooks/import",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.01"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.03",
+      "phase": "R3",
+      "title": "Validate OpenCode V1/V2 readers/plugins",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Host fixtures and idle boundary tests green",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.02"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.04",
+      "phase": "R3",
+      "title": "Cross-agent handoff Codex→Claude→Codex",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Scoped context restored after restart",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.03"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.05",
+      "phase": "R3",
+      "title": "Gateway/CLI/desktop/API contract parity",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No removed endpoint/command",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.04"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.06",
+      "phase": "R3",
+      "title": "Temporal memory as-of queries",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Correct effective dates and lineage",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.05"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.07",
+      "phase": "R3",
+      "title": "Entity graph relationships and provenance",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Graph edges scoped and referenced",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.06"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.08",
+      "phase": "R3",
+      "title": "Opt-in document connector adapter",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Revocation and data deletion tests",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.07"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.09",
+      "phase": "R3",
+      "title": "Rust sidecar contract and feature flags",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Original engine default and kill switch",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.08"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.10",
+      "phase": "R3",
+      "title": "USearch ANN PoC",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Recall@10 maintained vs existing baseline",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.09"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.11",
+      "phase": "R3",
+      "title": "Tantivy BM25 and Thai/code tokenizer PoC",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Ranking bench for multilingual corpus",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.10"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.12",
+      "phase": "R3",
+      "title": "Index consistency under crash/replay",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Durability/watermarks and fallbacks",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.11"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R3.13",
+      "phase": "R3",
+      "title": "R3 native platform integration exit gate",
+      "owner_agent": "LEAD",
+      "independent_reviewer": "A5",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "QA validates all new optional integrations",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S12",
+        "S13",
+        "S14",
+        "S15"
+      ],
+      "dependencies": [
+        "R3.12"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/4"
+    },
+    {
+      "id": "R4.01",
+      "phase": "R4",
+      "title": "Persistent task and checklist schema",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Task states and immutable IDs",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R3.13"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.02",
+      "phase": "R4",
+      "title": "Supervisor decomposition and dispatch",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Bounded task ownership, DAG and budgets",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.01"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.03",
+      "phase": "R4",
+      "title": "Lease, retry, cancel and recovery protocol",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Crash/timeout cannot lose tasks",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.02"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.04",
+      "phase": "R4",
+      "title": "Independent approval workflow",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No author self-approval",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.03"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.05",
+      "phase": "R4",
+      "title": "Evidence-linked task completion and audit",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No DONE when test evidence missing",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.04"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.06",
+      "phase": "R4",
+      "title": "Agent handoff and context retention",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Task context survives worker restart",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.05"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.07",
+      "phase": "R4",
+      "title": "Explainable recall provenance dashboard API",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Reasons and source paths without secrets",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.06"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.08",
+      "phase": "R4",
+      "title": "Memory Doctor dry-run engine",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No destructive edits without acceptance",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.07"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.09",
+      "phase": "R4",
+      "title": "Human-gated reusable skill evolution",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Skill activation requires verified success",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.08"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.10",
+      "phase": "R4",
+      "title": "Prospective memory and idempotent reminders",
+      "owner_agent": "A4",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Expiry and duplicate notification tests",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.09"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.11",
+      "phase": "R4",
+      "title": "DuckDB offline analytics snapshots",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No cross-tenant data in snapshot",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.10"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.12",
+      "phase": "R4",
+      "title": "Performance/quality observability thresholds",
+      "owner_agent": "A5",
+      "independent_reviewer": "A1",
+      "qa_agent": "A6",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Raw metrics and release thresholds",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.11"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R4.13",
+      "phase": "R4",
+      "title": "R4 Supervisor + QA exit gate",
+      "owner_agent": "LEAD",
+      "independent_reviewer": "A5",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Fault injection and no-self-approve proven",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S30",
+        "S31"
+      ],
+      "dependencies": [
+        "R4.12"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/5"
+    },
+    {
+      "id": "R5.01",
+      "phase": "R5",
+      "title": "Windows 11 x64 installer and upgrade",
+      "owner_agent": "A6",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Signed/install/upgrade native tests",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R4.13"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.02",
+      "phase": "R5",
+      "title": "macOS Apple Silicon installer and upgrade",
+      "owner_agent": "A6",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Signed/notarized DMG and native smoke",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.01"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.03",
+      "phase": "R5",
+      "title": "Linux CLI/systemd lifecycle",
+      "owner_agent": "A6",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "CLI installer/uninstall/restart smoke",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.02"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.04",
+      "phase": "R5",
+      "title": "Original UI pixel/snapshot and feature parity",
+      "owner_agent": "A5",
+      "independent_reviewer": "A1",
+      "qa_agent": "A6",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "No intentional visual difference and feature loss",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.03"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.05",
+      "phase": "R5",
+      "title": "Full security and memory regression",
+      "owner_agent": "A1",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "All critical negative cases green",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.04"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.06",
+      "phase": "R5",
+      "title": "Cross-agent and Rust ON/OFF E2E",
+      "owner_agent": "A3",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Native handoffs and fallback tests green",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.05"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.07",
+      "phase": "R5",
+      "title": "Fault injection, rollback and backup recovery",
+      "owner_agent": "A2",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Reproducible lossless restore",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.06"
+      ],
+      "release_blocking": true,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.08",
+      "phase": "R5",
+      "title": "Quality and performance benchmark report",
+      "owner_agent": "A5",
+      "independent_reviewer": "A1",
+      "qa_agent": "A6",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Latency/Recall raw results with OS",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.07"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.09",
+      "phase": "R5",
+      "title": "Release artifacts checksum/provenance",
+      "owner_agent": "A6",
+      "independent_reviewer": "LEAD",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "Signed binary checksums and provenance verified",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.08"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    },
+    {
+      "id": "R5.10",
+      "phase": "R5",
+      "title": "Go/no-go QA + Supervisor acceptance",
+      "owner_agent": "LEAD",
+      "independent_reviewer": "A5",
+      "qa_agent": "A5",
+      "supervisor": "LEAD",
+      "status": "BACKLOG",
+      "acceptance_criteria": "100% critical gates, zero unknown P0",
+      "required_evidence": [
+        "changes_or_static_findings",
+        "unit_or_contract_results",
+        "applicable_e2e_smoke_evidence",
+        "risk_and_rollback",
+        "independent_review",
+        "supervisor_approval"
+      ],
+      "tests": [
+        "S02",
+        "S03",
+        "S05",
+        "S35",
+        "S44"
+      ],
+      "dependencies": [
+        "R5.09"
+      ],
+      "release_blocking": false,
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/6"
+    }
+  ],
+  "issue_tracking": "GitHub Issues enabled: Phase epics #2-6; R1 individual work tasks #7-16; R2-R5 tasks remain in phase epics until execution",
+  "r1_security_pr": "https://github.com/TheerasakPing/memmy-agent/pull/17",
+  "latest_status_note": "R1 full baseline last run failed Desktop tests. R2.03 has draft PR #24 but no observed CI run, no independent QA/LEAD approval; main unchanged."
+}

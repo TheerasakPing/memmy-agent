@@ -1,5 +1,6 @@
 import type { MemmyConfig } from "../../config/index.js";
 import { isRecord } from "../../utils/json.js";
+import { MemoryServiceError } from "../../utils/error.js";
 import type { StorageBackendCapabilities } from "../../storage/backend.js";
 import type {
   ApiLogRecord,
@@ -572,8 +573,15 @@ export class PanelReadModel {
   } {
     const pageSize = 20 as const;
     const query = input.q?.trim() || undefined;
+    const tenantId = input.namespace?.tenantId;
+    // Preserve the local global panel while requiring a scoped tenant to
+    // present an explicit user and proving persisted session ownership in SQL.
+    if (tenantId && !input.namespace?.userId) {
+      throw new MemoryServiceError("forbidden", "tenant panel access requires authenticated user");
+    }
     const userId = input.namespace?.userId;
-    const total = this.deps.repos.runtime.countEpisodes(userId, query, input.sourceAgent);
+    const projectId = tenantId ? input.namespace?.projectId : undefined;
+    const total = this.deps.repos.runtime.countEpisodes(userId, query, input.sourceAgent, tenantId, projectId);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const page = Math.min(normalizePageNumber(input.page), totalPages);
     const episodes = this.deps.repos.runtime.listEpisodes(
@@ -582,6 +590,8 @@ export class PanelReadModel {
       (page - 1) * pageSize,
       query,
       input.sourceAgent,
+      tenantId,
+      projectId
     );
     return {
       tasks: episodes.map((episode) => ({

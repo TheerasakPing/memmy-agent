@@ -1,0 +1,96 @@
+name: Turbo R2 tenant authorization (cross-platform)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/r2-tenant-owned-memory-guard
+  pull_request:
+    paths:
+      - ".github/workflows/turbo-r2-tenant-validation.yml"
+      - "Memory/**"
+      - "docs/engineering/turbo/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: turbo-r2-tenant-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scoped-tenant:
+    name: Tenant security / Memory regression (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      MEMMY_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Record exact SHA and runner
+        shell: bash
+        run: |
+          node --version
+          npm --version
+          git rev-parse HEAD
+      - name: Install reproducible workspaces
+        run: npm ci --no-audit --no-fund
+      - name: Static typecheck
+        run: npm run memory:lint
+      - name: Tenant ownership security contract
+        run: npm run test -w @memmy/memory -- tests/contract/turbo-r2-tenant-ownership.test.ts
+      - name: Tenant Panel read isolation (positive and negative)
+        run: npm run test -w @memmy/memory -- tests/contract/turbo-r2-known-panel-scope-gap.test.ts
+      - name: Legacy REST compatibility
+        run: npm run test -w @memmy/memory -- tests/contract/memory-rest-service.test.ts
+      - name: Memory worker lifecycle
+        run: npm run test -w @memmy/memory -- tests/service/lifecycle/memory-lifecycle.test.ts tests/service/worker/worker-runtime.test.ts
+      - name: In-process Memory smoke
+        if: matrix.os == 'ubuntu-24.04'
+        run: npm run smoke:memory-layer
+      - name: Evidence scope
+        if: always()
+        shell: bash
+        run: |
+          echo "### Tenant authorization gate: ${{ matrix.os }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Passing selected tests is NOT evidence of tenant isolation in Search, Panel, SSE, Export, analytics or a signed installer." >> "$GITHUB_STEP_SUMMARY"
+          echo "Do not merge or release without full Security + QA + LEAD review." >> "$GITHUB_STEP_SUMMARY"
+
+  full-memory-regression:
+    name: Full Memory regression / macOS (bounded workers)
+    runs-on: macos-14
+    timeout-minutes: 55
+    env:
+      CI: "true"
+      MEMMY_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Full Memory source and viewer typecheck
+        run: npm run memory:lint
+      - name: Run all Memory tests (bounded concurrency, no arbitrary skips)
+        run: npm run test -w @memmy/memory -- --maxWorkers=2
+      - name: Scope of passing suite
+        if: always()
+        shell: bash
+        run: |
+          echo "Full Memory suite on macOS includes a Windows-native installer test skipped by platform." >> "$GITHUB_STEP_SUMMARY"
+          echo "Only actual full PASS may qualify for memory regression; Windows installer E2E remains a separate mandatory gate." >> "$GITHUB_STEP_SUMMARY"

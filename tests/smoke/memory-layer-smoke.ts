@@ -10,10 +10,12 @@ import {
   MemoryRestClient,
   MemoryService,
   listenMemoryHttpServer,
-  type Embedder
+  type Embedder,
+  type LlmClient
 } from "../../Memory/src/index.js";
 import { createLocalBackend, type LocalBackend } from "../../App/backend/src/index.js";
 import { createHttpMemoryClient } from "../../App/backend/src/adapters/outbound/memory-client/index.js";
+import type { LlmMessage } from "../../Memory/src/model/types.js";
 
 const MEMORY_TOKEN = "memory-layer-smoke-token";
 const BACKEND_TOKEN = "backend-smoke-token";
@@ -39,6 +41,7 @@ export async function runMemoryLayerSmoke(): Promise<MemoryLayerSmokeResult> {
     configLoader: () => ({ config: DEFAULT_MEMMY_CONFIG, path: configPath }),
     config: DEFAULT_MEMMY_CONFIG,
     embedder: createSmokeEmbedder(),
+    llm: createSmokeSummaryLlm(),
     fetchAppMemoryBudget: async () => null
   });
   let server: Awaited<ReturnType<typeof listenMemoryHttpServer>> | undefined;
@@ -131,6 +134,11 @@ export async function runMemoryLayerSmoke(): Promise<MemoryLayerSmokeResult> {
     );
     const memoryId = completed.l1MemoryId;
     assert(memoryId, "Backend completion must return an L1 Memory id");
+    // This smoke explicitly disables background worker startup while exercising
+    // the HTTP lifecycle. Drain capture and embedding stages deterministically
+    // instead of waiting for a background worker configured to start after 60s.
+    await service.runWorkerOnce(20);
+    await service.runWorkerOnce(20);
     await waitForProcessingReady(backend.runtimeConfig.baseUrl, memoryId);
 
     const queryId = "backend-smoke-query";
@@ -317,6 +325,44 @@ function createSmokeEmbedder(): Embedder {
         remote: false
       };
     }
+  };
+}
+
+function createSmokeSummaryLlm(): LlmClient {
+  return {
+    config: {
+      ...DEFAULT_MEMMY_CONFIG.summary,
+      provider: "host",
+      endpoint: "http://127.0.0.1/summary",
+      model: "smoke-summary"
+    },
+    isConfigured: () => true,
+    async complete() {
+      return JSON.stringify({ title: "Smoke turn", summary: "Verified smoke summary" });
+    },
+    async completeJson<T extends Record<string, unknown>>(messages: LlmMessage[]) {
+      const system = messages
+        .filter((message) => message.role === "system")
+        .map((message) => message.content)
+        .join("\n");
+      if (system.includes("Judge L1 and User Memory independently")) {
+        return {
+          l1: {
+            title: "Release verification",
+            summary: "Verified release contracts and attachments.",
+            evidence: [{ quote: "release workflow", role: "user", kind: "task_request" }]
+          },
+          user: null
+        } as unknown as T;
+      }
+      return { title: "Smoke turn", summary: "Verified smoke summary" } as unknown as T;
+    },
+    status: () => ({
+      provider: "host",
+      model: "smoke-summary",
+      configured: true,
+      remote: true
+    })
   };
 }
 

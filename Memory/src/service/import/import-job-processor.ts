@@ -225,6 +225,9 @@ export class ImportJobProcessor {
       },
       internal: {
         source: request.source ?? "manual", title, summary: importSummary ?? firstLine(request.content), turn_id: request.turnId, time_zone: request.timeZone,
+        // Persist the authenticated tenant in durable memory metadata. An unowned
+        // legacy record cannot be claimed retroactively by a scoped tenant key.
+        ...(request.namespace?.tenantId ? { tenant_id: request.namespace.tenantId } : {}),
         ...(readOnlySkill ? {
           read_only: true,
           source_agent_id: sourceAgentId,

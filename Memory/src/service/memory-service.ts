@@ -1111,8 +1111,13 @@ export class MemoryService {
     if (!this.memoryAddEnabled()) {
       return scopedRun();
     }
+    // Tenant-owned requests must not share idempotency slots with an otherwise
+    // identical request from another tenant. Preserve legacy keys when unscoped.
+    const tenantScope = request.namespace?.tenantId
+      ? `tenant.${stableHash([request.namespace.tenantId, request.namespace.userId ?? null, request.namespace.projectId ?? null]).slice(0, 24)}:`
+      : "";
     const idempotencyKey = request.adapterId && request.requestId
-      ? `${operation}:${request.adapterId}:${request.requestId}`
+      ? `${operation}:${tenantScope}${request.adapterId}:${request.requestId}`
       : undefined;
     if (!idempotencyKey) {
       return scopedRun();
@@ -1138,8 +1143,13 @@ export class MemoryService {
   ): Promise<T> {
     const scopedRun = () => this.withModelTaskContext(run);
     if (!this.memoryAddEnabled()) return scopedRun();
+    // Tenant-owned requests must not share idempotency slots with an otherwise
+    // identical request from another tenant. Preserve legacy keys when unscoped.
+    const tenantScope = request.namespace?.tenantId
+      ? `tenant.${stableHash([request.namespace.tenantId, request.namespace.userId ?? null, request.namespace.projectId ?? null]).slice(0, 24)}:`
+      : "";
     const idempotencyKey = request.adapterId && request.requestId
-      ? `${operation}:${request.adapterId}:${request.requestId}`
+      ? `${operation}:${tenantScope}${request.adapterId}:${request.requestId}`
       : undefined;
     if (!idempotencyKey) return scopedRun();
     const requestHash = sha256Hex(canonicalJson(assertJsonValue({ operation, fingerprint })));
@@ -2139,6 +2149,9 @@ export class MemoryService {
   }
 
   getMemory(id: string, request: RequestEnvelope = {}): MemoryGetResponse {
+    // EpisodeReadModel enforces both memory and episode ownership via the
+    // tenant-aware assertion delegates; a direct memory-only guard here would
+    // incorrectly reject valid episode_... IDs.
     return this.episodeReadModel.getMemory(id, this.withTimeZone(request));
   }
 
@@ -2465,6 +2478,9 @@ export class MemoryService {
     serverTime: string;
   } {
     this.assertMemoryAddEnabled();
+    if (request.namespace?.tenantId) {
+      this.assertMemoryInScope(this.requireExistingMemory(id), request.namespace);
+    }
     const userMemory = this.repos.userMemories.get(id);
     if (userMemory) {
       const namespaceUserId = request.namespace?.userId;
@@ -3492,8 +3508,12 @@ export class MemoryService {
   }
 
   private assertSessionInScope(session: SessionRecord, namespace?: RuntimeNamespace): void {
-    void session;
-    void namespace;
+    if (!namespace?.tenantId) return; // Preserve original local shared-memory behavior.
+    if (session.meta.memmy_tenant_id !== namespace.tenantId
+      || !namespace.userId || session.userId !== namespace.userId
+      || (namespace.projectId && session.projectId !== namespace.projectId)) {
+      throw new MemoryServiceError("forbidden", "session belongs to another tenant");
+    }
   }
 
   private assertL3WorldModelSessionScope(session: SessionRecord, namespace: RuntimeNamespace): void {
@@ -3516,23 +3536,57 @@ export class MemoryService {
 
   private assertMemoryInScope(memory: MemoryRow, namespace?: RuntimeNamespace): void {
     const internal = memory.properties.internal_info;
-    // The local panel is shared across source/user/profile settings. History
-    // keeps its original user ID across config changes; preserve panel deletion
-    // while still separating explicit tenant identities.
-    if (namespace && (isRecord(internal.external_evidence) || isRecord(internal.external_evidence_candidate))
-      && (externalEvidenceNamespaceForMemory(memory).tenantId || null) !== (namespace.tenantId || null)) {
+    const isExternalEvidence = isRecord(internal.external_evidence)
+      || isRecord(internal.external_evidence_candidate);
+    // External Evidence/History Skills already store durable producer identity
+    // in their own provenanced namespace, not in the new manual tenant_id field.
+    // Preserve that established isolation contract, including error semantics.
+    const producerNamespace = isExternalEvidence ? externalEvidenceNamespaceForMemory(memory) : undefined;
+    if (namespace && producerNamespace
+      && (producerNamespace.tenantId || null) !== (namespace.tenantId || null)) {
       throw new MemoryServiceError("forbidden", "external evidence belongs to a different namespace");
+    }
+    if (namespace?.tenantId && producerNamespace
+      && (producerNamespace.userId !== namespace.userId
+        || (namespace.projectId && producerNamespace.projectId !== namespace.projectId))) {
+      throw new MemoryServiceError("forbidden", "external evidence belongs to a different namespace");
+    }
+    if (namespace?.tenantId && !isExternalEvidence) {
+      // Session-derived traces inherit the durable ownership of their parent
+      // session; manually added memories persist tenant_id in internal_info.
+      // Legacy unowned generic memories deliberately fail closed for scoped keys.
+      const session = memory.sessionId ? this.repos.runtime.getSession(memory.sessionId) : undefined;
+      const storedTenant = typeof internal.tenant_id === "string"
+        ? internal.tenant_id
+        : session?.meta.memmy_tenant_id;
+      if (storedTenant !== namespace.tenantId
+        || !namespace.userId || memory.userId !== namespace.userId
+        || (namespace.projectId && session?.projectId !== namespace.projectId
+          && memory.info.project_id !== namespace.projectId)) {
+        throw new MemoryServiceError("forbidden", "memory belongs to another tenant");
+      }
     }
   }
 
   private assertEpisodeInScope(episode: EpisodeRecord, namespace?: RuntimeNamespace): void {
-    void episode;
-    void namespace;
+    if (!namespace?.tenantId) return;
+    const session = this.repos.runtime.getSession(episode.sessionId);
+    if (!session) throw new MemoryServiceError("forbidden", "episode has no tenant ownership record");
+    this.assertSessionInScope(session, namespace);
+    if (episode.userId !== session.userId
+      || (namespace.projectId && episode.projectId !== namespace.projectId)) {
+      throw new MemoryServiceError("forbidden", "episode belongs to another tenant");
+    }
   }
 
   private assertRawTurnInScope(rawTurn: RawTurnRecord, namespace?: RuntimeNamespace): void {
-    void rawTurn;
-    void namespace;
+    if (!namespace?.tenantId) return;
+    const session = this.repos.runtime.getSession(rawTurn.sessionId);
+    if (!session) throw new MemoryServiceError("forbidden", "raw turn has no tenant ownership record");
+    this.assertSessionInScope(session, namespace);
+    if (rawTurn.userId !== session.userId) {
+      throw new MemoryServiceError("forbidden", "raw turn belongs to another tenant");
+    }
   }
 
 
