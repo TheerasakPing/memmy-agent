@@ -42,6 +42,8 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "onRouteTargetRequest",
   "syncPetWindowLayout",
   "startPetWindowDrag",
+  "movePetWindow",
+  "stopPetWindowDrag",
   "setMenuBarIcon",
   "setComputerHistoryTrayIndicator",
   "openExternal",
@@ -209,9 +211,17 @@ export function installTauriBridge(host: TauriWindow): boolean {
       void invoke<void>("desktop_sync_pet_window_layout", { layout }).catch((error) =>
         console.error("Tauri pet layout rejected", error));
     },
-    startPetWindowDrag: (_pointer: { clientX: number; clientY: number }) => {
-      void invoke<void>("desktop_start_pet_window_drag").catch((error) =>
+    startPetWindowDrag: (pointer: { clientX: number; clientY: number }) => {
+      void invoke<void>("desktop_start_pet_window_drag", { pointer }).catch((error) =>
         console.error("Tauri pet native drag rejected", error));
+    },
+    movePetWindow: (pointer: { clientX: number; clientY: number }) => {
+      void invoke<void>("desktop_move_pet_window", { pointer }).catch((error) =>
+        console.error("Tauri pet move rejected", error));
+    },
+    stopPetWindowDrag: () => {
+      void invoke<void>("desktop_stop_pet_window_drag").catch((error) =>
+        console.error("Tauri pet drag stop rejected", error));
     },
     setMenuBarIcon: (enabled: boolean) => invoke<{ enabled: boolean }>("desktop_set_menu_bar_icon", { enabled }),
     setComputerHistoryTrayIndicator: (indicator: { enabled: boolean; recording: boolean }) => {

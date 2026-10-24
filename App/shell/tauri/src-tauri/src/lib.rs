@@ -209,6 +209,7 @@ pub fn run() {
         .manage(Arc::new(native_runtime::NativeRuntime::default()))
         .manage(native_workspace::WorkspaceGrants::default())
         .manage(native_approvals::ApprovalLock::default())
+        .manage(native_pet::PetDragState::default())
         .manage(native_tray::TrayState::default())
         .manage(PendingWindowAction::default())
         .plugin(tauri_plugin_opener::init())
@@ -300,6 +301,8 @@ pub fn run() {
             native_pet::desktop_hide_pet_window,
             native_pet::desktop_sync_pet_window_layout,
             native_pet::desktop_start_pet_window_drag,
+            native_pet::desktop_move_pet_window,
+            native_pet::desktop_stop_pet_window_drag,
             native_tray::desktop_set_menu_bar_icon,
             native_tray::desktop_set_computer_history_tray_indicator
         ])
