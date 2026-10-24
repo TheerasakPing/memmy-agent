@@ -6,6 +6,7 @@ mod native_browser_store;
 mod native_diagnostics;
 mod native_file_export;
 mod native_os;
+mod native_permissions;
 mod native_pet;
 mod native_runtime;
 mod native_site_policy;
@@ -211,6 +212,7 @@ pub fn run() {
         .manage(native_workspace::WorkspaceGrants::default())
         .manage(native_approvals::ApprovalLock::default())
         .manage(native_pet::PetDragState::default())
+        .manage(native_permissions::ComputerHistorySession::default())
         .manage(native_tray::TrayState::default())
         .manage(PendingWindowAction::default())
         .plugin(tauri_plugin_opener::init())
@@ -286,6 +288,9 @@ pub fn run() {
             native_file_export::desktop_save_image,
             native_file_export::desktop_copy_image_to_clipboard,
             native_file_export::desktop_export_diagnostics_report,
+            native_permissions::desktop_get_computer_history_permission_session_id,
+            native_permissions::desktop_get_full_disk_access_status,
+            native_permissions::desktop_open_computer_history_markdown,
             native_browser_store::desktop_get_browser_history,
             native_browser_store::desktop_import_legacy_browser_history,
             native_browser_store::desktop_remove_browser_history,

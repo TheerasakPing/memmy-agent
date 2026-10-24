@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 54,
-    "remainingMethods": 31,
+    "nativeMethods": 57,
+    "remainingMethods": 28,
     "routes": 14
   },
   "routes": [
@@ -277,8 +277,8 @@
     },
     {
       "name": "getComputerHistoryPermissionSessionId",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "guideMemmyPermission",
@@ -292,8 +292,8 @@
     },
     {
       "name": "openComputerHistoryMarkdown",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "openAgentTool",
@@ -377,8 +377,8 @@
     },
     {
       "name": "getFullDiskAccessStatus",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "selectProjectDirectory",
