@@ -1,6 +1,6 @@
 [package]
 name = "memmy-turbo-tauri"
-version = "1.2.5-alpha.2"
+version = "1.2.5-alpha.3"
 edition = "2021"
 description = "Memmy desktop native Rust / Tauri v2 shell"
 

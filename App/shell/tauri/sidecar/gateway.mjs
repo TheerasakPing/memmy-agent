@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { lstat, mkdir } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mutateRuntimeConfig } from '@memmy/migrations';
 
 const home = process.env.MEMMY_TAURI_DATA_DIR;
@@ -49,7 +50,7 @@ await mutateRuntimeConfig(configPath, (config) => {
   return config;
 }, { createIfMissing: false });
 
-const agentScript = new URL('../../../../App/memmy-agent/dist/main.js', import.meta.url).pathname;
+const agentScript = fileURLToPath(new URL('../../../../App/memmy-agent/dist/main.js', import.meta.url));
 const child = spawn(process.execPath, [agentScript, 'gateway', '--config', configPath,
   '--workspace', workspace, '--host', '127.0.0.1', '--port', String(healthPort)], {
   env: {

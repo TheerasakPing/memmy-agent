@@ -38,9 +38,20 @@ async fn desktop_runtime_config(
         .app_local_data_dir()
         .map_err(|_| "app data directory unavailable")?;
     let runtime = supervisor.inner().clone();
-    tauri::async_runtime::spawn_blocking(move || runtime.config(&directory))
-        .await
-        .map_err(|_| "native runtime supervisor failed".to_string())?
+    #[cfg(not(debug_assertions))]
+    let bundled_root = Some(
+        app.path()
+            .resource_dir()
+            .map_err(|_| "native resource directory unavailable")?
+            .join("runtime"),
+    );
+    #[cfg(debug_assertions)]
+    let bundled_root: Option<std::path::PathBuf> = None;
+    tauri::async_runtime::spawn_blocking(move || {
+        runtime.config(&directory, bundled_root.as_deref())
+    })
+    .await
+    .map_err(|_| "native runtime supervisor failed".to_string())?
 }
 
 fn electron_compatible_platform() -> &'static str {
@@ -98,6 +109,52 @@ fn desktop_complete_window_action(window: WebviewWindow, resolution: String) -> 
         "minimize" | "hide" => window.minimize().map_err(|_| "minimize failed".into()),
         "close" | "quit" => window.close().map_err(|_| "close failed".into()),
         _ => Err("window action not yet supported by Tauri parity layer".into()),
+    }
+}
+
+/// Validate an installed macOS preview without the GUI or production user data.
+/// This intentionally requires a real bundle and launches all three services.
+pub fn smoke_installed_runtime() -> i32 {
+    let result = (|| -> Result<(), String> {
+        let executable =
+            std::env::current_exe().map_err(|_| "cannot resolve packaged executable")?;
+        let resources = executable
+            .parent()
+            .and_then(std::path::Path::parent)
+            .ok_or("expected macOS .app bundle layout")?
+            .join("Resources/runtime");
+        let data_dir =
+            std::env::temp_dir().join(format!("memmy-standalone-smoke-{}", uuid::Uuid::new_v4()));
+        let supervisor = native_runtime::NativeRuntime::default();
+        let started = supervisor.config(&data_dir, Some(&resources));
+        let outcome = started.and_then(|config| {
+            if !config["baseUrl"]
+                .as_str()
+                .is_some_and(|v| v.starts_with("http://127.0.0.1:"))
+                || !config["memory"]["baseUrl"]
+                    .as_str()
+                    .is_some_and(|v| v.starts_with("http://127.0.0.1:"))
+                || !config["agentGateway"]["baseUrl"]
+                    .as_str()
+                    .is_some_and(|v| v.starts_with("http://127.0.0.1:"))
+            {
+                return Err("one or more native services did not become ready".into());
+            }
+            Ok(())
+        });
+        supervisor.stop();
+        let _ = std::fs::remove_dir_all(&data_dir);
+        outcome
+    })();
+    match result {
+        Ok(()) => {
+            eprintln!("PASS: packaged Memory + Local API + Agent Gateway start/stop");
+            0
+        }
+        Err(error) => {
+            eprintln!("FAIL: packaged runtime: {error}");
+            1
+        }
     }
 }
 

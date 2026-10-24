@@ -7,6 +7,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 
 async function freePort() {
@@ -58,7 +59,7 @@ test("real Memory server and Local API share isolated native config and terminat
   await writeFile(configPath, JSON.stringify({ memmyMemory: {
     agentAccess: { autoScanKnownAgents: false, watchFileChanges: false, autoInjectSkill: false }
   } }), { mode: 0o600 });
-  const memory = spawn(process.execPath, [new URL("./memory.mjs", import.meta.url).pathname], {
+  const memory = spawn(process.execPath, [fileURLToPath(new URL("./memory.mjs", import.meta.url))], {
     env: {
       ...process.env, MEMMY_TAURI_DEV_BACKEND: "1", MEMMY_TAURI_DATA_DIR: directory,
       MEMMY_TAURI_MEMORY_PORT: String(port), MEMMY_MEMORY_TOKEN: token,
@@ -85,7 +86,7 @@ test("real Memory server and Local API share isolated native config and terminat
       method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: "{}"
     });
     assert.notEqual(authorizedMemory.status, 401, "Memory must accept the real service token");
-    const backendProcess = spawn(process.execPath, [new URL("./backend.mjs", import.meta.url).pathname], {
+    const backendProcess = spawn(process.execPath, [fileURLToPath(new URL("./backend.mjs", import.meta.url))], {
       env: {
         ...process.env, MEMMY_TAURI_DEV_BACKEND: "1", MEMMY_TAURI_DATA_DIR: directory,
         MEMMY_MEMORY_LAYER_URL: url, MEMMY_MEMORY_LAYER_TOKEN: token, MEMMY_CLOUD_URL: url

@@ -1,3 +1,8 @@
 /target/
 /gen/
 *.log
+
+# Generated huge sidecar bundle is local-only and must never enter git.
+../packaging/runtime/
+
+resources/runtime/

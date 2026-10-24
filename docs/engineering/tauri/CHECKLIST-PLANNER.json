@@ -254,7 +254,7 @@
       "independentReviewer": "A5",
       "qa": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",
@@ -264,7 +264,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "Standalone macOS arm64 preview packaging: portable verified Node runtime and bundled sidecar resources under test; signed releases and Windows/Linux are still backlog and require independent QA"
     },
     {
       "id": "T4.02",
