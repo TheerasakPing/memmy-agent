@@ -48,6 +48,8 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "setComputerHistoryTrayIndicator",
   "openExternal",
   "openMailto",
+  "saveFile",
+  "saveImage",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -172,6 +174,14 @@ export function installTauriBridge(host: TauriWindow): boolean {
     },
     openExternal: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     openMailto: (url: string) => invoke<void>("desktop_open_external", { address: url }),
+    // Typed arrays must be JSON arrays (not index-keyed objects) at Tauri's IPC boundary.
+    // URL-only requests fail explicitly until an authenticated native media fetch is ported.
+    saveFile: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
+      invoke<import("@memmy/desktop-interface").DesktopImageSaveResult>(
+        "desktop_save_file", { request: { ...request, data: request.data ? Array.from(request.data) : undefined } }),
+    saveImage: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
+      invoke<import("@memmy/desktop-interface").DesktopImageSaveResult>(
+        "desktop_save_image", { request: { ...request, data: request.data ? Array.from(request.data) : undefined } }),
     getMainWindowFullScreen: () => invoke<{ isFullScreen: boolean }>("desktop_fullscreen"),
     onMainWindowFullScreenChanged: (callback: (state: { isFullScreen: boolean }) => void) => {
       const listen = tauri.event?.listen;

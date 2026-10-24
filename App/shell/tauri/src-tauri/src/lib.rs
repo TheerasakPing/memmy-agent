@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 mod native_approvals;
 mod native_browser_store;
 mod native_diagnostics;
+mod native_file_export;
 mod native_os;
 mod native_pet;
 mod native_runtime;
@@ -280,6 +281,8 @@ pub fn run() {
             native_diagnostics::desktop_get_log_level,
             native_diagnostics::desktop_set_log_level,
             native_diagnostics::desktop_open_logs_directory,
+            native_file_export::desktop_save_file,
+            native_file_export::desktop_save_image,
             native_browser_store::desktop_get_browser_history,
             native_browser_store::desktop_import_legacy_browser_history,
             native_browser_store::desktop_remove_browser_history,
