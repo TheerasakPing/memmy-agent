@@ -1111,8 +1111,13 @@ export class MemoryService {
     if (!this.memoryAddEnabled()) {
       return scopedRun();
     }
+    // Tenant-owned requests must not share idempotency slots with an otherwise
+    // identical request from another tenant. Preserve legacy keys when unscoped.
+    const tenantScope = request.namespace?.tenantId
+      ? `tenant.${stableHash([request.namespace.tenantId, request.namespace.userId ?? null, request.namespace.projectId ?? null]).slice(0, 24)}:`
+      : "";
     const idempotencyKey = request.adapterId && request.requestId
-      ? `${operation}:${request.adapterId}:${request.requestId}`
+      ? `${operation}:${tenantScope}${request.adapterId}:${request.requestId}`
       : undefined;
     if (!idempotencyKey) {
       return scopedRun();
@@ -1138,8 +1143,13 @@ export class MemoryService {
   ): Promise<T> {
     const scopedRun = () => this.withModelTaskContext(run);
     if (!this.memoryAddEnabled()) return scopedRun();
+    // Tenant-owned requests must not share idempotency slots with an otherwise
+    // identical request from another tenant. Preserve legacy keys when unscoped.
+    const tenantScope = request.namespace?.tenantId
+      ? `tenant.${stableHash([request.namespace.tenantId, request.namespace.userId ?? null, request.namespace.projectId ?? null]).slice(0, 24)}:`
+      : "";
     const idempotencyKey = request.adapterId && request.requestId
-      ? `${operation}:${request.adapterId}:${request.requestId}`
+      ? `${operation}:${tenantScope}${request.adapterId}:${request.requestId}`
       : undefined;
     if (!idempotencyKey) return scopedRun();
     const requestHash = sha256Hex(canonicalJson(assertJsonValue({ operation, fingerprint })));
