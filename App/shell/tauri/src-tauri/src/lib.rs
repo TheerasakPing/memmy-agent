@@ -1,6 +1,7 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
 use std::sync::{Arc, Mutex};
+mod native_browser_store;
 mod native_os;
 mod native_pet;
 mod native_runtime;
@@ -267,6 +268,16 @@ pub fn run() {
             native_os::desktop_select_empty_project_directory,
             native_workspace::desktop_read_workspace_directory,
             native_workspace::desktop_write_workspace_file,
+            native_browser_store::desktop_get_browser_history,
+            native_browser_store::desktop_import_legacy_browser_history,
+            native_browser_store::desktop_remove_browser_history,
+            native_browser_store::desktop_remove_selected_browser_history,
+            native_browser_store::desktop_get_browser_access_rules,
+            native_browser_store::desktop_set_browser_access_rule,
+            native_browser_store::desktop_get_browser_download_settings,
+            native_browser_store::desktop_choose_browser_download_directory,
+            native_browser_store::desktop_reset_browser_download_directory,
+            native_browser_store::desktop_set_browser_ask_before_download,
             native_pet::desktop_set_pet_window,
             native_pet::desktop_hide_pet_window,
             native_pet::desktop_sync_pet_window_layout,

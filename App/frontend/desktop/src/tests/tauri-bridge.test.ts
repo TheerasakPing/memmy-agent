@@ -7,6 +7,14 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
       name: "Memmy", version: "1.2.4", platform: "darwin", arch: "arm64",
       isPackaged: false, isWindowsStore: false
     };
+    if (command.startsWith("desktop_get_browser_download") || command === "desktop_choose_browser_download_directory" || command === "desktop_reset_browser_download_directory" || command === "desktop_set_browser_ask_before_download") {
+      return { directory: null, approvedDirectories: [], askBeforeDownload: args?.enabled === true };
+    }
+    if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
+    if (command === "desktop_remove_browser_history") return true;
+    if (command === "desktop_remove_selected_browser_history") return 1;
+    if (command === "desktop_import_legacy_browser_history") return true;
+    if (command === "desktop_set_browser_access_rule") return [{ origin: args?.origin, decision: args?.decision }];
     if (command === "desktop_fullscreen") return { isFullScreen: false };
     if (command === "desktop_get_installation_id") return "00000000-0000-4000-8000-000000000001";
     if (command === "desktop_get_launch_at_login" || command === "desktop_set_launch_at_login") return true;
@@ -56,6 +64,17 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(await api.getAppInfo()).toMatchObject({ version: "1.2.4", platform: "darwin" });
     expect(await api.getRuntimeConfig()).toMatchObject({ localToken: "native-runtime-token" });
     expect(await api.checkForUpdates()).toMatchObject({ status: "not-configured" });
+    expect(await api.getBrowserHistory()).toEqual([]);
+    expect(await api.getBrowserAccessRules()).toEqual([]);
+    expect(await api.getBrowserDownloadSettings()).toEqual({directory:null,approvedDirectories:[],askBeforeDownload:false});
+    expect(await api.chooseBrowserDownloadDirectory()).toMatchObject({directory:null});
+    expect(await api.resetBrowserDownloadDirectory()).toMatchObject({directory:null});
+    expect((await api.setBrowserAskBeforeDownload(true)).askBeforeDownload).toBe(true);
+    expect(await api.importLegacyBrowserHistory([{url:"https://example.com",title:"Example",visitedAt:1}])).toBe(true);
+    expect(await api.removeBrowserHistory("https://example.com")).toBe(true);
+    expect(await api.removeSelectedBrowserHistory(["https://example.com"])).toBe(1);
+    expect(await api.setBrowserAccessRule("https://example.com", "allow")).toEqual([{origin:"https://example.com",decision:"allow"}]);
+    expect(invoke).toHaveBeenCalledWith("desktop_set_browser_access_rule", {origin:"https://example.com",decision:"allow"});
     await api.openExternal("https://memmy.bot/");
     await api.openMailto("mailto:team@example.com");
     expect(await api.getMainWindowFullScreen()).toMatchObject({ isFullScreen: false });
@@ -127,7 +146,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(26);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(36);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.movePetWindow).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();

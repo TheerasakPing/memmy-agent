@@ -48,6 +48,9 @@ try {
         if (command === 'desktop_app_info') return { name:'Memmy',version:'1.2.5-alpha.3',platform:'darwin',arch:'arm64',isPackaged:true,isWindowsStore:false };
         if (command === 'desktop_runtime_config') return {baseUrl:'http://127.0.0.1:19999',localToken:'mock-for-ui-smoke-not-backend'};
         if (command === 'desktop_set_menu_bar_icon') return { enabled: true };
+        if (command === 'desktop_get_browser_history') return [];
+        if (command === 'desktop_get_browser_download_settings') return { directory:null,approvedDirectories:[],askBeforeDownload:false };
+        if (command === 'desktop_set_browser_access_rule') return [{ origin:args.origin,decision:args.decision }];
         return undefined;
       }},
       event: {listen: async () => () => {}}
@@ -67,9 +70,13 @@ try {
     await window.memmy.getAppInfo();
     await window.memmy.setPetWindow(true);
     await window.memmy.setMenuBarIcon(true);
+    await window.memmy.getBrowserHistory();
+    await window.memmy.getBrowserDownloadSettings();
+    await window.memmy.setBrowserAccessRule('https://example.com','deny');
     return window.__tauriCalls;
   });
-  for (const command of ['desktop_app_info','desktop_set_pet_window','desktop_set_menu_bar_icon']) {
+  for (const command of ['desktop_app_info','desktop_set_pet_window','desktop_set_menu_bar_icon',
+    'desktop_get_browser_history','desktop_get_browser_download_settings','desktop_set_browser_access_rule']) {
     if (!calls.some((value) => value.command === command)) throw Error(`missing frontend/native IPC mapping: ${command}`);
   }
   if (errors.length) throw Error(`React page errors: ${errors.join(' | ')}`);
