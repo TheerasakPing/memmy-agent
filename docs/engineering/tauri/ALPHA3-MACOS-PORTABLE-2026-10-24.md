@@ -19,6 +19,9 @@
 - Bundle assembly: PASS; installed `.app` moved to a directory **outside the repository**.
 - **Relocated app's own Node test suite 4/4 PASS**, with spaces in app path.
 - **Relocated release binary `--smoke-native-runtime`: PASS**, starts/stops real Memory + Local API + Agent and does not require a developer Node executable.
+- `codesign --force --deep --sign -` followed by `codesign --verify --deep --strict`: PASS (**ad hoc only; not Apple Developer ID**).
+- `hdiutil create ... -format UDZO`: PASS; generated macOS arm64 `.dmg` of approximately 1.3 GB.
+- **Read-only mounted DMG `--smoke-native-runtime`: PASS** (true packaged offline Memory + API + Gateway startup/shutdown; no developer workspace fallback). This is a backend lifecycle acceptance test, not a visual GUI acceptance test.
 - Still missing: automated GUI screenshot/complete feature parity, notarization and Developer-ID signing, clean Windows 11/Linux installer builds, external security QA and mainline CI (#26).
 
 ## Reproduce on a developer Mac
