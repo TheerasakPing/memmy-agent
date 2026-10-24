@@ -193,6 +193,19 @@ impl NativeRuntime {
         }
     }
 
+    /// Observability allowlist: child registration only, not service health or credentials.
+    pub fn diagnostic_child_registrations(&self) -> Result<[bool; 3], String> {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| "runtime diagnostics unavailable")?;
+        Ok([
+            state.process.is_some(),
+            state.memory.is_some(),
+            state.gateway.is_some(),
+        ])
+    }
+
     pub fn stop(&self) {
         if let Ok(mut state) = self.state.lock() {
             if let Some(mut gateway) = state.gateway.take() {

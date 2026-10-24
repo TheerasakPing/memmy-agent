@@ -223,3 +223,147 @@ mod tests {
         fs::remove_dir_all(folder).unwrap();
     }
 }
+fn decoded_clipboard_image(request: &SaveRequest) -> Result<tauri::image::Image<'static>, String> {
+    let (bytes, _) = checked_payload(request, true)?;
+    let cursor = std::io::Cursor::new(bytes);
+    let mut reader = image_codec::ImageReader::new(cursor)
+        .with_guessed_format()
+        .map_err(|_| "invalid image bytes")?;
+    if !matches!(
+        reader.format(),
+        Some(
+            image_codec::ImageFormat::Png
+                | image_codec::ImageFormat::Jpeg
+                | image_codec::ImageFormat::Gif
+                | image_codec::ImageFormat::WebP
+        )
+    ) {
+        return Err("clipboard image format unsupported".into());
+    }
+    let mut limits = image_codec::Limits::default();
+    limits.max_image_width = Some(4096);
+    limits.max_image_height = Some(4096);
+    limits.max_alloc = Some(96 * 1024 * 1024);
+    reader.limits(limits);
+    let decoded = reader
+        .decode()
+        .map_err(|_| "image cannot be decoded within safe limits")?;
+    let (width, height) = (decoded.width(), decoded.height());
+    if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 16_777_216 {
+        return Err("clipboard image dimensions exceed limits".into());
+    }
+    Ok(tauri::image::Image::new_owned(
+        decoded.into_rgba8().into_raw(),
+        width,
+        height,
+    ))
+}
+
+#[tauri::command]
+pub fn desktop_copy_image_to_clipboard(
+    app: AppHandle,
+    window: WebviewWindow,
+    request: SaveRequest,
+) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("only main desktop can copy images".into());
+    }
+    let image = decoded_clipboard_image(&request)?;
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard()
+        .write_image(&image)
+        .map_err(|_| "native clipboard image write failed".into())
+}
+
+fn diagnostics_text(version: &str, platform: &str, arch: &str, running: [bool; 3]) -> String {
+    let registered = |present| if present { "managed" } else { "not-started" };
+    format!(
+        "Memmy Diagnostics Report\n========================\n\nApplication\n\
+         - Version: {version}\n- Platform: {platform}\n- Architecture: {arch}\n\
+         - Runtime: Tauri v2 / Rust\n\nManaged child registrations (not health status)\n\
+         - Local API: {}\n- Memory: {}\n- Agent Gateway: {}\n\n\
+         Privacy\n- Authentication keys, tokens and secrets are not included.\n\
+         - Local file paths and user profile details are not included.\n",
+        registered(running[0]),
+        registered(running[1]),
+        registered(running[2])
+    )
+}
+
+#[tauri::command]
+pub fn desktop_export_diagnostics_report(
+    app: AppHandle,
+    window: WebviewWindow,
+    supervisor: tauri::State<'_, std::sync::Arc<crate::native_runtime::NativeRuntime>>,
+) -> Result<Value, String> {
+    if window.label() != "main" {
+        return Err("only main desktop can export diagnostics".into());
+    }
+    let status = supervisor.diagnostic_child_registrations()?;
+    let report = diagnostics_text(
+        &app.package_info().version.to_string(),
+        crate::electron_compatible_platform(),
+        std::env::consts::ARCH,
+        status,
+    );
+    let epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| "system clock invalid")?
+        .as_secs();
+    let selected = native_save(
+        &app,
+        &window,
+        SaveRequest {
+            name: Some(format!("memmy-diagnostics-{epoch}.txt")),
+            url: String::new(),
+            mime: None,
+            data: Some(report.into_bytes()),
+        },
+        false,
+    )?;
+    if selected["canceled"] == true {
+        return Ok(json!({"canceled": true}));
+    }
+    Ok(json!({"canceled": false, "exportPath": selected["filePath"], "bytes": selected["bytes"]}))
+}
+
+#[cfg(test)]
+mod export_clipboard_tests {
+    use super::*;
+    #[test]
+    fn real_image_decodes_and_corrupt_payload_fails_closed() {
+        let icon = include_bytes!("../icons/icon.png").to_vec();
+        let request = SaveRequest {
+            url: String::new(),
+            name: Some("screen.png".into()),
+            mime: None,
+            data: Some(icon),
+        };
+        let decoded = decoded_clipboard_image(&request).expect("real PNG decodes");
+        assert!(decoded.width() > 0 && decoded.height() > 0);
+        let bogus = SaveRequest {
+            data: Some(vec![137, 80, 78, 71, 13, 10, 26, 10, 1]),
+            ..request
+        };
+        assert!(decoded_clipboard_image(&bogus).is_err());
+    }
+    #[test]
+    fn diagnostics_report_contains_only_allowlisted_non_secret_fields() {
+        let generated = diagnostics_text("1.2.5", "darwin", "arm64", [true, false, true]);
+        assert!(generated.contains("Local API: managed"));
+        assert!(generated.contains("Memory: not-started"));
+        for forbidden in [
+            "localToken",
+            "bootstrapSecret",
+            "apiKey",
+            "MEMMY_CONFIG",
+            "Bearer ",
+            "databasePath",
+            "userData",
+            "/Users/",
+            "password",
+        ] {
+            assert!(!generated.contains(forbidden), "leaked marker: {forbidden}");
+        }
+    }
+}
