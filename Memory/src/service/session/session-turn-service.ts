@@ -719,7 +719,10 @@ export class SessionTurnService {
         hostSessionKey: namespace.sessionKey,
         conversationId: this.deps.stringFromMeta(request.meta, "conversationId"),
         status: "open",
-        meta: v2SessionMeta(request, workspace, request.timeZone),
+        meta: {
+          ...v2SessionMeta(request, workspace, request.timeZone),
+          ...(namespace.tenantId ? { memmy_tenant_id: namespace.tenantId } : {})
+        },
         openedAt: at,
         lastSeenAt: at,
         updatedAt: at
