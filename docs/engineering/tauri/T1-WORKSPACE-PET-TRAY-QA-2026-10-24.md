@@ -28,6 +28,9 @@ The labels above are **assigned responsibilities, not approvals**. No independen
 - `node scripts/engineering/tauri-parity.mjs --check`: **26/85 mapped**, **59 outstanding**, original 14 routes preserved.
 - `node scripts/engineering/tauri-renderer-smoke.mjs`: real macOS Chromium screenshots at 1200x780: **startup, nickname, memory-plugin-conflict** each rendered visibly; IPC mapping for Pet/Tray verified with a *mock native IPC*. Screenshots in [`ui-smoke/`](./ui-smoke/). This is *renderer UI smoke*, **not actual native WebKit/Tauri end-to-end**.
 - Additional unchanged Electron Browser React component regression suite: **29/29 PASS** across browser panel, site policies and Agent browser capture panel. This checks original components, **not** Tauri native browser compatibility.
+- `npm run memory:build`, `npm run build -w @memmy/backend`, `npm --prefix App/memmy-agent run build`: PASS in isolated source Worktree.
+- `npm run sidecar:test -w @memmy/tauri-shell`: **4/4 PASS**, real Memory SQLite, Local API and authenticated Agent Gateway process startup/cleanup.
+- `npm run bundle:audit:test -w @memmy/tauri-shell`: **2/2 PASS**, rejects a GUI-only `.app` without the managed runtime and accepts a complete fixture.
 - Cross-platform compiler smoke: local macOS Rust check/tests only; Linux and Windows pending CI availability.
 - Browser native implementation plan and threat model: [`T1-BROWSER-COMPUTER-USE-MIGRATION-2026-10-24.md`](./T1-BROWSER-COMPUTER-USE-MIGRATION-2026-10-24.md).
 
