@@ -552,6 +552,24 @@ describe("WebSocket HTTP route helpers", () => {
     expect(await boot.json()).toEqual(expect.objectContaining({ ws_path: "/" }));
   });
 
+  it("allows only exact Tauri webview origins when the gateway has a secret", async () => {
+    const channel = makeChannel({ config: { tokenIssueSecret: "secret" } });
+    const port = await startChannel(channel);
+    for (const origin of ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]) {
+      const response = await fetch(`http://127.0.0.1:${port}/webui/bootstrap`, {
+        headers: { Origin: origin, "X-Memmy-Agent-Auth": "secret" },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+    }
+    for (const origin of ["tauri://evil.example", "https://evil.example", "https://fake.tauri.localhost"]) {
+      const response = await fetch(`http://127.0.0.1:${port}/webui/bootstrap`, {
+        headers: { Origin: origin, "X-Memmy-Agent-Auth": "secret" },
+      });
+      expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    }
+  });
+
   it("serves static SPA assets and rejects traversal", async ({ task }) => {
     const dist = fs.mkdtempSync(path.join(os.tmpdir(), `memmy-ws-static-${task.id}-`));
     tmpDirs.push(dist);

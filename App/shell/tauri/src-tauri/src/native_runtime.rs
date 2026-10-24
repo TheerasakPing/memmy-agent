@@ -19,6 +19,7 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 struct BackendState {
     process: Option<Child>,
     memory: Option<Child>,
+    gateway: Option<Child>,
     config: Option<Value>,
     stopped_unexpectedly: bool,
 }
@@ -34,12 +35,29 @@ impl NativeRuntime {
             .state
             .lock()
             .map_err(|_| "native runtime lock unavailable")?;
+        if let Some(gateway) = state.gateway.as_mut() {
+            if !matches!(gateway.try_wait(), Ok(None)) {
+                if let Some(mut backend) = state.process.take() {
+                    stop_child(&mut backend);
+                }
+                if let Some(mut memory) = state.memory.take() {
+                    stop_child(&mut memory);
+                }
+                state.gateway.take();
+                state.config = None;
+                state.stopped_unexpectedly = true;
+                return Err("Tauri Agent Gateway stopped unexpectedly; restart the app".into());
+            }
+        }
         if let Some(memory) = state.memory.as_mut() {
             if !matches!(memory.try_wait(), Ok(None)) {
                 if let Some(mut backend) = state.process.take() {
                     stop_child(&mut backend);
                 }
                 state.memory.take();
+                if let Some(mut gateway) = state.gateway.take() {
+                    stop_child(&mut gateway);
+                }
                 state.config = None;
                 state.stopped_unexpectedly = true;
                 return Err("Tauri Memory service stopped unexpectedly; restart the app".into());
@@ -55,6 +73,9 @@ impl NativeRuntime {
                 }
                 Ok(Some(_)) | Err(_) => {
                     state.process.take();
+                    if let Some(mut gateway) = state.gateway.take() {
+                        stop_child(&mut gateway);
+                    }
                     if let Some(mut memory) = state.memory.take() {
                         stop_child(&mut memory);
                     }
@@ -92,9 +113,30 @@ impl NativeRuntime {
                     .map(|(_, url, token)| (url.as_str(), token.as_str())),
             );
             match backend_result {
-                Ok((child, config)) => {
+                Ok((mut child, mut config)) => {
+                    let mut gateway = None;
+                    if std::env::var("MEMMY_TAURI_DEV_GATEWAY").as_deref() == Ok("1") {
+                        let Some((_, url, token)) = memory.as_ref() else {
+                            stop_child(&mut child);
+                            return Err("Tauri development Agent requires managed Memory".into());
+                        };
+                        match launch_development_gateway(data_dir, url, token) {
+                            Ok((process, metadata)) => {
+                                config["agentGateway"] = metadata;
+                                gateway = Some(process);
+                            }
+                            Err(err) => {
+                                stop_child(&mut child);
+                                if let Some((mut process, _, _)) = memory.take() {
+                                    stop_child(&mut process);
+                                }
+                                return Err(err);
+                            }
+                        }
+                    }
                     state.process = Some(child);
                     state.memory = memory.take().map(|(process, _, _)| process);
+                    state.gateway = gateway;
                     state.config = Some(config.clone());
                     return Ok(config);
                 }
@@ -110,6 +152,9 @@ impl NativeRuntime {
 
     pub fn stop(&self) {
         if let Ok(mut state) = self.state.lock() {
+            if let Some(mut gateway) = state.gateway.take() {
+                stop_child(&mut gateway);
+            }
             if let Some(mut process) = state.process.take() {
                 stop_child(&mut process);
             }
@@ -372,6 +417,94 @@ fn launch_development_backend(
     }
 }
 
+#[cfg(debug_assertions)]
+fn launch_development_gateway(
+    data_dir: &Path,
+    memory_url: &str,
+    token: &str,
+) -> Result<(Child, Value), String> {
+    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar/gateway.mjs");
+    if !script.is_file() {
+        return Err("Agent development gateway helper missing".into());
+    }
+    let choose_port = || -> Result<u16, String> {
+        let port = TcpListener::bind(("127.0.0.1", 0))
+            .map_err(|_| "cannot reserve local Agent port")?
+            .local_addr()
+            .map_err(|_| "Agent port unavailable")?
+            .port();
+        Ok(port)
+    };
+    let ws_port = choose_port()?;
+    let mut health_port = choose_port()?;
+    while health_port == ws_port {
+        health_port = choose_port()?;
+    }
+    let mut child = Command::new("node")
+        .arg(script)
+        .env("MEMMY_TAURI_DATA_DIR", data_dir)
+        .env("MEMMY_TAURI_DEV_GATEWAY", "1")
+        .env("MEMMY_TAURI_GATEWAY_WS_PORT", ws_port.to_string())
+        .env("MEMMY_TAURI_GATEWAY_HEALTH_PORT", health_port.to_string())
+        .env("MEMMY_MEMORY_URL", memory_url)
+        .env("MEMMY_MEMORY_TOKEN", token)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|_| "cannot start Agent development helper")?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or("Agent readiness pipe unavailable")?;
+    let (tx, rx) = mpsc::sync_channel(1);
+    std::thread::spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        let mut line = String::new();
+        let mut notified = false;
+        while let Ok(size) = reader.read_line(&mut line) {
+            if size == 0 {
+                break;
+            }
+            if !notified && line.starts_with("MEMMY_TAURI_GATEWAY_READY ") {
+                notified = true;
+                let decoded = serde_json::from_str::<Value>(
+                    line.trim_end_matches(['\r', '\n'])
+                        .trim_start_matches("MEMMY_TAURI_GATEWAY_READY "),
+                );
+                let result = decoded
+                    .map_err(|_| "invalid Agent readiness JSON".to_string())
+                    .and_then(|value| {
+                        let url = value["baseUrl"].as_str().ok_or("missing Agent URL")?;
+                        let auth = value["bootstrapSecret"]
+                            .as_str()
+                            .ok_or("missing Agent bootstrap secret")?;
+                        if url != format!("http://127.0.0.1:{ws_port}") || auth.len() < 32 {
+                            return Err("invalid Agent endpoint or secret".to_string());
+                        }
+                        Ok(value)
+                    });
+                let _ = tx.send(result.map_err(|error| error.to_string()));
+            }
+            line.clear();
+        }
+        if !notified {
+            let _ = tx.send(Err("Agent Gateway exited before readiness".into()));
+        }
+    });
+    match rx.recv_timeout(Duration::from_secs(52)) {
+        Ok(Ok(metadata)) => Ok((child, metadata)),
+        other => {
+            stop_child(&mut child);
+            Err(match other {
+                Ok(Err(message)) => message,
+                Err(_) => "Agent Gateway readiness timeout".into(),
+                _ => "Agent Gateway unavailable".into(),
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(debug_assertions)]
@@ -399,6 +532,15 @@ mod tests {
                 .ok_or("Memory URL missing")?;
             assert!(api_url.starts_with("http://127.0.0.1:"));
             assert!(memory_url.starts_with("http://127.0.0.1:"));
+            if std::env::var("MEMMY_TAURI_DEV_GATEWAY").as_deref() == Ok("1") {
+                let gateway = &config["agentGateway"];
+                assert!(gateway["baseUrl"]
+                    .as_str()
+                    .is_some_and(|url| url.starts_with("http://127.0.0.1:")));
+                assert!(gateway["bootstrapSecret"]
+                    .as_str()
+                    .is_some_and(|secret| secret.len() >= 32));
+            }
             let port = api_url.rsplit(':').next().unwrap().parse::<u16>().unwrap();
             let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
             assert!(std::net::TcpStream::connect_timeout(
