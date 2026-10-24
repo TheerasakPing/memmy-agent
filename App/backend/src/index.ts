@@ -44,6 +44,8 @@ const DEFAULT_MEMORY_LAYER_TIMEOUT_MS = 20_000;
 export interface CreateLocalBackendOptions {
   databasePath: string;
   localToken?: string;
+  /** Exact desktop webview origins allowed by a native host. */
+  allowedOrigins?: readonly string[];
   bootstrapScenario?: BootstrapScenario;
   heartbeatIntervalMs?: number;
   memoryClient?: MemoryClient;
@@ -166,6 +168,7 @@ export async function createLocalBackend(options: CreateLocalBackendOptions): Pr
       },
       permissionManager,
       services,
+      allowedOrigins: options.allowedOrigins,
       composioMcpToken,
       timeZone: configuredTimeZone,
       heartbeatIntervalMs: options.heartbeatIntervalMs,

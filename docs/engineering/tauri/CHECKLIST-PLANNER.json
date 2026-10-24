@@ -125,7 +125,7 @@
       "independentReviewer": "A1",
       "qa": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",
@@ -135,7 +135,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "T2 local API dev supervisor and authenticated loopback handshake tested; Memory and Agent lifecycle, signed production sidecars and external QA not done"
     },
     {
       "id": "T2.02",
