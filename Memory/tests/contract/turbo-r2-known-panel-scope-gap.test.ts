@@ -1,16 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createMemoryServiceFixture } from "../fixtures/memory-service-fixture.js";
 
-/**
- * Known-failure security canary: unlike regular tests, Vitest's it.fails
- * documents a still-open disclosure issue. A green XFAIL does NOT mean safe.
- * Convert to an ordinary test only after the repository query is tenant-scoped.
- */
+/** Scoped Panel authorization regression; real passing security assertion. */
 const { cleanup, createTestService } = createMemoryServiceFixture();
 afterEach(cleanup);
 
-describe("R2 known-failure tenant Panel read isolation", () => {
-  it.fails("must not include tenant-A episode/turn when tenant-B uses same user and project", () => {
+describe("R2 persisted tenant Panel read isolation", () => {
+  it("excludes tenant-A episode/turn from tenant-B even with same user and project", () => {
     const { db, service } = createTestService();
     const owner = {
       source: "codex", profileId: "default", userId: "panel-shared-user",
@@ -31,9 +27,18 @@ describe("R2 known-failure tenant Panel read isolation", () => {
         answer: "Do not disclose to tenant B",
         status: "succeeded"
       });
+      const ownerPanel = service.panelTasks({ namespace: owner });
+      expect(ownerPanel.tasks.map((task) => task.id)).toContain(turn.episodeId);
+      expect(ownerPanel.total).toBe(1);
       const panel = service.panelTasks({ namespace: intruder });
+      expect(panel.total).toBe(0);
       expect(panel.tasks.map((task) => task.id)).not.toContain(turn.episodeId);
       expect(panel.tasks.flatMap((task) => task.turns).length).toBe(0);
+      // Pre-existing single-user local panel is still cross-agent shared.
+      const localPanel = service.panelTasks({
+        namespace: { source: "claude_code", profileId: "default", userId: "panel-shared-user" }
+      });
+      expect(localPanel.tasks.map((task) => task.id)).toContain(turn.episodeId);
     } finally {
       db.close();
     }
