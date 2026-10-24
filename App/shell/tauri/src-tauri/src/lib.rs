@@ -51,11 +51,15 @@ async fn desktop_runtime_config(
     );
     #[cfg(debug_assertions)]
     let bundled_root: Option<std::path::PathBuf> = None;
-    tauri::async_runtime::spawn_blocking(move || {
+    let config = tauri::async_runtime::spawn_blocking(move || {
         runtime.config(&directory, bundled_root.as_deref())
     })
     .await
-    .map_err(|_| "native runtime supervisor failed".to_string())?
+    .map_err(|_| "native runtime supervisor failed".to_string())??;
+    if config["agentGateway"]["startupIssue"] == "model_config_invalid" {
+        let _ = app.emit("memmy:agent-gateway-startup-issue", "model_config_invalid");
+    }
+    Ok(config)
 }
 
 fn electron_compatible_platform() -> &'static str {

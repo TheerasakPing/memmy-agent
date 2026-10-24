@@ -22,6 +22,7 @@ export type TauriWindow = Window & { __TAURI__?: TauriGlobal };
 export const TAURI_NATIVE_BRIDGE_METHODS = [
   "notifyRendererReady",
   "getRuntimeConfig",
+  "onAgentGatewayStartupIssue",
   "getAppInfo",
   "checkForUpdates",
   "getInstallationId",
@@ -75,13 +76,34 @@ export function installTauriBridge(host: TauriWindow): boolean {
   // This is deliberately a partial migration of the *existing* bridge.
   // Unported optional methods are absent so their UI controls can gate off;
   // R2/R5 release gates require full contract parity before shipping.
+  type GatewayIssue = "model_config_invalid";
+  const startupIssues = new Set<(issue: GatewayIssue) => void>();
+  let lastStartupIssue: GatewayIssue | undefined;
+  const publishStartupIssue = (issue: unknown) => {
+    if (issue !== "model_config_invalid") return;
+    lastStartupIssue = issue;
+    for (const listener of startupIssues) listener(issue);
+  };
+  // Subscribe before invoking the startup runtime to prevent losing an early event.
+  if (tauri.event?.listen) {
+    void tauri.event.listen("memmy:agent-gateway-startup-issue", (event) => publishStartupIssue(event.payload));
+  }
   const bridge = {
     platform: desktopPlatform(host.navigator.userAgent),
     osRelease: "",
     notifyRendererReady(): void {
       // The webview exists before this React entrypoint mounts.
     },
-    getRuntimeConfig: () => invoke("desktop_runtime_config"),
+    getRuntimeConfig: async () => {
+      const config = await invoke<{ agentGateway?: { startupIssue?: GatewayIssue } }>("desktop_runtime_config");
+      publishStartupIssue(config?.agentGateway?.startupIssue);
+      return config;
+    },
+    onAgentGatewayStartupIssue: (callback: (issue: GatewayIssue) => void) => {
+      startupIssues.add(callback);
+      if (lastStartupIssue) callback(lastStartupIssue);
+      return () => { startupIssues.delete(callback); };
+    },
     getAppInfo: () => invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["getAppInfo"]>>>("desktop_app_info"),
     checkForUpdates: () => invoke("desktop_check_for_updates"),
     getInstallationId: () => invoke<string>("desktop_get_installation_id"),

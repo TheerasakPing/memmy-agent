@@ -63,6 +63,9 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(api.platform).toBe("darwin");
     expect(await api.getAppInfo()).toMatchObject({ version: "1.2.4", platform: "darwin" });
     expect(await api.getRuntimeConfig()).toMatchObject({ localToken: "native-runtime-token" });
+    const onGatewayStartupIssue = vi.fn();
+    const stopGatewayStartupIssue = api.onAgentGatewayStartupIssue!(onGatewayStartupIssue);
+    stopGatewayStartupIssue();
     expect(await api.checkForUpdates()).toMatchObject({ status: "not-configured" });
     expect(await api.getBrowserHistory()).toEqual([]);
     expect(await api.getBrowserAccessRules()).toEqual([]);
@@ -146,7 +149,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(36);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(37);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.movePetWindow).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
