@@ -15,6 +15,10 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_remove_selected_browser_history") return 1;
     if (command === "desktop_import_legacy_browser_history") return true;
     if (command === "desktop_set_browser_access_rule") return [{ origin: args?.origin, decision: args?.decision }];
+    if (command === "desktop_get_native_app_allow_all") return false;
+    if (command === "desktop_set_native_app_allow_all") return args?.enabled === true;
+    if (command === "desktop_get_browser_allow_all") return { enabled: false, inherited: false, effective: false };
+    if (command === "desktop_set_browser_allow_all") return { enabled: args?.enabled === true, inherited: false, effective: args?.enabled === true };
     if (command === "desktop_fullscreen") return { isFullScreen: false };
     if (command === "desktop_get_installation_id") return "00000000-0000-4000-8000-000000000001";
     if (command === "desktop_get_launch_at_login" || command === "desktop_set_launch_at_login") return true;
@@ -90,6 +94,12 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     await api.removeBrowserUseSitePolicy?.("https://example.org");
     expect(invoke).toHaveBeenCalledWith("desktop_upsert_browser_use_site_policy", { rule });
     expect(invoke).toHaveBeenCalledWith("desktop_remove_browser_use_site_policy", { pattern: "https://example.org" });
+    expect(await api.getNativeAppAllowAll?.()).toBe(false);
+    expect(await api.setNativeAppAllowAll?.(true)).toBe(true);
+    expect(await api.getBrowserAllowAll?.()).toEqual({ enabled: false, inherited: false, effective: false });
+    expect(await api.setBrowserAllowAll?.(true)).toEqual({ enabled: true, inherited: false, effective: true });
+    expect(invoke).toHaveBeenCalledWith("desktop_set_native_app_allow_all", { enabled: true });
+    expect(invoke).toHaveBeenCalledWith("desktop_set_browser_allow_all", { enabled: true });
     await api.setLaunchAtLogin(true);
     expect(await api.getLaunchAtLogin()).toBe(true);
     expect(await api.getInstallationId()).toMatch(/00000000-0000/);
@@ -169,10 +179,23 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     stop();
   });
 
+  it("subscribes to real browser global approval events and cleans up listeners", async () => {
+    const { host, listen, emit, unsubscribe } = setup();
+    installTauriBridge(host);
+    const onChange = vi.fn();
+    const stop = host.memmy!.onBrowserAllowAllChanged!(onChange);
+    await Promise.resolve();
+    expect(listen).toHaveBeenCalledWith("memmy:browser-allow-all:changed", expect.any(Function));
+    emit("memmy:browser-allow-all:changed", { enabled: true, inherited: false, effective: true });
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ enabled: true, inherited: false, effective: true });
+    stop();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(43);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(48);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.movePetWindow).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();

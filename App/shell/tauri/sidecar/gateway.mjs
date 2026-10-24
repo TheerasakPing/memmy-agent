@@ -58,6 +58,8 @@ const child = spawn(process.execPath, [agentScript, 'gateway', '--config', confi
     MEMMY_HOME: directory,
     MEMMY_CONFIG: configPath,
     MEMMY_AGENT_DATA_DIR: directory,
+    // Always derive the inherited global approval path from the managed data root.
+    MEMMY_NATIVE_APP_ALLOW_ALL_FILE: join(directory, 'computer-use', 'allow-all-apps.json'),
     MEMMY_AGENT_WORKSPACE: workspace,
     MEMMY_MEMORY_URL: memoryUrl,
     MEMMY_MEMORY_TOKEN: memoryToken,

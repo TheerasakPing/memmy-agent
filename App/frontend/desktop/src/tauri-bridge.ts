@@ -59,6 +59,11 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "getBrowserUseSitePolicies",
   "upsertBrowserUseSitePolicy",
   "removeBrowserUseSitePolicy",
+  "getNativeAppAllowAll",
+  "setNativeAppAllowAll",
+  "getBrowserAllowAll",
+  "setBrowserAllowAll",
+  "onBrowserAllowAllChanged",
   "getMainWindowFullScreen",
   "onMainWindowFullScreenChanged",
   "onMainWindowActionRequest",
@@ -147,6 +152,22 @@ export function installTauriBridge(host: TauriWindow): boolean {
       invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["upsertBrowserUseSitePolicy"]>>>>("desktop_upsert_browser_use_site_policy", { rule }),
     removeBrowserUseSitePolicy: (pattern: string) =>
       invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["removeBrowserUseSitePolicy"]>>>>("desktop_remove_browser_use_site_policy", { pattern }),
+    getNativeAppAllowAll: () => invoke<boolean>("desktop_get_native_app_allow_all"),
+    setNativeAppAllowAll: (enabled: boolean) => invoke<boolean>("desktop_set_native_app_allow_all", { enabled }),
+    getBrowserAllowAll: () =>
+      invoke<import("@memmy/local-api-contracts").BrowserAllowAllState>("desktop_get_browser_allow_all"),
+    setBrowserAllowAll: (enabled: boolean) =>
+      invoke<import("@memmy/local-api-contracts").BrowserAllowAllState>("desktop_set_browser_allow_all", { enabled }),
+    onBrowserAllowAllChanged: (callback: (value: import("@memmy/local-api-contracts").BrowserAllowAllState) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Tauri browser approval event bridge unavailable");
+      let removed = false;
+      let unsubscribe: (() => void) | undefined;
+      void listen<import("@memmy/local-api-contracts").BrowserAllowAllState>(
+        "memmy:browser-allow-all:changed", (event) => callback(event.payload)
+      ).then((stop) => { if (removed) stop(); else unsubscribe = stop; });
+      return () => { removed = true; unsubscribe?.(); };
+    },
     openExternal: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     openMailto: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     getMainWindowFullScreen: () => invoke<{ isFullScreen: boolean }>("desktop_fullscreen"),

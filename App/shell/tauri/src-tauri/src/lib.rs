@@ -1,6 +1,7 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
 use std::sync::{Arc, Mutex};
+mod native_approvals;
 mod native_browser_store;
 mod native_diagnostics;
 mod native_os;
@@ -207,6 +208,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(Arc::new(native_runtime::NativeRuntime::default()))
         .manage(native_workspace::WorkspaceGrants::default())
+        .manage(native_approvals::ApprovalLock::default())
         .manage(native_tray::TrayState::default())
         .manage(PendingWindowAction::default())
         .plugin(tauri_plugin_opener::init())
@@ -286,6 +288,10 @@ pub fn run() {
             native_site_policy::desktop_get_browser_use_site_policies,
             native_site_policy::desktop_upsert_browser_use_site_policy,
             native_site_policy::desktop_remove_browser_use_site_policy,
+            native_approvals::desktop_get_native_app_allow_all,
+            native_approvals::desktop_set_native_app_allow_all,
+            native_approvals::desktop_get_browser_allow_all,
+            native_approvals::desktop_set_browser_allow_all,
             native_browser_store::desktop_get_browser_download_settings,
             native_browser_store::desktop_choose_browser_download_directory,
             native_browser_store::desktop_reset_browser_download_directory,
