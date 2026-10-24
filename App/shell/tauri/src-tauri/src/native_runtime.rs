@@ -501,8 +501,18 @@ fn launch_development_gateway(
     while health_port == ws_port {
         health_port = choose_port()?;
     }
-    let mut child = Command::new(&paths.node)
-        .arg(script)
+    let mut command = Command::new(&paths.node);
+    command.arg(script);
+    // The real Agent child inherits this env from its managed shim. A Finder
+    // process does not inherit shell environment variables, so the bundled
+    // preview must configure its service origin at the Gateway boundary too.
+    if paths.bundled
+        && std::env::var_os("MEMMY_CLOUD_SERVICE").is_none()
+        && std::env::var_os("MEMMY_CLOUD_URL").is_none()
+    {
+        command.env("MEMMY_CLOUD_SERVICE", "https://api.memmy.cn");
+    }
+    let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_DEV_GATEWAY", "1")
         .env("MEMMY_TAURI_GATEWAY_WS_PORT", ws_port.to_string())
