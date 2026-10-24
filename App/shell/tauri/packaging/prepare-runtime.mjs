@@ -19,7 +19,7 @@ function run(command, args) {
 async function copy(relative, destination = relative) {
   const src = join(root, relative), dst = join(stage, destination);
   await mkdir(dirname(dst), { recursive: true });
-  run('rsync', ['-a', src.endsWith('node_modules') || src.endsWith('/dist') || src.endsWith('/sidecar') ? `${src}/` : src, dst]);
+  run('rsync', ['-a', '--exclude=.env', '--exclude=.env.*', '--exclude=.npmrc', src.endsWith('node_modules') || src.endsWith('/dist') || src.endsWith('/sidecar') ? `${src}/` : src, dst]);
 }
 if (process.platform !== 'darwin' || process.arch !== 'arm64') throw Error('This preview packager supports macOS arm64 only');
 await rm(stage, { recursive: true, force: true });
