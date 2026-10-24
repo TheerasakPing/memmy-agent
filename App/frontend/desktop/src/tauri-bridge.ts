@@ -52,6 +52,9 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "saveImage",
   "copyImageToClipboard",
   "exportDiagnosticsReport",
+  "getComputerHistoryPermissionSessionId",
+  "getFullDiskAccessStatus",
+  "openComputerHistoryMarkdown",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -124,6 +127,11 @@ export function installTauriBridge(host: TauriWindow): boolean {
     exportDiagnosticsReport: () =>
       invoke<{ canceled: true } | { canceled: false; exportPath: string; bytes: number }>(
         "desktop_export_diagnostics_report"),
+    getComputerHistoryPermissionSessionId: () =>
+      invoke<string>("desktop_get_computer_history_permission_session_id"),
+    getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
+    openComputerHistoryMarkdown: (filePath: string) =>
+      invoke<void>("desktop_open_computer_history_markdown", { filePath }),
     getLogLevel: () => invoke<"error" | "warn" | "info" | "debug">("desktop_get_log_level"),
     setLogLevel: (level: "error" | "warn" | "info" | "debug") => invoke<void>("desktop_set_log_level", { level }),
     openLogsDirectory: () => invoke<void>("desktop_open_logs_directory"),
