@@ -572,8 +572,14 @@ export class PanelReadModel {
   } {
     const pageSize = 20 as const;
     const query = input.q?.trim() || undefined;
-    const userId = input.namespace?.userId;
-    const total = this.deps.repos.runtime.countEpisodes(userId, query, input.sourceAgent);
+    const tenantId = input.namespace?.tenantId;
+    // Preserve the local global panel while requiring a scoped tenant to
+    // present an explicit user and proving persisted session ownership in SQL.
+    const userId = tenantId && !input.namespace?.userId
+      ? "__missing_tenant_principal__"
+      : input.namespace?.userId;
+    const projectId = tenantId ? input.namespace?.projectId : undefined;
+    const total = this.deps.repos.runtime.countEpisodes(userId, query, input.sourceAgent, tenantId, projectId);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const page = Math.min(normalizePageNumber(input.page), totalPages);
     const episodes = this.deps.repos.runtime.listEpisodes(
@@ -582,6 +588,8 @@ export class PanelReadModel {
       (page - 1) * pageSize,
       query,
       input.sourceAgent,
+      tenantId,
+      projectId
     );
     return {
       tasks: episodes.map((episode) => ({
