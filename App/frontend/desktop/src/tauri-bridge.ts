@@ -12,6 +12,9 @@ interface TauriCore {
 
 interface TauriGlobal {
   core: TauriCore;
+  event?: {
+    listen<T>(name: string, callback: (event: { payload: T }) => void): Promise<() => void>;
+  };
 }
 
 export type TauriWindow = Window & { __TAURI__?: TauriGlobal };
@@ -21,9 +24,17 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "getRuntimeConfig",
   "getAppInfo",
   "checkForUpdates",
+  "getInstallationId",
+  "getLaunchAtLogin",
+  "setLaunchAtLogin",
+  "notifyTaskDone",
+  "notifyUpdateAvailable",
+  "selectProjectDirectory",
+  "selectEmptyProjectDirectory",
   "openExternal",
   "openMailto",
   "getMainWindowFullScreen",
+  "onMainWindowFullScreenChanged",
   "completeMainWindowAction"
 ] as const;
 
@@ -48,14 +59,44 @@ export function installTauriBridge(host: TauriWindow): boolean {
     platform: desktopPlatform(host.navigator.userAgent),
     osRelease: "",
     notifyRendererReady(): void {
-      // Tauri's webview is ready by the time this React entrypoint executes.
+      // The webview exists before this React entrypoint mounts.
     },
     getRuntimeConfig: () => invoke("desktop_runtime_config"),
-    getAppInfo: () => invoke<NonNullable<Window["memmy"]> extends { getAppInfo(): Promise<infer T> } ? T : unknown>("desktop_app_info"),
+    getAppInfo: () => invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["getAppInfo"]>>>("desktop_app_info"),
     checkForUpdates: () => invoke("desktop_check_for_updates"),
+    getInstallationId: () => invoke<string>("desktop_get_installation_id"),
+    getLaunchAtLogin: () => invoke<boolean>("desktop_get_launch_at_login"),
+    setLaunchAtLogin: (enabled: boolean) => invoke<boolean>("desktop_set_launch_at_login", { enabled }),
+    notifyTaskDone: (payload: { title: string; body: string; silent: boolean; deliveryId?: string }) =>
+      invoke<void>("desktop_notify_task_done", { payload }),
+    notifyUpdateAvailable: (payload: { title: string; body: string; silent: boolean }) =>
+      invoke<void>("desktop_notify_update_available", { payload }),
+    selectProjectDirectory: () => invoke<{ canceled: boolean; path?: string }>("desktop_select_project_directory"),
+    selectEmptyProjectDirectory: () => invoke<{ canceled: boolean; path?: string }>("desktop_select_empty_project_directory"),
     openExternal: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     openMailto: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     getMainWindowFullScreen: () => invoke<{ isFullScreen: boolean }>("desktop_fullscreen"),
+    onMainWindowFullScreenChanged: (callback: (state: { isFullScreen: boolean }) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) {
+        // A non-compliant host must fail visibly instead of pretending
+        // fullscreen UX updates are supported.
+        throw new Error("Tauri event bridge is unavailable");
+      }
+      let removed = false;
+      let unsubscribe: (() => void) | undefined;
+      void listen<{ isFullScreen: boolean }>(
+        "memmy:window-fullscreen-changed",
+        (event) => callback(event.payload)
+      ).then((stop) => {
+        if (removed) stop();
+        else unsubscribe = stop;
+      });
+      return () => {
+        removed = true;
+        unsubscribe?.();
+      };
+    },
     completeMainWindowAction: (response: { id: string; resolution: "close" | "hide" | "minimize" | "pet" | "quit" }) =>
       invoke<void>("desktop_complete_window_action", { resolution: response.resolution })
   } as unknown as NonNullable<Window["memmy"]>;

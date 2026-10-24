@@ -19,7 +19,7 @@
 - Original desktop shell and IPC: `App/shell/desktop/src/preload/preload.cts`, `App/shell/desktop/src/main`.
 - The original renderer has **14 route IDs**. The old `MemmyPreloadApi` has **85 callable methods**, in addition to the `platform` and `osRelease` fields.
 - `tauri-parity-manifest.json` is machine-generated from original source + migration bridge; run `node scripts/engineering/tauri-parity.mjs --check`.
-- Tauri phase T0 reuses identical React entrypoint/CSS, bundles the original icon, and ports a **limited subset** of 8 bridge methods. This is a **migration scaffold, not feature-complete**. `notifyRendererReady` is a lifecycle noop, which still requires review for equivalence.
+- Tauri phase T0 reuses identical React entrypoint/CSS, bundles the original icon, and ports a **limited subset** of 13 bridge methods. This is a **migration scaffold, not feature-complete**. `notifyRendererReady` is a lifecycle noop, which still requires review for equivalence.
 - The legacy Electron backend still owns critical local API, agent daemon, memory daemon and complex native integrations. The new Rust runtime refuses to fake service startup; `getRuntimeConfig` fails visibly until a native runtime writes validated loopback credentials in the new app-data directory.
 - A new Tauri app identifier intentionally isolates unreviewed data paths; migration of legacy user data **must** be explicit and reversible, never automatic without review.
 - Window dimensions use original 1200×780 / minimum 980×640, macOS overlay title bar and icon, but screenshot parity remains **unverified**.
@@ -49,7 +49,7 @@ Roles above are planned assignments; they do **not** assert that independent liv
 - [x] Initial `src-tauri` Cargo project, Tauri configuration, original artwork, capabilities.
 - [x] React load-time adapter stays inert in Electron and uses named Rust commands in Tauri.
 - [x] Inventory: original routes preserved and bridge gaps explicitly tracked.
-- [ ] Complete all 85 bridge methods (currently 8 represented; no parity signoff yet).
+- [ ] Complete all 85 bridge methods (currently 13 represented; no parity signoff yet).
 - [ ] Implement Tauri-owned service lifecycle and secure runtime token creation (currently deliberately fails closed).
 - [ ] Verify native runtime app launch, React screenshot baselines, tabs/buttons functional in Mac + Windows, then Linux.
 - [ ] Signed native installers, performance and rollback; independent Security/A5/LEAD signoff.
@@ -76,3 +76,12 @@ cargo test --manifest-path App/shell/tauri/src-tauri/Cargo.toml
 # Only after the Rust host and frontend tests pass (native UI runtime still incomplete):
 MEMMY_LEGAL_CN_BASE_URL=https://memmy.cn MEMMY_LEGAL_INTL_BASE_URL=https://memmy.bot npm run tauri:dev -w @memmy/tauri-shell
 ```
+
+## T1 follow-up (Draft PR #30)
+
+- The follow-up retains the original 14 React routes and source layouts.
+- 16/85 native bridge methods are now wired, leaving 69 incomplete; native parity remains unapproved.
+- Rust folder selection, OS notifications, autostart, persistent installation identity and fullscreen events have been added.
+- Node 22 full React suite: **2,624/2,624 tests passed**, after building declared migrations dependencies. Rust 2/2 and bridge 4/4 passed.
+- Source contract generator checks TypeScript methods and matching Rust IPC handlers, preventing phantom parity counts.
+- Current evidence and release blockers: [T1-OS-PARITY-2026-10-24.md](T1-OS-PARITY-2026-10-24.md).

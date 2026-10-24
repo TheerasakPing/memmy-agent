@@ -23,6 +23,32 @@ const routes = [...routeType[1].matchAll(/"(\/[A-Za-z0-9/-]+)"/g)].map((match) =
 const unique = (xs) => xs.length === new Set(xs).size;
 if (!unique(methods) || !unique(native) || !unique(routes)) throw new Error("duplicate names in parity source");
 for (const name of native) if (!methods.includes(name)) throw new Error("Tauri method not present in Electron: " + name);
+
+// Prevent counting a listed method that was never implemented in the actual
+// React bridge. Each Rust IPC target must exist and be registered in Tauri.
+const bridgeStart = bridgeSource.indexOf("  const bridge = {");
+const bridgeEnd = bridgeSource.indexOf("  } as unknown", bridgeStart);
+if (bridgeStart < 0 || bridgeEnd < 0) throw new Error("Tauri renderer bridge object not found");
+const bridgeObject = bridgeSource.slice(bridgeStart, bridgeEnd);
+const bridgedNames = [...bridgeObject.matchAll(/^    ([A-Za-z][A-Za-z0-9_]*)(?::|\()/gm)].map((match) => match[1]);
+if (!unique(bridgedNames)) throw new Error("duplicate methods in actual Tauri renderer bridge");
+for (const name of native) if (!bridgedNames.includes(name)) {
+  throw new Error("listed Tauri method not implemented in renderer bridge: " + name);
+}
+const rustHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/lib.rs"), "utf8");
+const nativeModule = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/native_os.rs"), "utf8");
+for (const [, command] of bridgeObject.matchAll(/"(desktop_[a-z0-9_]+)"/g)) {
+  if (!(rustHost + nativeModule).includes(`fn ${command}(`)) {
+    throw new Error(`renderer references non-existent Rust command: ${command}`);
+  }
+  if (!rustHost.includes(command)) {
+    throw new Error(`Rust command is not registered in invoke_handler: ${command}`);
+  }
+}
+if (native.includes("onMainWindowFullScreenChanged")
+  && !rustHost.includes("memmy:window-fullscreen-changed")) {
+  throw new Error("fullscreen event is not emitted by the Rust host");
+}
 const uiFiles = [
   "App/frontend/desktop/src/app.tsx",
   "App/frontend/desktop/src/app/routes.ts",
