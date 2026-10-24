@@ -185,6 +185,10 @@ export interface MemoryStatsRow {
 
 export interface MemoryFilter {
   userId?: string;
+  /** Restrict index candidates to durable ownership; never use request headers as identity. */
+  tenantId?: string;
+  tenantUserId?: string;
+  tenantProjectId?: string;
   sessionId?: string;
   conversationId?: string;
   agentId?: string;
@@ -491,6 +495,8 @@ export interface SubagentCompleteRequest extends RequestEnvelope {
 }
 
 export interface MemorySearchRequest extends RequestEnvelope {
+  /** Read-only retrieval: do not persist recall events or API search logs. */
+  recordEvent?: boolean;
   query: string;
   sessionId?: string;
   episodeId?: string;

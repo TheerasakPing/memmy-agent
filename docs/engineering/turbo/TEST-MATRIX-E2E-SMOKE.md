@@ -1,6 +1,6 @@
 # E2E / Smoke Test Matrix — Mandatory Release Gates
 
-No claim of execution or pass yet. Each execution must report commit SHA, OS, Node, runtime version, command, exit code, test totals/skips, logs and (where applicable) screenshot/video.
+No native signed-package E2E pass is claimed. Some local contract/security and source-build tests have been run; see [R1/R2 execution evidence](R1-R2-EXECUTION-2026-10-24.md). Each native E2E execution must report commit SHA, OS, Node, runtime version, command, exit code, test totals/skips, logs and (where applicable) screenshot/video.
 
 | Test | Priority | Scenario | Expected outcome | Platform |
 | --- | --- | --- | --- | --- |

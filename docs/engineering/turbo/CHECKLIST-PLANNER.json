@@ -356,7 +356,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "Explicit tenant/user/project/local policy",
       "required_evidence": [
         "changes_or_static_findings",
@@ -416,7 +416,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "Cross-tenant mutations denied, local flow intact",
       "required_evidence": [
         "changes_or_static_findings",
@@ -446,7 +446,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "HTTP no-write test for recordEvent false",
       "required_evidence": [
         "changes_or_static_findings",
@@ -476,7 +476,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "No secret tokens in persisted logs",
       "required_evidence": [
         "changes_or_static_findings",
@@ -686,7 +686,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "Test negative cross-scope search and writes",
       "required_evidence": [
         "changes_or_static_findings",

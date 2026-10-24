@@ -546,6 +546,27 @@ async function routeRequest(
 ): Promise<unknown> {
   const path = url.pathname;
 
+  if (principal.authenticatedNamespace?.tenantId) {
+    // Until all legacy dashboard/global read models can prove durable tenant
+    // ownership, reject them rather than leaking aggregate counts or raw text.
+    // Unscoped localhost functionality remains unchanged.
+    const globallyScopedRoutes = new Set([
+      "GET /api/v1/admin/export",
+      "DELETE /api/v1/admin/data",
+      "GET /api/v1/panel/overview",
+      "GET /api/v1/panel/analysis",
+      "GET /api/v1/panel/items",
+      "GET /api/v1/memory/logs",
+      "POST /api/v1/memory/processing/status",
+      "POST /api/v1/worker/run",
+      "POST /api/v1/worker/import-summaries/enqueue"
+    ]);
+    if (globallyScopedRoutes.has(`${method} ${path}`)
+      || (method === "GET" && path.startsWith("/api/v1/memory/recalls/"))) {
+      throw new MemoryServiceError("forbidden", "tenant isolation is not available for this endpoint");
+    }
+  }
+
   if (method === "GET" && (path === "/health" || path === "/api/v1/health")) {
     return service.health([...API_ROUTES]);
   }
@@ -802,6 +823,7 @@ async function routeRequest(
         ? Math.max(0, Math.trunc(request.contextBudget))
         : undefined,
       includeInjectedContext: typeof request.includeInjectedContext === "boolean" ? request.includeInjectedContext : undefined,
+      recordEvent: typeof request.recordEvent === "boolean" ? request.recordEvent : undefined,
       verbose: request.verbose === true
     };
     return publicSearchResponse(await trackExternalToolCall(
@@ -1366,6 +1388,13 @@ function authenticate(
   }
   const auth = options.auth;
   const localToken = auth?.localServiceToken ?? options.apiKey;
+  // Remote/cloud credentials in query strings leak into browser history,
+  // reverse-proxy access logs and referrer data. Local viewer tokens retain
+  // their legacy compatibility, but scoped/cloud credentials require headers.
+  const queryToken = url.searchParams.get("token") ?? url.searchParams.get("access_token");
+  if (queryToken && (auth?.cloudAccessTokens?.[queryToken] || auth?.scopedApiKeys?.[queryToken])) {
+    throw new MemoryServiceError("unauthorized", "scoped credentials are not accepted in URL query parameters", 401);
+  }
   const candidate = tokenFromRequest(request, url);
   if (localToken && candidate === localToken) {
     return {
