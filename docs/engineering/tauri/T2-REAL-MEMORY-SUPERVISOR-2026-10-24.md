@@ -19,8 +19,7 @@ The Tauri Rust `NativeRuntime` supervisor starts two child processes only in deb
 - `npm rebuild better-sqlite3`: PASS (required on the testing Mac after install scripts were disabled; native addons must be bundled for end users)
 - `npm run sidecar:test -w @memmy/tauri-shell`: **3/3 PASS**, including real Memory SQLite + Local API boot, API authentication boundary, stop and isolated data.
 - `MEMMY_TAURI_REAL_MEMORY_TEST=1 cargo test --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml rust_supervises_real_memory_when_explicitly_requested`: PASS; actual Rust Memory start/health/stop on Mac.
-- `MEMMY_TAURI_TEST_FULL_RUNTIME=1 MEMMY_TAURI_DEV_BACKEND=1 MEMMY_TAURI_DEV_MEMORY=1 MEMMY_CLOUD_SERVICE=https://api.memmy.cn cargo test --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml real_backend_and_memory_rust_owner_smoke_when_opted_in -- --nocapture`: PASS (Rust manages the real combined Memory/Local API start + stop).
-- Default `cargo test --locked`: 8/8 PASS (opt-in integration tests require explicit flags).
+- Default `cargo test --locked`: **9/9 PASS** (optional real-memory process smoke requires explicit flags).
 - `npm run typecheck -w @memmy/frontend-desktop`: PASS.
 - `MEMMY_TAURI_TEST_FULL_RUNTIME=1 MEMMY_TAURI_DEV_BACKEND=1 MEMMY_TAURI_DEV_MEMORY=1 MEMMY_CLOUD_URL=http://127.0.0.1:1 cargo test --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml real_backend_and_memory_rust_owner_smoke_when_opted_in`: PASS (the dummy Cloud URL is test-only; no Cloud functionality is claimed).
 - `cargo check --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml`: PASS.
