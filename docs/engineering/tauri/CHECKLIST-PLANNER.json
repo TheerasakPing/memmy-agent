@@ -49,7 +49,7 @@
       "independentReviewer": "A4",
       "qa": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",
@@ -59,7 +59,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "A6 native Chrome 1200x780 preview screenshots for startup/nickname/memory-plugin-conflict pass; original React files and all 14 route definitions unchanged. Native macOS WebKit screenshot parity still pending independent A4/A5 review."
     },
     {
       "id": "T1.01",
@@ -79,7 +80,7 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "26/85 Rust+React bridge methods mapped with real native workspace I/O and basic Pet/Tray; remaining 59 NOT ported. No independent security or GUI E2E signoff."
+      "progressNote": "A3 Rust + React bridge code 26/85 declared methods, up from 16/85. Workspace read/write native grant checks; floating Pet basic window/show/drag, tray icon/recording tooltip, main close nonce and React IPC. 59 missing; no automatic completion until native GUI E2E and independent review."
     },
     {
       "id": "T1.02",
@@ -99,7 +100,7 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "Dedicated transparent Tauri Pet webview, runtime layout/drag start, OS tray icon and tooltip; Electron-equivalent pointer movement / recording visual / full window lifecycle E2E pending."
+      "progressNote": "A6/A3 implemented basic Tauri transparent Pet window, route target event, layout-triggered reveal, OS drag and Tauri native tray with recording state tooltip, main close action guard. Functional macOS UI acceptance, drag stop/move, menu actions, lifecycle/restart tests still pending."
     },
     {
       "id": "T1.03",
@@ -288,7 +289,7 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "Mac real Chromium three UI preview screenshots + mocked Tauri JS IPC smoke PASS. Actual Tauri WebKit full 14-route functional E2E and independently approved pixel parity NOT done."
+      "progressNote": "A5 Chromium original-React smoke passes 3 screens with screenshots; Rust 12 tests, React bridge/pet targeted 13 tests, local Node real Memory/API/Agent smoke proven on prior alpha3. Native Tauri WebKit GUI, Browser Computer Use security, visual parity for all 14 routes and independent QA signoff remain pending."
     }
   ]
 }
