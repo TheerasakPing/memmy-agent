@@ -3,6 +3,7 @@ import type {
   RetrievalResult
 } from "../../algorithm/plugin-algorithms.js";
 import { isRecord } from "../../utils/json.js";
+import { MemoryServiceError } from "../../utils/error.js";
 import { clip } from "../../utils/text.js";
 import {
   compileRetrievalQuery,
@@ -1884,6 +1885,15 @@ export class RetrievalService {
       return this.searchNoRead(request, startedAt);
     }
     const context = this.deps.resolveContext(request);
+    if (context.namespace.tenantId && request.sessionId) {
+      const session = this.deps.repos.runtime.getSession(request.sessionId);
+      if (!session
+        || session.meta.memmy_tenant_id !== context.namespace.tenantId
+        || session.userId !== context.userId
+        || (context.namespace.projectId && session.projectId !== context.namespace.projectId)) {
+        throw new MemoryServiceError("forbidden", "search session belongs to another tenant");
+      }
+    }
     const retrievalMode = request.retrievalMode ?? "search";
     const episode = request.episodeId
       ? this.deps.requireEpisode(request.episodeId)
@@ -1896,6 +1906,11 @@ export class RetrievalService {
     const onboardingFirstReportSearchHit = isOnboardingFirstReportContinuationQuery(request.query)
       ? this.deps.repos.memories.search("", {
           userId: context.userId,
+          ...(context.namespace.tenantId ? {
+            tenantId: context.namespace.tenantId,
+            tenantUserId: context.userId,
+            tenantProjectId: context.namespace.projectId
+          } : {}),
           agentId: ONBOARDING_FIRST_REPORT_AGENT_ID,
           memoryLayer: "L1",
           status: ["activated", "resolving"],
@@ -1922,7 +1937,15 @@ export class RetrievalService {
       : request.layers.filter((layer) => allowedLayers.includes(layer));
     const dynamicCurrentQuery = isDynamicCurrentFactQuery(request.query);
     const stalePolicyIds = new Set(this.deps.repos.memories
-      .list({ memoryLayer: "L2", status: "activated" }, 1000)
+      .list({
+        memoryLayer: "L2",
+        status: "activated",
+        ...(context.namespace.tenantId ? {
+          tenantId: context.namespace.tenantId,
+          tenantUserId: context.userId,
+          tenantProjectId: context.namespace.projectId
+        } : {})
+      }, 1000)
       .map(policyMetaFromMemory)
       .filter((policy): policy is NonNullable<ReturnType<typeof policyMetaFromMemory>> =>
         Boolean(policy && policyRequiresRevalidation(policy))
@@ -1932,7 +1955,10 @@ export class RetrievalService {
       ? requestedSemanticLayers.filter((layer) => layer !== "L1")
       : requestedSemanticLayers;
     const searchAt = Date.now();
-    const includeUserMemory = !onboardingFirstReportHit && semanticLayers.includes("L1");
+    // user_memories has no tenant ownership column yet: never expose its global
+    // same-user records to restricted tenants. Unscoped local behavior is unchanged.
+    const includeUserMemory = !context.namespace.tenantId
+      && !onboardingFirstReportHit && semanticLayers.includes("L1");
     const userMemoryCount = includeUserMemory
       ? this.deps.repos.userMemories.listActive(context.userId).length
       : 0;
@@ -1944,7 +1970,8 @@ export class RetrievalService {
           userId: context.userId,
           layers: semanticLayers,
           tags: request.tags,
-          projectId: context.namespace.projectId?.trim() || null
+          projectId: context.namespace.projectId?.trim() || null,
+          tenantId: context.namespace.tenantId
         }) + userMemoryCount;
     const retrievalQuery = focusResearchRetrievalQuery(request.query, tuning.domain).text;
     const queryExtractHistory = retrievalMode === "turn_start"
@@ -1976,11 +2003,14 @@ export class RetrievalService {
           timeFilter,
           tags: request.tags,
           limit: retrievalLimit,
-          preferredUserId: context.userId
+          preferredUserId: context.userId,
+          tenantId: context.namespace.tenantId,
+          projectId: context.namespace.projectId
         })
       : await this.retrieveSearchMemories({
           userId: context.userId,
           projectId: context.namespace.projectId?.trim() || null,
+          tenantId: context.namespace.tenantId,
           query: retrievalQuery,
           queryVectorText,
           queryExtract,
@@ -2201,12 +2231,19 @@ export class RetrievalService {
     tags?: string[];
     limit: number;
     preferredUserId: string;
+    tenantId?: string;
+    projectId?: string;
   }): { retrieval: RetrievalResult; memories: MemoryRow[] } {
     const filter: MemoryFilter = {
       memoryLayer: "L1",
       status: ["activated", "resolving"],
       createdAtGte: input.timeFilter.startAt,
       createdAtLt: input.timeFilter.endAt,
+      ...(input.tenantId ? {
+        tenantId: input.tenantId,
+        tenantUserId: input.preferredUserId,
+        tenantProjectId: input.projectId
+      } : {}),
       ...(input.tags?.length ? { tags: input.tags } : {})
     };
     const candidateCount = this.deps.repos.memories.count(filter);
@@ -2308,6 +2345,7 @@ export class RetrievalService {
   private async retrieveSearchMemories(input: {
     userId: string;
     projectId?: string | null;
+    tenantId?: string;
     query: string;
     queryVectorText: string;
     queryExtract: RetrievalQueryExtract | null;
@@ -2335,7 +2373,8 @@ export class RetrievalService {
         userId: input.userId,
         layers: input.layers,
         tags: input.tags,
-        projectId: input.projectId
+        projectId: input.projectId,
+        tenantId: input.tenantId
       });
       const queryVector = hasVectorCandidates ? await this.queryVector(queryVectorText) : undefined;
       const candidatePool = await this.candidatePool.indexedRetrievalCandidatePool({
@@ -2344,6 +2383,7 @@ export class RetrievalService {
         queryVector,
         layers: input.layers,
         projectId: input.projectId,
+        tenantId: input.tenantId,
         tags: input.tags,
         targetSkillId: input.targetSkillId,
         currentAgentId: input.currentAgentId,

@@ -6933,6 +6933,7 @@ function buildMemoryWhere(filter: MemoryFilter): { where: string; params: SqlVal
   addArrayClause("id", filter.ids);
   addMemoryKindClause(filter.memoryKind);
   addWorkMemoryScopeClause(filter.workMemoryUserId, filter.workMemoryProjectId);
+  addTenantScopeClause(filter.tenantId, filter.tenantUserId, filter.tenantProjectId);
   addTagClauses(filter.tags);
 
   return {
@@ -7010,6 +7011,39 @@ function buildMemoryWhere(filter: MemoryFilter): { where: string; params: SqlVal
     )`);
     params.push(userId);
     if (projectId !== null) params.push(projectId);
+  }
+
+  function addTenantScopeClause(tenantId?: string, userId?: string, projectId?: string): void {
+    if (!tenantId) return;
+    if (!userId) {
+      // An explicit tenant must never turn an incomplete namespace into a global query.
+      clauses.push("1=0");
+      return;
+    }
+    // Ownership is proven in SQL *before* FTS/vector candidate selection and pagination.
+    // Imported records carry tenant_id; session-derived records inherit session ownership.
+    // Old unowned records cannot be claimed via the request namespace.
+    clauses.push(`memories.user_id = ? AND (
+      json_extract(memories.properties_json, '$.internal_info.tenant_id') = ?
+      OR (
+        json_extract(memories.properties_json, '$.internal_info.tenant_id') IS NULL
+        AND EXISTS (
+          SELECT 1 FROM sessions AS tenant_session
+          WHERE tenant_session.id = memories.session_id
+            AND tenant_session.user_id = memories.user_id
+            AND json_extract(tenant_session.meta_json, '$.memmy_tenant_id') = ?
+        )
+      )
+    )`);
+    params.push(userId, tenantId, tenantId);
+    if (projectId) {
+      clauses.push(`COALESCE(
+        NULLIF(TRIM(CAST(json_extract(memories.info_json, '$.project_id') AS TEXT)), ''),
+        (SELECT tenant_project.project_id FROM sessions AS tenant_project
+         WHERE tenant_project.id = memories.session_id)
+      ) = ?`);
+      params.push(projectId);
+    }
   }
 
   function addTagClauses(tags: string[] | undefined): void {

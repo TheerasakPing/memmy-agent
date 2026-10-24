@@ -40,10 +40,16 @@ export class IndexedCandidatePool {
     layers: MemoryLayer[];
     tags?: string[];
     projectId?: string | null;
+    tenantId?: string;
   }): number {
     const baseFilter: MemoryFilter = {
       memoryLayer: input.layers,
-      status: ["activated", "resolving"]
+      status: ["activated", "resolving"],
+      ...(input.tenantId ? {
+        tenantId: input.tenantId,
+        tenantUserId: input.userId,
+        tenantProjectId: input.projectId ?? undefined
+      } : {})
     };
     const scopedFilter = input.layers.includes("L1") && input.projectId !== undefined
       ? { ...baseFilter, workMemoryUserId: input.userId, workMemoryProjectId: input.projectId }
@@ -56,11 +62,17 @@ export class IndexedCandidatePool {
     layers: MemoryLayer[];
     tags?: string[];
     projectId?: string | null;
+    tenantId?: string;
   }): boolean {
     if (input.layers.length === 0) return false;
     const baseFilter: MemoryFilter = {
       memoryLayer: input.layers,
-      status: ["activated", "resolving"]
+      status: ["activated", "resolving"],
+      ...(input.tenantId ? {
+        tenantId: input.tenantId,
+        tenantUserId: input.userId,
+        tenantProjectId: input.projectId ?? undefined
+      } : {})
     };
     const scopedFilter = input.layers.includes("L1") && input.projectId !== undefined
       ? { ...baseFilter, workMemoryUserId: input.userId, workMemoryProjectId: input.projectId }
@@ -75,6 +87,7 @@ export class IndexedCandidatePool {
     layers: MemoryLayer[];
     tags?: string[];
     projectId?: string | null;
+    tenantId?: string;
     targetSkillId?: string;
     currentAgentId?: string;
     config: {
@@ -100,6 +113,11 @@ export class IndexedCandidatePool {
       const filter: MemoryFilter = {
         memoryLayer: layer,
         status: ["activated", "resolving"],
+        ...(input.tenantId ? {
+          tenantId: input.tenantId,
+          tenantUserId: input.userId,
+          tenantProjectId: input.projectId ?? undefined
+        } : {}),
         ...(layer === "L1" && input.projectId !== undefined
           ? { workMemoryUserId: input.userId, workMemoryProjectId: input.projectId }
           : {}),
@@ -148,7 +166,16 @@ export class IndexedCandidatePool {
       scores[hit.channel] = Math.max(scores[hit.channel] ?? -Infinity, hit.score);
       channelScoresByMemory.set(hit.id, scores);
     }
-    const readyMemories = this.deps.repos.memories.getMany(candidateIds).filter((memory) =>
+    // A restricted principal must never hydrate another tenant's FTS/vector hits.
+    const scopedCandidates = input.tenantId
+      ? this.deps.repos.memories.list({
+          ids: candidateIds,
+          tenantId: input.tenantId,
+          tenantUserId: input.userId,
+          tenantProjectId: input.projectId ?? undefined
+        }, candidateIds.length)
+      : this.deps.repos.memories.getMany(candidateIds);
+    const readyMemories = scopedCandidates.filter((memory) =>
         this.isMemoryReadyForRetrieval(memory) &&
         this.isSkillVisibleToAgent(memory, input.currentAgentId)
       );
