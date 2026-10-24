@@ -1,7 +1,7 @@
 {
   "name": "@memmy/tauri-shell",
   "private": true,
-  "version": "1.2.5-alpha.2",
+  "version": "1.2.5-alpha.3",
   "description": "Rust + Tauri v2 desktop migration, reusing the original Memmy React renderer",
   "scripts": {
     "tauri:dev": "tauri dev",
@@ -12,7 +12,13 @@
     "tauri:build": "tauri build",
     "tauri:rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri:rust:check": "cargo check --manifest-path src-tauri/Cargo.toml",
-    "preview:dev": "node preview-dev.mjs"
+    "preview:dev": "node preview-dev.mjs",
+    "preview:stage": "node packaging/prepare-runtime.mjs",
+    "preview:bundle:mac": "tauri build --config packaging/tauri-bundled.conf.json --bundles dmg",
+    "bundle:audit": "node packaging/audit-bundle.mjs",
+    "bundle:audit:test": "node --test packaging/audit-bundle.test.mjs",
+    "preview:app:mac": "bash packaging/package-app-macos.sh",
+    "preview:dmg:mac": "bash packaging/create-dmg-macos.sh"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"

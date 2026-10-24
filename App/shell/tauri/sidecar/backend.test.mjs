@@ -6,12 +6,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 const script = new URL("./backend.mjs", import.meta.url);
 const timeout = 35_000;
 
 async function startBackend(directory, memoryUrl) {
-  const child = spawn(process.execPath, [script.pathname], {
+  const child = spawn(process.execPath, [fileURLToPath(script)], {
     env: { ...process.env, MEMMY_TAURI_DATA_DIR: directory, MEMMY_TAURI_DEV_BACKEND: "1", MEMMY_MEMORY_LAYER_URL: memoryUrl, MEMMY_CLOUD_URL: memoryUrl },
     stdio: ["pipe", "pipe", "pipe"]
   });

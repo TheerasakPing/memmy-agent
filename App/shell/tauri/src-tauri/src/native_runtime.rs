@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, Instant};
@@ -14,6 +14,52 @@ use crate::is_loopback_runtime_config;
 
 const READY_PREFIX: &str = "MEMMY_TAURI_READY ";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Native runtime entrypoints are chosen by the application, not by webview IPC.
+struct RuntimePaths {
+    node: PathBuf,
+    sidecar: PathBuf,
+    bundled: bool,
+}
+
+fn runtime_paths(bundled_root: Option<&Path>) -> Result<RuntimePaths, String> {
+    if let Some(root) = bundled_root {
+        let node = root.join("node");
+        let sidecar = root.join("App/shell/tauri/sidecar");
+        for path in [
+            &node,
+            &sidecar.join("memory.mjs"),
+            &sidecar.join("backend.mjs"),
+            &sidecar.join("gateway.mjs"),
+            &root.join("Memory/dist/src/server/index.js"),
+            &root.join("App/backend/dist/src/index.js"),
+            &root.join("App/memmy-agent/dist/main.js"),
+        ] {
+            let info =
+                fs::symlink_metadata(path).map_err(|_| "bundled runtime payload incomplete")?;
+            if info.file_type().is_symlink() || !info.is_file() {
+                return Err("bundled runtime contains missing or symbolic-link entrypoint".into());
+            }
+        }
+        return Ok(RuntimePaths {
+            node,
+            sidecar,
+            bundled: true,
+        });
+    }
+    #[cfg(debug_assertions)]
+    {
+        Ok(RuntimePaths {
+            node: PathBuf::from("node"),
+            sidecar: Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar"),
+            bundled: false,
+        })
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        Err("Bundled native runtime unavailable; installer is incomplete".into())
+    }
+}
 
 #[derive(Default)]
 struct BackendState {
@@ -30,7 +76,7 @@ pub struct NativeRuntime {
 }
 
 impl NativeRuntime {
-    pub fn config(&self, data_dir: &Path) -> Result<Value, String> {
+    pub fn config(&self, data_dir: &Path, bundled_root: Option<&Path>) -> Result<Value, String> {
         let mut state = self
             .state
             .lock()
@@ -88,64 +134,61 @@ impl NativeRuntime {
         if state.stopped_unexpectedly {
             return Err("Tauri Local API requires an app restart".into());
         }
-        #[cfg(not(debug_assertions))]
-        {
-            let _ = data_dir;
-            return Err("Tauri signed backend sidecar not yet bundled; release is blocked".into());
-        }
         #[cfg(debug_assertions)]
+        if bundled_root.is_none() && std::env::var("MEMMY_TAURI_DEV_BACKEND").as_deref() != Ok("1")
         {
-            if std::env::var("MEMMY_TAURI_DEV_BACKEND").as_deref() != Ok("1") {
-                return Err(
-                    "Tauri Local API development backend disabled; set MEMMY_TAURI_DEV_BACKEND=1"
-                        .into(),
-                );
-            }
-            let mut memory = if std::env::var("MEMMY_TAURI_DEV_MEMORY").as_deref() == Ok("1") {
-                Some(launch_development_memory(data_dir)?)
-            } else {
-                None
-            };
-            let backend_result = launch_development_backend(
-                data_dir,
-                memory
-                    .as_ref()
-                    .map(|(_, url, token)| (url.as_str(), token.as_str())),
-            );
-            match backend_result {
-                Ok((mut child, mut config)) => {
-                    let mut gateway = None;
-                    if std::env::var("MEMMY_TAURI_DEV_GATEWAY").as_deref() == Ok("1") {
-                        let Some((_, url, token)) = memory.as_ref() else {
+            return Err("Tauri development runtime disabled; set MEMMY_TAURI_DEV_BACKEND=1".into());
+        }
+        let paths = runtime_paths(bundled_root)?;
+        let manage_memory =
+            bundled_root.is_some() || std::env::var("MEMMY_TAURI_DEV_MEMORY").as_deref() == Ok("1");
+        let manage_gateway = bundled_root.is_some()
+            || std::env::var("MEMMY_TAURI_DEV_GATEWAY").as_deref() == Ok("1");
+        let mut memory = if manage_memory {
+            Some(launch_development_memory(data_dir, &paths)?)
+        } else {
+            None
+        };
+        let backend_result = launch_development_backend(
+            data_dir,
+            memory
+                .as_ref()
+                .map(|(_, url, token)| (url.as_str(), token.as_str())),
+            &paths,
+        );
+        match backend_result {
+            Ok((mut child, mut config)) => {
+                let mut gateway = None;
+                if manage_gateway {
+                    let Some((_, url, token)) = memory.as_ref() else {
+                        stop_child(&mut child);
+                        return Err("Tauri Agent requires managed Memory".into());
+                    };
+                    match launch_development_gateway(data_dir, url, token, &paths) {
+                        Ok((process, metadata)) => {
+                            config["agentGateway"] = metadata;
+                            gateway = Some(process);
+                        }
+                        Err(err) => {
                             stop_child(&mut child);
-                            return Err("Tauri development Agent requires managed Memory".into());
-                        };
-                        match launch_development_gateway(data_dir, url, token) {
-                            Ok((process, metadata)) => {
-                                config["agentGateway"] = metadata;
-                                gateway = Some(process);
+                            if let Some((mut process, _, _)) = memory.take() {
+                                stop_child(&mut process);
                             }
-                            Err(err) => {
-                                stop_child(&mut child);
-                                if let Some((mut process, _, _)) = memory.take() {
-                                    stop_child(&mut process);
-                                }
-                                return Err(err);
-                            }
+                            return Err(err);
                         }
                     }
-                    state.process = Some(child);
-                    state.memory = memory.take().map(|(process, _, _)| process);
-                    state.gateway = gateway;
-                    state.config = Some(config.clone());
-                    return Ok(config);
                 }
-                Err(err) => {
-                    if let Some((mut process, _, _)) = memory.take() {
-                        stop_child(&mut process);
-                    }
-                    return Err(err);
+                state.process = Some(child);
+                state.memory = memory.take().map(|(process, _, _)| process);
+                state.gateway = gateway;
+                state.config = Some(config.clone());
+                Ok(config)
+            }
+            Err(err) => {
+                if let Some((mut process, _, _)) = memory.take() {
+                    stop_child(&mut process);
                 }
+                Err(err)
             }
         }
     }
@@ -184,7 +227,6 @@ fn stop_child(process: &mut Child) {
     }
 }
 
-#[cfg(debug_assertions)]
 fn ensure_managed_data_dir(path: &Path) -> Result<(), String> {
     fs::create_dir_all(path).map_err(|_| "cannot prepare native data directory")?;
     let metadata = fs::symlink_metadata(path).map_err(|_| "native data directory unreadable")?;
@@ -233,7 +275,6 @@ fn ensure_managed_data_dir(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(debug_assertions)]
 fn memory_is_ready(port: u16, token: &str) -> bool {
     let address = SocketAddr::from(([127, 0, 0, 1], port));
     let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(350)) else {
@@ -265,10 +306,12 @@ fn memory_is_ready(port: u16, token: &str) -> bool {
         && health["serviceVersion"].is_string()
 }
 
-#[cfg(debug_assertions)]
-fn launch_development_memory(data_dir: &Path) -> Result<(Child, String, String), String> {
+fn launch_development_memory(
+    data_dir: &Path,
+    paths: &RuntimePaths,
+) -> Result<(Child, String, String), String> {
     ensure_managed_data_dir(data_dir)?;
-    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar/memory.mjs");
+    let script = paths.sidecar.join("memory.mjs");
     if !script.is_file() {
         return Err("Memory development sidecar missing; build Memory first".into());
     }
@@ -285,8 +328,17 @@ fn launch_development_memory(data_dir: &Path) -> Result<(Child, String, String),
         uuid::Uuid::new_v4().simple()
     );
     let url = format!("http://127.0.0.1:{port}");
-    let mut command = Command::new("node");
+    let mut command = Command::new(&paths.node);
     command.arg(script);
+    // In a Finder-launched packaged preview there is no inherited shell cloud env.
+    // This only selects the same historical default as the existing edition config;
+    // it does not imply external cloud login has been verified.
+    if paths.bundled
+        && std::env::var_os("MEMMY_CLOUD_SERVICE").is_none()
+        && std::env::var_os("MEMMY_CLOUD_URL").is_none()
+    {
+        command.env("MEMMY_CLOUD_SERVICE", "https://api.memmy.cn");
+    }
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_MEMORY_PORT", port.to_string())
@@ -339,12 +391,12 @@ fn parse_ready_line(line: &str) -> Result<Value, String> {
     Ok(value)
 }
 
-#[cfg(debug_assertions)]
 fn launch_development_backend(
     data_dir: &Path,
     memory: Option<(&str, &str)>,
+    paths: &RuntimePaths,
 ) -> Result<(Child, Value), String> {
-    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar/backend.mjs");
+    let script = paths.sidecar.join("backend.mjs");
     if !script.is_file() {
         return Err("Tauri development sidecar script missing".into());
     }
@@ -356,8 +408,17 @@ fn launch_development_backend(
     {
         return Err("runtime directory symlink is not permitted".into());
     }
-    let mut command = Command::new("node");
+    let mut command = Command::new(&paths.node);
     command.arg(script);
+    // Finder-launched applications have no terminal environment. Match the
+    // existing default cloud service for the configured international edition;
+    // the app must still authenticate before cloud operations can succeed.
+    if paths.bundled
+        && std::env::var_os("MEMMY_CLOUD_SERVICE").is_none()
+        && std::env::var_os("MEMMY_CLOUD_URL").is_none()
+    {
+        command.env("MEMMY_CLOUD_SERVICE", "https://api.memmy.cn");
+    }
     if let Some((url, token)) = memory {
         command
             .env("MEMMY_MEMORY_LAYER_URL", url)
@@ -417,13 +478,13 @@ fn launch_development_backend(
     }
 }
 
-#[cfg(debug_assertions)]
 fn launch_development_gateway(
     data_dir: &Path,
     memory_url: &str,
     token: &str,
+    paths: &RuntimePaths,
 ) -> Result<(Child, Value), String> {
-    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar/gateway.mjs");
+    let script = paths.sidecar.join("gateway.mjs");
     if !script.is_file() {
         return Err("Agent development gateway helper missing".into());
     }
@@ -440,8 +501,18 @@ fn launch_development_gateway(
     while health_port == ws_port {
         health_port = choose_port()?;
     }
-    let mut child = Command::new("node")
-        .arg(script)
+    let mut command = Command::new(&paths.node);
+    command.arg(script);
+    // The real Agent child inherits this env from its managed shim. A Finder
+    // process does not inherit shell environment variables, so the bundled
+    // preview must configure its service origin at the Gateway boundary too.
+    if paths.bundled
+        && std::env::var_os("MEMMY_CLOUD_SERVICE").is_none()
+        && std::env::var_os("MEMMY_CLOUD_URL").is_none()
+    {
+        command.env("MEMMY_CLOUD_SERVICE", "https://api.memmy.cn");
+    }
+    let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_DEV_GATEWAY", "1")
         .env("MEMMY_TAURI_GATEWAY_WS_PORT", ws_port.to_string())
@@ -525,7 +596,7 @@ mod tests {
             std::env::temp_dir().join(format!("memmy-tauri-full-{}", uuid::Uuid::new_v4()));
         let result = (|| {
             let runtime = NativeRuntime::default();
-            let config = runtime.config(&directory)?;
+            let config = runtime.config(&directory, None)?;
             let api_url = config["baseUrl"].as_str().ok_or("API URL missing")?;
             let memory_url = config["memory"]["baseUrl"]
                 .as_str()
@@ -554,7 +625,7 @@ mod tests {
                 std::time::Duration::from_millis(500)
             )
             .is_err());
-            assert!(runtime.config(&directory).is_err());
+            assert!(runtime.config(&directory, None).is_err());
             Ok::<(), String>(())
         })();
         let _ = fs::remove_dir_all(&directory);
@@ -570,7 +641,8 @@ mod tests {
         let path =
             std::env::temp_dir().join(format!("memmy-tauri-rust-e2e-{}", uuid::Uuid::new_v4()));
         let result = (|| {
-            let (mut child, url, token) = launch_development_memory(&path)?;
+            let (mut child, url, token) =
+                launch_development_memory(&path, &super::runtime_paths(None)?)?;
             let port: u16 = url.rsplit(':').next().unwrap().parse().unwrap();
             assert!(
                 memory_is_ready(port, &token),
@@ -625,7 +697,8 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("tauri-memory-supervisor-{}", uuid::Uuid::new_v4()));
         let result = (|| {
-            let (mut child, url, token) = super::launch_development_memory(&root)?;
+            let (mut child, url, token) =
+                super::launch_development_memory(&root, &super::runtime_paths(None)?)?;
             let port = url.rsplit(':').next().unwrap().parse::<u16>().unwrap();
             assert!(
                 super::memory_is_ready(port, &token),
@@ -662,7 +735,7 @@ mod tests {
         let supervisor = NativeRuntime::default();
         supervisor.stop();
         assert!(supervisor
-            .config(std::path::Path::new("/tmp/does-not-exist"))
+            .config(std::path::Path::new("/tmp/does-not-exist"), None)
             .is_err());
     }
 }

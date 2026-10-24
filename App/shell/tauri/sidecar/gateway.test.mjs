@@ -9,7 +9,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import { test } from 'node:test';
-const script=(name)=>new URL(`./${name}.mjs`,import.meta.url).pathname;
+import { fileURLToPath } from 'node:url';
+const script=(name)=>fileURLToPath(new URL(`./${name}.mjs`,import.meta.url));
 async function port(){const s=createServer(); await new Promise(r=>s.listen(0,'127.0.0.1',r)); const p=s.address().port; await new Promise(r=>s.close(r)); return p;}
 async function stop(child){if(!child||child.exitCode!==null)return; const wait=new Promise(r=>child.once('exit',r));child.stdin.end();await Promise.race([wait,new Promise((_,rej)=>setTimeout(()=>rej(Error('child stop timeout')),7000).unref())]);}
 async function waitMemory(child,url){for(let i=0;i<150;i++){if(child.exitCode!==null)throw Error('memory exited');const r=await fetch(url+'/api/v1/health').catch(()=>null);if(r?.ok && (await r.json()).storage?.ready)return;await new Promise(r=>setTimeout(r,120));}throw Error('memory timeout');}
