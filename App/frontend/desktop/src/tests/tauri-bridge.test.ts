@@ -11,6 +11,8 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
       return { directory: null, approvedDirectories: [], askBeforeDownload: args?.enabled === true };
     }
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
+    if (command === "desktop_save_file") return { canceled: false, filePath: "/tmp/export.txt", bytes: 3 };
+    if (command === "desktop_save_image") return { canceled: false, filePath: "/tmp/image.png", bytes: 8 };
     if (command === "desktop_remove_browser_history") return true;
     if (command === "desktop_remove_selected_browser_history") return 1;
     if (command === "desktop_import_legacy_browser_history") return true;
@@ -84,6 +86,16 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(invoke).toHaveBeenCalledWith("desktop_set_browser_access_rule", {origin:"https://example.com",decision:"allow"});
     await api.openExternal("https://memmy.bot/");
     await api.openMailto("mailto:team@example.com");
+    expect(await api.saveFile({ url: "https://example.test/file", name: "export.txt", data: new Uint8Array([1, 2, 3]) })).toEqual({
+      canceled: false, filePath: "/tmp/export.txt", bytes: 3
+    });
+    expect(invoke).toHaveBeenCalledWith("desktop_save_file", {
+      request: { url: "https://example.test/file", name: "export.txt", data: [1, 2, 3] }
+    });
+    await api.saveImage({ url: "https://example.test/image.png", data: new Uint8Array([137,80,78,71,13,10,26,10]) });
+    expect(invoke).toHaveBeenCalledWith("desktop_save_image", {
+      request: { url: "https://example.test/image.png", data: [137,80,78,71,13,10,26,10] }
+    });
     expect(await api.getMainWindowFullScreen()).toMatchObject({ isFullScreen: false });
     await api.completeMainWindowAction({ id: "00000000-0000-4000-8000-000000000001", resolution: "minimize" });
     await api.notifyTaskDone({ title: "Finished", body: "Agent completed", silent: true });
@@ -201,7 +213,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(50);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(52);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.getComputerHistoryPermissionSessionId).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
