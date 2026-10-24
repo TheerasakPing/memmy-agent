@@ -1,5 +1,6 @@
 //! Narrow, explicitly mapped native operations from the legacy desktop bridge.
 //! No arbitrary filesystem, shell command execution or renderer path input.
+use crate::native_workspace::{grant_root, WorkspaceGrants};
 use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::Path;
@@ -118,7 +119,10 @@ pub fn desktop_notify_update_available(
 }
 
 #[tauri::command]
-pub async fn desktop_select_project_directory(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn desktop_select_project_directory(
+    app: AppHandle,
+    grants: tauri::State<'_, WorkspaceGrants>,
+) -> Result<serde_json::Value, String> {
     let path =
         tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_folder())
             .await
@@ -129,6 +133,7 @@ pub async fn desktop_select_project_directory(app: AppHandle) -> Result<serde_js
             let folder = folder
                 .into_path()
                 .map_err(|_| "selected path was not a local folder")?;
+            grant_root(&grants, &folder)?;
             Ok(serde_json::json!({"canceled": false, "path": folder.to_string_lossy()}))
         }
     }
@@ -137,10 +142,11 @@ pub async fn desktop_select_project_directory(app: AppHandle) -> Result<serde_js
 #[tauri::command]
 pub async fn desktop_select_empty_project_directory(
     app: AppHandle,
+    grants: tauri::State<'_, WorkspaceGrants>,
 ) -> Result<serde_json::Value, String> {
     // Legacy selector allows existing folders; emptiness belongs to the
     // original renderer workflow, not to a silently changed native picker.
-    desktop_select_project_directory(app).await
+    desktop_select_project_directory(app, grants).await
 }
 
 #[cfg(test)]

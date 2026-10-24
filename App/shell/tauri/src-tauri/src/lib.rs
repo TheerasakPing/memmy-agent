@@ -1,8 +1,13 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+mod native_browser_store;
+mod native_diagnostics;
 mod native_os;
+mod native_pet;
 mod native_runtime;
+mod native_tray;
+mod native_workspace;
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use tauri_plugin_opener::OpenerExt;
 
@@ -47,11 +52,15 @@ async fn desktop_runtime_config(
     );
     #[cfg(debug_assertions)]
     let bundled_root: Option<std::path::PathBuf> = None;
-    tauri::async_runtime::spawn_blocking(move || {
+    let config = tauri::async_runtime::spawn_blocking(move || {
         runtime.config(&directory, bundled_root.as_deref())
     })
     .await
-    .map_err(|_| "native runtime supervisor failed".to_string())?
+    .map_err(|_| "native runtime supervisor failed".to_string())??;
+    if config["agentGateway"]["startupIssue"] == "model_config_invalid" {
+        let _ = app.emit("memmy:agent-gateway-startup-issue", "model_config_invalid");
+    }
+    Ok(config)
 }
 
 fn electron_compatible_platform() -> &'static str {
@@ -103,12 +112,46 @@ fn desktop_fullscreen(window: WebviewWindow) -> Result<serde_json::Value, String
     Ok(serde_json::json!({ "isFullScreen": is_full_screen }))
 }
 
+#[derive(Default)]
+struct PendingWindowAction(Mutex<Option<String>>);
+
+fn validate_pending_action(state: &PendingWindowAction, response_id: &str) -> Result<(), String> {
+    if uuid::Uuid::parse_str(response_id).is_err() {
+        return Err("invalid window action request identifier".into());
+    }
+    let mut pending = state
+        .0
+        .lock()
+        .map_err(|_| "window action lock unavailable")?;
+    if pending.as_deref() != Some(response_id) {
+        return Err("window action request was not pending".into());
+    }
+    *pending = None;
+    Ok(())
+}
+
 #[tauri::command]
-fn desktop_complete_window_action(window: WebviewWindow, resolution: String) -> Result<(), String> {
+fn desktop_complete_window_action(
+    window: WebviewWindow,
+    pending: tauri::State<'_, PendingWindowAction>,
+    response_id: String,
+    resolution: String,
+) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("only main window can resolve main action".into());
+    }
+    // Do not permit renderer to force quit/hide without a user-originating OS event.
+    validate_pending_action(&pending, &response_id)?;
     match resolution.as_str() {
-        "minimize" | "hide" => window.minimize().map_err(|_| "minimize failed".into()),
-        "close" | "quit" => window.close().map_err(|_| "close failed".into()),
-        _ => Err("window action not yet supported by Tauri parity layer".into()),
+        "minimize" => window.minimize().map_err(|_| "minimize failed".into()),
+        "hide" => window.hide().map_err(|_| "hide failed".into()),
+        "pet" => native_pet::desktop_set_pet_window(window.app_handle().clone(), true, None),
+        "close" => window.destroy().map_err(|_| "close failed".into()),
+        "quit" => {
+            window.app_handle().exit(0);
+            Ok(())
+        }
+        _ => Err("unsupported main window action".into()),
     }
 }
 
@@ -162,6 +205,9 @@ pub fn smoke_installed_runtime() -> i32 {
 pub fn run() {
     tauri::Builder::default()
         .manage(Arc::new(native_runtime::NativeRuntime::default()))
+        .manage(native_workspace::WorkspaceGrants::default())
+        .manage(native_tray::TrayState::default())
+        .manage(PendingWindowAction::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
@@ -170,12 +216,36 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_dialog::init())
         .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // Mirror the original Electron asynchronous close policy.
+                    // Closing without React approval would bypass unsaved-work/pet guidance.
+                    api.prevent_close();
+                    if let Some(pending) = window.app_handle().try_state::<PendingWindowAction>() {
+                        if let Ok(mut guard) = pending.0.lock() {
+                            if guard.is_none() {
+                                let id = uuid::Uuid::new_v4().to_string();
+                                *guard = Some(id.clone());
+                                let _ = window.emit(
+                                    "memmy:main-window-action-request",
+                                    serde_json::json!({"id":id,"action":"close"}),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
                 if let Some(runtime) = window
                     .app_handle()
                     .try_state::<Arc<native_runtime::NativeRuntime>>()
                 {
                     runtime.stop();
+                }
+            }
+            if window.label() == "pet" && matches!(event, tauri::WindowEvent::Destroyed) {
+                if let Some(main) = window.app_handle().get_webview_window("main") {
+                    let _ = main.show();
                 }
             }
             if window.label() == "main" && matches!(event, tauri::WindowEvent::Resized(_)) {
@@ -200,7 +270,28 @@ pub fn run() {
             native_os::desktop_set_launch_at_login,
             native_os::desktop_get_installation_id,
             native_os::desktop_select_project_directory,
-            native_os::desktop_select_empty_project_directory
+            native_os::desktop_select_empty_project_directory,
+            native_workspace::desktop_read_workspace_directory,
+            native_workspace::desktop_write_workspace_file,
+            native_diagnostics::desktop_get_log_level,
+            native_diagnostics::desktop_set_log_level,
+            native_diagnostics::desktop_open_logs_directory,
+            native_browser_store::desktop_get_browser_history,
+            native_browser_store::desktop_import_legacy_browser_history,
+            native_browser_store::desktop_remove_browser_history,
+            native_browser_store::desktop_remove_selected_browser_history,
+            native_browser_store::desktop_get_browser_access_rules,
+            native_browser_store::desktop_set_browser_access_rule,
+            native_browser_store::desktop_get_browser_download_settings,
+            native_browser_store::desktop_choose_browser_download_directory,
+            native_browser_store::desktop_reset_browser_download_directory,
+            native_browser_store::desktop_set_browser_ask_before_download,
+            native_pet::desktop_set_pet_window,
+            native_pet::desktop_hide_pet_window,
+            native_pet::desktop_sync_pet_window_layout,
+            native_pet::desktop_start_pet_window_drag,
+            native_tray::desktop_set_menu_bar_icon,
+            native_tray::desktop_set_computer_history_tray_indicator
         ])
         .run(tauri::generate_context!())
         .expect("Memmy Turbo Tauri shell failed");
@@ -208,7 +299,20 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{electron_compatible_platform, is_loopback_runtime_config};
+    use super::{
+        electron_compatible_platform, is_loopback_runtime_config, validate_pending_action,
+        PendingWindowAction,
+    };
+
+    #[test]
+    fn close_action_requires_exact_unconsumed_main_window_nonce() {
+        let pending = PendingWindowAction::default();
+        let id = uuid::Uuid::new_v4().to_string();
+        *pending.0.lock().unwrap() = Some(id.clone());
+        assert!(validate_pending_action(&pending, &uuid::Uuid::new_v4().to_string()).is_err());
+        assert!(validate_pending_action(&pending, &id).is_ok());
+        assert!(validate_pending_action(&pending, &id).is_err());
+    }
 
     #[test]
     fn reports_electron_compatible_platform_contract() {

@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 16,
-    "remainingMethods": 69,
+    "nativeMethods": 40,
+    "remainingMethods": 45,
     "routes": 14
   },
   "routes": [
@@ -87,8 +87,8 @@
     },
     {
       "name": "onAgentGatewayStartupIssue",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getAppInfo",
@@ -137,23 +137,23 @@
     },
     {
       "name": "getBrowserHistory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "importLegacyBrowserHistory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "removeBrowserHistory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "removeSelectedBrowserHistory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "revealBrowserExtension",
@@ -217,33 +217,33 @@
     },
     {
       "name": "getBrowserDownloadSettings",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "chooseBrowserDownloadDirectory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "resetBrowserDownloadDirectory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setBrowserAskBeforeDownload",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getBrowserAccessRules",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setBrowserAccessRule",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getBrowserUseSitePolicies",
@@ -337,8 +337,8 @@
     },
     {
       "name": "openLogsDirectory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "exportDiagnosticsReport",
@@ -347,13 +347,13 @@
     },
     {
       "name": "getLogLevel",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setLogLevel",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getLaunchAtLogin",
@@ -392,13 +392,13 @@
     },
     {
       "name": "readWorkspaceDirectory",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "writeWorkspaceFile",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "notifyTaskDone",
@@ -412,18 +412,18 @@
     },
     {
       "name": "setPetWindow",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "hidePetWindow",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "onRouteTargetRequest",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "onEmbeddedBrowserOpen",
@@ -447,18 +447,18 @@
     },
     {
       "name": "setMenuBarIcon",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setComputerHistoryTrayIndicator",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "onMainWindowActionRequest",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "getMainWindowFullScreen",
@@ -482,8 +482,8 @@
     },
     {
       "name": "startPetWindowDrag",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "stopPetWindowDrag",
@@ -492,8 +492,8 @@
     },
     {
       "name": "syncPetWindowLayout",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "sendAnalyticsClientId",
