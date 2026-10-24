@@ -515,6 +515,7 @@ fn launch_development_gateway(
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_DEV_GATEWAY", "1")
+        .env("MEMMY_NATIVE_APP_ALLOW_ALL_FILE", data_dir.join("computer-use/allow-all-apps.json"))
         .env("MEMMY_TAURI_GATEWAY_WS_PORT", ws_port.to_string())
         .env("MEMMY_TAURI_GATEWAY_HEALTH_PORT", health_port.to_string())
         .env("MEMMY_MEMORY_URL", memory_url)
