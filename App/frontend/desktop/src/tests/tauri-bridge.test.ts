@@ -84,6 +84,12 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     await api.completeMainWindowAction({ id: "00000000-0000-4000-8000-000000000001", resolution: "minimize" });
     await api.notifyTaskDone({ title: "Finished", body: "Agent completed", silent: true });
     await api.notifyUpdateAvailable({ title: "Update", body: "New build", silent: false });
+    const rule = { pattern: "https://example.org", access: "ask", downloads: "block", uploads: "ask", fullCdp: "block" } as const;
+    await api.getBrowserUseSitePolicies?.();
+    await api.upsertBrowserUseSitePolicy?.(rule);
+    await api.removeBrowserUseSitePolicy?.("https://example.org");
+    expect(invoke).toHaveBeenCalledWith("desktop_upsert_browser_use_site_policy", { rule });
+    expect(invoke).toHaveBeenCalledWith("desktop_remove_browser_use_site_policy", { pattern: "https://example.org" });
     await api.setLaunchAtLogin(true);
     expect(await api.getLaunchAtLogin()).toBe(true);
     expect(await api.getInstallationId()).toMatch(/00000000-0000/);
@@ -166,7 +172,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(40);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(43);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.movePetWindow).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
