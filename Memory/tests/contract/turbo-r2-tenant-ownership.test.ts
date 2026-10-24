@@ -96,6 +96,33 @@ describe("R2 scoped tenant ownership — local shared-memory unchanged", () => {
       });
       expect(spoofedBody.status).toBe(403);
 
+      // Legacy records without durable tenant ownership cannot be claimed
+      // simply by presenting a scoped token with the same user/project.
+      const legacy = service.addMemory({
+        requestId: "legacy-tenant-unowned",
+        adapterId: "r2-legacy-unowned",
+        layer: "L2",
+        content: "Pre-tenant local record",
+        deferProcessing: true,
+        namespace: { source: "codex", profileId: "default", userId: "same-person", projectId: "shared-project" }
+      });
+      const legacyReadAsScoped = await send("GET", `/memory/${legacy.id}`, "owner-key");
+      expect(legacyReadAsScoped.status).toBe(403);
+
+      // Session creation uses the same adapter/request IDs but separate tenant
+      // identity; no tenant may resume another tenant's idempotent session.
+      const opening = {
+        requestId: "r2-open-collision",
+        adapterId: "r2-shared-adapter"
+      };
+      const ownerOpen = await send("POST", "/sessions/open", "owner-key", opening);
+      const intruderOpen = await send("POST", "/sessions/open", "intruder-key", opening);
+      expect(ownerOpen.status).toBe(200);
+      expect(intruderOpen.status).toBe(200);
+      const openedA = await ownerOpen.json() as { sessionId: string };
+      const openedB = await intruderOpen.json() as { sessionId: string };
+      expect(openedA.sessionId).not.toBe(openedB.sessionId);
+
       const ownerDelete = await send("DELETE", `/memory/${created.id}`, "owner-key", {});
       expect(ownerDelete.status).toBe(200);
     } finally {
