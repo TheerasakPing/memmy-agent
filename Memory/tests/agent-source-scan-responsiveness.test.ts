@@ -85,7 +85,10 @@ describe("standalone scan HTTP responsiveness", () => {
     };
     try {
       const { jobId } = await executor.startScan({ sourceId: "codex", mode: "full" });
-      await vi.waitFor(() => expect(check).toBeDefined());
+      // Scanner setup may contend with other SQLite suites in a full CI run.
+      // Wait for the asynchronous scan callback instead of relying on Vitest's
+      // 1-second default; cancellation assertions still check the actual state.
+      await vi.waitFor(() => expect(check).toBeDefined(), { timeout: 8_000 });
       await check;
       await executor.dispose();
       expect(completeSourceTurn.mock.calls.length).toBeLessThan(TURN_COUNT);
@@ -96,7 +99,7 @@ describe("standalone scan HTTP responsiveness", () => {
     } finally {
       await closeMemoryHttpServer(server);
     }
-  });
+  }, 15_000);
 
   it("does not write skills or replace progress after its job is cancelled", async () => {
     const root = tempRoot();

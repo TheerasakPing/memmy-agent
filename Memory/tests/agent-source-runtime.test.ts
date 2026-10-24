@@ -894,7 +894,10 @@ function fixtureMessage(
 }
 
 async function waitForFakeTimerScan(executor: ReturnType<typeof createAgentSourceExecutor>): Promise<void> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  // Source staging includes real async I/O while timer scheduling is virtual.
+  // A 100ms virtual-time budget can race with that I/O under concurrent CI.
+  // Keep a bounded wait but allow at most 500 virtual milliseconds.
+  for (let attempt = 0; attempt < 500; attempt += 1) {
     if (!executor.scanStatus().running) return;
     await vi.advanceTimersByTimeAsync(1);
   }

@@ -494,7 +494,9 @@ export class SessionTurnService {
       return this.deps.openSessionNoWrite(request);
     }
     const idempotencyKey = request.adapterId && request.requestId
-      ? `session.open:${request.adapterId}:${request.requestId}`
+      ? `session.open:${request.namespace?.tenantId
+        ? `tenant.${stableHash([request.namespace.tenantId, request.namespace.userId ?? null, request.namespace.projectId ?? null]).slice(0, 24)}:`
+        : ""}${request.adapterId}:${request.requestId}`
       : undefined;
     const requestHash = stableHash({ operation: "session.open", request });
     if (idempotencyKey) {
@@ -601,7 +603,10 @@ export class SessionTurnService {
       status: "open" as const,
       meta: {
         ...sanitizedSessionMeta(request.meta),
-        ...(request.timeZone ? { time_zone: request.timeZone } : {})
+        ...(request.timeZone ? { time_zone: request.timeZone } : {}),
+        // Persist tenant ownership for episodes, raw turns and later memory
+        // derived from this session without adding a breaking SQL migration.
+        ...(namespace.tenantId ? { memmy_tenant_id: namespace.tenantId } : {})
       },
       openedAt: at,
       lastSeenAt: at,
@@ -716,7 +721,10 @@ export class SessionTurnService {
         hostSessionKey: namespace.sessionKey,
         conversationId: this.deps.stringFromMeta(request.meta, "conversationId"),
         status: "open",
-        meta: v2SessionMeta(request, workspace, request.timeZone),
+        meta: {
+          ...v2SessionMeta(request, workspace, request.timeZone),
+          ...(namespace.tenantId ? { memmy_tenant_id: namespace.tenantId } : {})
+        },
         openedAt: at,
         lastSeenAt: at,
         updatedAt: at
@@ -1658,8 +1666,13 @@ export class SessionTurnService {
       return this.deps.completeTurnNoWrite(turnId, request);
     }
     const startedAt = Date.now();
+    const completionSession = request.sessionId ? this.deps.repos.runtime.getSession(request.sessionId) : undefined;
+    const turnTenantId = request.namespace?.tenantId
+      ?? (typeof completionSession?.meta.memmy_tenant_id === "string" ? completionSession.meta.memmy_tenant_id : undefined);
     const idempotencyKey = !sourceTurn && request.adapterId && request.requestId
-      ? `turn.complete:${request.adapterId}:${request.requestId}`
+      ? `turn.complete:${turnTenantId
+        ? `tenant.${stableHash([turnTenantId, completionSession?.userId ?? request.namespace?.userId ?? null, completionSession?.projectId ?? request.namespace?.projectId ?? null]).slice(0, 24)}:`
+        : ""}${request.adapterId}:${request.requestId}`
       : undefined;
     const requestHash = stableHash({
       turnId,

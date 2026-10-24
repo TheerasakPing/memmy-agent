@@ -1380,7 +1380,7 @@ function authenticate(
     return {
       kind: "cloud",
       tokenId: stableTokenId(candidate!),
-      namespace: mergeNamespaces(cloudNamespace, namespaceFromRequest(request, url)),
+      namespace: authenticatedNamespaceWithHeaders(cloudNamespace, namespaceFromRequest(request, url)),
       authenticatedNamespace: cloudNamespace,
       scopes: ["*"]
     };
@@ -1390,7 +1390,7 @@ function authenticate(
     return {
       kind: "scoped",
       tokenId: stableTokenId(candidate!),
-      namespace: mergeNamespaces(scoped.namespace, namespaceFromRequest(request, url)),
+      namespace: authenticatedNamespaceWithHeaders(scoped.namespace, namespaceFromRequest(request, url)),
       authenticatedNamespace: scoped.namespace,
       scopes: scoped.scopes ?? ["memory:read", "memory:write"]
     };
@@ -1517,6 +1517,10 @@ function envelopeWithPrincipal<T extends Record<string, unknown>>(
   principal: AuthPrincipal
 ): T & RequestEnvelope {
   const existing = isRecord(body.namespace) ? body.namespace as unknown as RuntimeNamespace : undefined;
+  // A request body may not override the tenant identity fixed by a scoped key.
+  if (principal.authenticatedNamespace?.tenantId) {
+    assertAuthenticatedTenantFields(existing, principal.authenticatedNamespace);
+  }
   const namespace = mergeNamespaces(mergeNamespaces(namespaceFromSource(body.source), existing), principal.namespace);
   assertNamespaceScope(existing, principal.namespace);
   return {
@@ -1606,6 +1610,28 @@ function namespaceFromSource(source: unknown): RuntimeNamespace | undefined {
     source: source.trim(),
     profileId: "default"
   };
+}
+
+function assertAuthenticatedTenantFields(
+  requested: RuntimeNamespace | undefined,
+  authenticated: RuntimeNamespace
+): void {
+  for (const field of ["tenantId", "userId", "projectId"] as const) {
+    const actual = requested?.[field];
+    const expected = authenticated[field];
+    if (actual && actual !== expected) {
+      throw new MemoryServiceError("forbidden", `namespace.${field} conflicts with authenticated tenant`);
+    }
+  }
+}
+
+function authenticatedNamespaceWithHeaders(
+  authenticated: RuntimeNamespace,
+  requested: RuntimeNamespace | undefined
+): RuntimeNamespace {
+  if (authenticated.tenantId) assertAuthenticatedTenantFields(requested, authenticated);
+  // Authenticated identity always wins over user-supplied HTTP headers.
+  return mergeNamespaces(requested, authenticated)!;
 }
 
 function mergeNamespaces(

@@ -24,16 +24,22 @@ export const IMPORT_DEFAULT_PRIORITY = 0.5;
 const IMPORT_TOOL_PAYLOAD_MAX_CHARS = 20_000;
 
 export function memoryAddKey(request: MemoryAddRequest, layer: MemoryLayer, title: string): string {
+  // Do not alter legacy local identifiers, but tenant-owned records must not
+  // upsert into another tenant's memory when requestId/content/skill IDs match.
+  const tenant = request.namespace?.tenantId;
+  const scope = tenant
+    ? `tenant.${stableHash([tenant, request.namespace?.userId ?? null, request.namespace?.projectId ?? null]).slice(0, 24)}:`
+    : "";
   if (layer === "Skill" && request.sourceAgentId && (request.sourceSkillId || request.sourceSkillPath)) {
-    return `skill.import:${stableHash([
+    return scope + `skill.import:${stableHash([
       request.sourceAgentId,
       request.sourceSkillId ?? request.sourceSkillPath,
       request.sourceContentHash ?? request.sourceSkillVersion ?? stableHash(request.content)
     ]).slice(0, 20)}`;
   }
-  if (isAgentSourceImportMemoryAdd(request) && request.adapterId && request.turnId) return `memory.add:${request.adapterId}:turn:${request.turnId}`;
-  if (request.adapterId && request.requestId) return `memory.add:${request.adapterId}:${request.requestId}`;
-  return `manual:${stableHash(`${layer}:${title}:${request.content}`).slice(0, 20)}`;
+  if (isAgentSourceImportMemoryAdd(request) && request.adapterId && request.turnId) return scope + `memory.add:${request.adapterId}:turn:${request.turnId}`;
+  if (request.adapterId && request.requestId) return scope + `memory.add:${request.adapterId}:${request.requestId}`;
+  return scope + `manual:${stableHash(`${layer}:${title}:${request.content}`).slice(0, 20)}`;
 }
 
 export function memoryAddTags(request: MemoryAddRequest, importTrace: boolean, traceTags: string[] = []): string[] {
