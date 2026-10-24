@@ -601,7 +601,10 @@ export class SessionTurnService {
       status: "open" as const,
       meta: {
         ...sanitizedSessionMeta(request.meta),
-        ...(request.timeZone ? { time_zone: request.timeZone } : {})
+        ...(request.timeZone ? { time_zone: request.timeZone } : {}),
+        // Persist tenant ownership for episodes, raw turns and later memory
+        // derived from this session without adding a breaking SQL migration.
+        ...(namespace.tenantId ? { memmy_tenant_id: namespace.tenantId } : {})
       },
       openedAt: at,
       lastSeenAt: at,
