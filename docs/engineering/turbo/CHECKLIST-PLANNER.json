@@ -416,7 +416,7 @@
       "independent_reviewer": "LEAD",
       "qa_agent": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "acceptance_criteria": "Cross-tenant mutations denied, local flow intact",
       "required_evidence": [
         "changes_or_static_findings",
@@ -436,7 +436,12 @@
         "R2.02"
       ],
       "release_blocking": true,
-      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3"
+      "phase_epic_url": "https://github.com/TheerasakPing/memmy-agent/issues/3",
+      "github_issue": "https://github.com/TheerasakPing/memmy-agent/issues/18",
+      "evidence_links": [
+        "https://github.com/TheerasakPing/memmy-agent/pull/24"
+      ],
+      "evidence_note": "Tenant metadata + read/governance boundaries implemented in draft; selected HTTP/DB regression tests committed but CI not yet observed; Search/Panel/SSE/Export still uncovered; release blocked"
     },
     {
       "id": "R2.04",
@@ -1835,5 +1840,5 @@
   ],
   "issue_tracking": "GitHub Issues enabled: Phase epics #2-6; R1 individual work tasks #7-16; R2-R5 tasks remain in phase epics until execution",
   "r1_security_pr": "https://github.com/TheerasakPing/memmy-agent/pull/17",
-  "latest_status_note": "R1 audit ongoing; draft PRs #1 #17 #20 #21 #22 #23, no product main merge and no human QA/Supervisor acceptance"
+  "latest_status_note": "R1 full baseline last run failed Desktop tests. R2.03 has draft PR #24 but no observed CI run, no independent QA/LEAD approval; main unchanged."
 }
