@@ -494,7 +494,9 @@ export class SessionTurnService {
       return this.deps.openSessionNoWrite(request);
     }
     const idempotencyKey = request.adapterId && request.requestId
-      ? `session.open:${request.adapterId}:${request.requestId}`
+      ? `session.open:${request.namespace?.tenantId
+        ? `tenant.${stableHash([request.namespace.tenantId, request.namespace.userId ?? null, request.namespace.projectId ?? null]).slice(0, 24)}:`
+        : ""}${request.adapterId}:${request.requestId}`
       : undefined;
     const requestHash = stableHash({ operation: "session.open", request });
     if (idempotencyKey) {
@@ -1664,8 +1666,13 @@ export class SessionTurnService {
       return this.deps.completeTurnNoWrite(turnId, request);
     }
     const startedAt = Date.now();
+    const completionSession = request.sessionId ? this.deps.repos.runtime.getSession(request.sessionId) : undefined;
+    const turnTenantId = request.namespace?.tenantId
+      ?? (typeof completionSession?.meta.memmy_tenant_id === "string" ? completionSession.meta.memmy_tenant_id : undefined);
     const idempotencyKey = !sourceTurn && request.adapterId && request.requestId
-      ? `turn.complete:${request.adapterId}:${request.requestId}`
+      ? `turn.complete:${turnTenantId
+        ? `tenant.${stableHash([turnTenantId, completionSession?.userId ?? request.namespace?.userId ?? null, completionSession?.projectId ?? request.namespace?.projectId ?? null]).slice(0, 24)}:`
+        : ""}${request.adapterId}:${request.requestId}`
       : undefined;
     const requestHash = stableHash({
       turnId,
