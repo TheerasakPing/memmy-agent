@@ -220,6 +220,7 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -283,6 +284,8 @@ pub fn run() {
             native_diagnostics::desktop_open_logs_directory,
             native_file_export::desktop_save_file,
             native_file_export::desktop_save_image,
+            native_file_export::desktop_copy_image_to_clipboard,
+            native_file_export::desktop_export_diagnostics_report,
             native_browser_store::desktop_get_browser_history,
             native_browser_store::desktop_import_legacy_browser_history,
             native_browser_store::desktop_remove_browser_history,

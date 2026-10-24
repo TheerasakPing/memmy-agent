@@ -50,6 +50,8 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "openMailto",
   "saveFile",
   "saveImage",
+  "copyImageToClipboard",
+  "exportDiagnosticsReport",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -119,6 +121,9 @@ export function installTauriBridge(host: TauriWindow): boolean {
       if (lastStartupIssue) callback(lastStartupIssue);
       return () => { startupIssues.delete(callback); };
     },
+    exportDiagnosticsReport: () =>
+      invoke<{ canceled: true } | { canceled: false; exportPath: string; bytes: number }>(
+        "desktop_export_diagnostics_report"),
     getLogLevel: () => invoke<"error" | "warn" | "info" | "debug">("desktop_get_log_level"),
     setLogLevel: (level: "error" | "warn" | "info" | "debug") => invoke<void>("desktop_set_log_level", { level }),
     openLogsDirectory: () => invoke<void>("desktop_open_logs_directory"),
@@ -179,6 +184,10 @@ export function installTauriBridge(host: TauriWindow): boolean {
     saveFile: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
       invoke<import("@memmy/desktop-interface").DesktopImageSaveResult>(
         "desktop_save_file", { request: { ...request, data: request.data ? Array.from(request.data) : undefined } }),
+    copyImageToClipboard: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
+      invoke<void>("desktop_copy_image_to_clipboard", {
+        request: { ...request, data: request.data ? Array.from(request.data) : undefined }
+      }),
     saveImage: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
       invoke<import("@memmy/desktop-interface").DesktopImageSaveResult>(
         "desktop_save_image", { request: { ...request, data: request.data ? Array.from(request.data) : undefined } }),

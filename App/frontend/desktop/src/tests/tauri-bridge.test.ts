@@ -11,6 +11,7 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
       return { directory: null, approvedDirectories: [], askBeforeDownload: args?.enabled === true };
     }
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
+    if (command === "desktop_export_diagnostics_report") return { canceled: false, exportPath: "/tmp/diagnostics.txt", bytes: 12 };
     if (command === "desktop_save_file") return { canceled: false, filePath: "/tmp/export.txt", bytes: 3 };
     if (command === "desktop_save_image") return { canceled: false, filePath: "/tmp/image.png", bytes: 8 };
     if (command === "desktop_remove_browser_history") return true;
@@ -91,6 +92,13 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     });
     expect(invoke).toHaveBeenCalledWith("desktop_save_file", {
       request: { url: "https://example.test/file", name: "export.txt", data: [1, 2, 3] }
+    });
+    await api.copyImageToClipboard({ url: "https://example.test/image.png", data: new Uint8Array([1, 2]) });
+    expect(invoke).toHaveBeenCalledWith("desktop_copy_image_to_clipboard", {
+      request: { url: "https://example.test/image.png", data: [1, 2] }
+    });
+    expect(await api.exportDiagnosticsReport()).toEqual({
+      canceled: false, exportPath: "/tmp/diagnostics.txt", bytes: 12
     });
     await api.saveImage({ url: "https://example.test/image.png", data: new Uint8Array([137,80,78,71,13,10,26,10]) });
     expect(invoke).toHaveBeenCalledWith("desktop_save_image", {
@@ -213,7 +221,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(52);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(54);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.getComputerHistoryPermissionSessionId).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
