@@ -22,6 +22,7 @@ export type TauriWindow = Window & { __TAURI__?: TauriGlobal };
 export const TAURI_NATIVE_BRIDGE_METHODS = [
   "notifyRendererReady",
   "getRuntimeConfig",
+  "onAgentGatewayStartupIssue",
   "getAppInfo",
   "checkForUpdates",
   "getInstallationId",
@@ -42,6 +43,16 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "setComputerHistoryTrayIndicator",
   "openExternal",
   "openMailto",
+  "getBrowserHistory",
+  "importLegacyBrowserHistory",
+  "removeBrowserHistory",
+  "removeSelectedBrowserHistory",
+  "getBrowserDownloadSettings",
+  "chooseBrowserDownloadDirectory",
+  "resetBrowserDownloadDirectory",
+  "setBrowserAskBeforeDownload",
+  "getBrowserAccessRules",
+  "setBrowserAccessRule",
   "getMainWindowFullScreen",
   "onMainWindowFullScreenChanged",
   "onMainWindowActionRequest",
@@ -65,13 +76,34 @@ export function installTauriBridge(host: TauriWindow): boolean {
   // This is deliberately a partial migration of the *existing* bridge.
   // Unported optional methods are absent so their UI controls can gate off;
   // R2/R5 release gates require full contract parity before shipping.
+  type GatewayIssue = "model_config_invalid";
+  const startupIssues = new Set<(issue: GatewayIssue) => void>();
+  let lastStartupIssue: GatewayIssue | undefined;
+  const publishStartupIssue = (issue: unknown) => {
+    if (issue !== "model_config_invalid") return;
+    lastStartupIssue = issue;
+    for (const listener of startupIssues) listener(issue);
+  };
+  // Subscribe before invoking the startup runtime to prevent losing an early event.
+  if (tauri.event?.listen) {
+    void tauri.event.listen("memmy:agent-gateway-startup-issue", (event) => publishStartupIssue(event.payload));
+  }
   const bridge = {
     platform: desktopPlatform(host.navigator.userAgent),
     osRelease: "",
     notifyRendererReady(): void {
       // The webview exists before this React entrypoint mounts.
     },
-    getRuntimeConfig: () => invoke("desktop_runtime_config"),
+    getRuntimeConfig: async () => {
+      const config = await invoke<{ agentGateway?: { startupIssue?: GatewayIssue } }>("desktop_runtime_config");
+      publishStartupIssue(config?.agentGateway?.startupIssue);
+      return config;
+    },
+    onAgentGatewayStartupIssue: (callback: (issue: GatewayIssue) => void) => {
+      startupIssues.add(callback);
+      if (lastStartupIssue) callback(lastStartupIssue);
+      return () => { startupIssues.delete(callback); };
+    },
     getAppInfo: () => invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["getAppInfo"]>>>("desktop_app_info"),
     checkForUpdates: () => invoke("desktop_check_for_updates"),
     getInstallationId: () => invoke<string>("desktop_get_installation_id"),
@@ -88,6 +120,18 @@ export function installTauriBridge(host: TauriWindow): boolean {
         "desktop_read_workspace_directory", { rootPath, relativePath }),
     writeWorkspaceFile: (rootPath: string, filePath: string, contents: string) =>
       invoke<void>("desktop_write_workspace_file", { rootPath, filePath, contents }),
+    getBrowserHistory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserHistory"]>>>>("desktop_get_browser_history"),
+    importLegacyBrowserHistory: (entries: Parameters<NonNullable<NonNullable<Window["memmy"]>["importLegacyBrowserHistory"]>>[0]) =>
+      invoke<boolean>("desktop_import_legacy_browser_history", { entries }),
+    removeBrowserHistory: (url: string) => invoke<boolean>("desktop_remove_browser_history", { url }),
+    removeSelectedBrowserHistory: (urls: string[]) => invoke<number>("desktop_remove_selected_browser_history", { urls }),
+    getBrowserDownloadSettings: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserDownloadSettings"]>>>>("desktop_get_browser_download_settings"),
+    chooseBrowserDownloadDirectory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["chooseBrowserDownloadDirectory"]>>>>("desktop_choose_browser_download_directory"),
+    resetBrowserDownloadDirectory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["resetBrowserDownloadDirectory"]>>>>("desktop_reset_browser_download_directory"),
+    setBrowserAskBeforeDownload: (enabled: boolean) => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["setBrowserAskBeforeDownload"]>>>>("desktop_set_browser_ask_before_download", { enabled }),
+    getBrowserAccessRules: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserAccessRules"]>>>>("desktop_get_browser_access_rules"),
+    setBrowserAccessRule: (origin: string, decision: "allow" | "deny" | "ask") =>
+      invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["setBrowserAccessRule"]>>>>("desktop_set_browser_access_rule", { origin, decision }),
     openExternal: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     openMailto: (url: string) => invoke<void>("desktop_open_external", { address: url }),
     getMainWindowFullScreen: () => invoke<{ isFullScreen: boolean }>("desktop_fullscreen"),

@@ -80,7 +80,7 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "A3 Rust + React bridge code 26/85 declared methods, up from 16/85. Workspace read/write native grant checks; floating Pet basic window/show/drag, tray icon/recording tooltip, main close nonce and React IPC. 59 missing; no automatic completion until native GUI E2E and independent review."
+      "progressNote": "A3/A4 Tauri bridge now 36/85 mapped (+10 Browser history, origin rules and native download folder preferences). Real Rust 16/16 and React bridge 5/5 PASS; independent A1/A5/LEAD approvals and browser GUI E2E missing. 49 APIs remain."
     },
     {
       "id": "T1.02",
@@ -109,7 +109,7 @@
       "independentReviewer": "A3",
       "qa": "A5",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",
@@ -120,7 +120,7 @@
         "qa_approval",
         "supervisor_signoff"
       ],
-      "progressNote": "Browser/Computer Use Electron session and permission functionality still not ported; security-critical P0 backlog."
+      "progressNote": "Browser storage and settings slice implemented with private atomic Rust persistence and native picker, but no embedded browser/CDP navigation or computer-use permission execution; full Browser native security QA not approved."
     },
     {
       "id": "T2.01",
