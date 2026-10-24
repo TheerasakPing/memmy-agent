@@ -78,7 +78,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "26/85 Rust+React bridge methods mapped with real native workspace I/O and basic Pet/Tray; remaining 59 NOT ported. No independent security or GUI E2E signoff."
     },
     {
       "id": "T1.02",
@@ -97,7 +98,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "Dedicated transparent Tauri Pet webview, runtime layout/drag start, OS tray icon and tooltip; Electron-equivalent pointer movement / recording visual / full window lifecycle E2E pending."
     },
     {
       "id": "T1.03",
@@ -116,7 +118,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "Browser/Computer Use Electron session and permission functionality still not ported; security-critical P0 backlog."
     },
     {
       "id": "T2.01",
@@ -274,7 +277,7 @@
       "independentReviewer": "A1",
       "qa": "A6",
       "supervisor": "LEAD",
-      "status": "BACKLOG",
+      "status": "IN_PROGRESS",
       "requiredEvidence": [
         "commit_sha",
         "unit_and_contract",
@@ -284,7 +287,8 @@
         "independent_review",
         "qa_approval",
         "supervisor_signoff"
-      ]
+      ],
+      "progressNote": "Mac real Chromium three UI preview screenshots + mocked Tauri JS IPC smoke PASS. Actual Tauri WebKit full 14-route functional E2E and independently approved pixel parity NOT done."
     }
   ]
 }
