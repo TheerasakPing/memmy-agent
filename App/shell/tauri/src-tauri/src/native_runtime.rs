@@ -284,41 +284,45 @@ impl NativeRuntime {
         } else {
             None
         };
-        let backend_result = launch_development_backend(
-            data_dir,
-            memory
-                .as_ref()
-                .map(|(_, url, token)| (url.as_str(), token.as_str())),
-            &paths,
-        );
+        // Memory is authoritative; once healthy, Backend and Gateway are independent
+        // consumers of its loopback endpoint. Start both in parallel to avoid
+        // serial Node startup latency. Join before publishing either handle, so
+        // a failed startup still shuts down every managed child.
+        let (backend_result, gateway_result) = std::thread::scope(|scope| {
+            let gateway_job = if manage_gateway {
+                let (_, url, token) = memory.as_ref().expect("managed gateway requires Memory");
+                let surfaces = self.browser_surfaces.clone();
+                let gateway_paths = paths.clone();
+                let event_app = self.event_app.lock().ok().and_then(|app| app.clone());
+                Some(scope.spawn(move || {
+                    launch_development_gateway(data_dir, url, token, &gateway_paths, surfaces, event_app)
+                }))
+            } else {
+                None
+            };
+            let backend = launch_development_backend(
+                data_dir,
+                memory.as_ref().map(|(_, url, token)| (url.as_str(), token.as_str())),
+                &paths,
+            );
+            let gateway = gateway_job.map(|job| job.join().unwrap_or_else(|_| Err("Agent Gateway startup thread panicked".into())));
+            (backend, gateway)
+        });
+        if let Some(Err(error)) = gateway_result.as_ref() {
+            if let Ok((mut child, _)) = backend_result {
+                stop_child(&mut child);
+            }
+            if let Some((mut process, _, _)) = memory.take() {
+                stop_child(&mut process);
+            }
+            return Err(error.clone());
+        }
         match backend_result {
-            Ok((mut child, mut config)) => {
+            Ok((child, mut config)) => {
                 let mut gateway = None;
-                if manage_gateway {
-                    let Some((_, url, token)) = memory.as_ref() else {
-                        stop_child(&mut child);
-                        return Err("Tauri Agent requires managed Memory".into());
-                    };
-                    match launch_development_gateway(
-                        data_dir,
-                        url,
-                        token,
-                        &paths,
-                        self.browser_surfaces.clone(),
-                        self.event_app.lock().ok().and_then(|app| app.clone()),
-                    ) {
-                        Ok((process, metadata)) => {
-                            config["agentGateway"] = metadata;
-                            gateway = Some(process);
-                        }
-                        Err(err) => {
-                            stop_child(&mut child);
-                            if let Some((mut process, _, _)) = memory.take() {
-                                stop_child(&mut process);
-                            }
-                            return Err(err);
-                        }
-                    }
+                if let Some(Ok((process, metadata))) = gateway_result {
+                    config["agentGateway"] = metadata;
+                    gateway = Some(process);
                 }
                 state.process = Some(child);
                 state.memory_export_auth = memory
@@ -333,6 +337,9 @@ impl NativeRuntime {
                 Ok(config)
             }
             Err(err) => {
+                if let Some(Ok((mut process, _))) = gateway_result {
+                    stop_child(&mut process);
+                }
                 if let Some((mut process, _, _)) = memory.take() {
                     stop_child(&mut process);
                 }
