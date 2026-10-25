@@ -65,6 +65,26 @@ for (const relative of [
   console.log(`Bundling ${relative}`);
   await copy(relative);
 }
+// Tauri resource bundling does not retain npm workspace symlinks. Even when
+// a source-tree .app passes smoke, Node can silently resolve a missing package
+// from checkout ancestor node_modules. Materialize real copies of the compiled
+// first-party runtime packages INSIDE bundled node_modules/@memmy.
+for (const [name, source] of Object.entries({
+  'agent-source-core': 'AgentSourceCore',
+  knowledge: 'Knowledge',
+  migrations: 'Migrations',
+  'local-api-contracts': 'App/backend/local-api-contracts',
+  'desktop-interface': 'App/shell/desktop/interface',
+  memory: 'Memory',
+  backend: 'App/backend',
+})) {
+  const base = join(stage, 'node_modules/@memmy', name);
+  const sourceRoot = join(stage, source);
+  await rm(base, {recursive:true, force:true});
+  await mkdir(join(base, 'dist'), {recursive:true});
+  await copyFile(join(sourceRoot,'package.json'), join(base,'package.json'));
+  run('rsync',['-a',join(sourceRoot,'dist')+'/',join(base,'dist')+'/']);
+}
 // npm workspaces may contain symlinks into the checkout. Copy the *contents*
 // of both the root and Agent-private dependency trees; stage auditor rejects
 // any link that would leave the relocatable app. Do not ship the host symlink

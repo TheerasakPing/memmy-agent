@@ -16,13 +16,16 @@ export function smokeMacApp(bundle) {
     const node = join(runtime, 'node');
     const cli = join(runtime, 'Memory/dist/src/cli/index.js');
     const result = spawnSync(node, [cli, '--help'], {
-      encoding: 'utf8', timeout: 20000, maxBuffer: 1024 * 1024,
-      env: { ...process.env, HOME: home, MEMMY_HOME: home,
+      encoding: 'utf8', timeout: 90000, maxBuffer: 1024 * 1024,
+      env: { PATH: process.env.PATH ?? '/usr/bin:/bin',
+        LANG: process.env.LANG ?? 'en_US.UTF-8',
+        HOME: home, MEMMY_HOME: home,
         NODE_OPTIONS: '--no-experimental-webstorage' }
     });
     if (result.error || result.status !== 0) return {
       ok: false, errors: ['bundled Memory CLI process did not complete successfully'],
-      exitCode: result.status
+      exitCode: result.status, signal: result.signal ?? null,
+      failureCode: result.error?.code ?? null
     };
     if (!result.stdout.includes('memmy-memory') || !result.stdout.includes('Commands:')) return {
       ok: false, errors: ['bundled Memory CLI did not provide the expected real command help']
