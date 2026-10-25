@@ -9,6 +9,9 @@
 - [x] A5 **Real runtime stage**: preview:stage PASS, RUNTIME_STAGE_FIXED_EXIT:0 on connected macOS arm64. Official Node 26.8.2 tarball downloaded and SHA-256 verified; final staged dependency tree passed symlink integrity audit.
 - [x] A5 **Real staged CLI execution**: compiled Memmy Memory CLI entrypoint executed with staged Node, isolated temporary MEMMY_HOME and --help, printed CLI version 2.1.7 and actual commands, STAGED_CLI_EXIT:0.
 - [x] A6 **Packaging speed fix**: removed duplicate copy of App/memmy-agent/node_modules from external checkout; creates an internal relative symlink to the one staged dependency tree instead.
+- [x] A5 Real unsigned macOS ARM64 Tauri Developer Preview .app built with original React production renderer and staged runtime; TAURI_MAC_DEBUG_APP_BUILD_FIXED_EXIT:0.
+- [x] A5 Real .app Bundle Audit PASS: ok:true, errors:[], native Mach-O arm64 binary, bundled Node, Memory CLI, Agent/Backend and MV3 Browser Extension present.
+- [x] A5 Real .app CLI Smoke PASS: bundle:smoke:mac exit 0 after executing actual bundled Memory CLI with temporary HOME and MEMMY_HOME.
 - [ ] A5 signed/installed macOS app GUI E2E, Windows 11 x64 and Linux resource/installer GUI E2E. Actual runtime stage and CLI verified, but installed GUI remains untested.
 - [ ] A4 independent code/security review, including Node binary provenance/ABI, optional `npm` dependencies, symlink TOCTOU and accidental secret inclusion.
 - [ ] LEAD release signoff blocked on full native GUI/Computer Use context parity, original 7 remaining APIs and signed installers; `releaseReady=false`.
@@ -33,3 +36,11 @@ Draft PR stacked on #60; no React UI/routes or Electron original shell changed. 
 - Fixed staging completed without external or broken symlinks; final Agent dependency link resolves within the staged bundle.
 - The staged Memory CLI ran under the bundled Node runtime with a temporary isolated data directory; no user shell profiles were changed.
 - This is NOT equivalent to a signed or installed .app GUI E2E acceptance.
+
+## Built macOS Developer Preview (unsigned, not installed GUI acceptance)
+
+- Generated path: App/shell/tauri/src-tauri/target/debug/bundle/macos/Memmy Turbo Preview.app
+- First React build failed because required public legal-origin environment settings were absent. Retry used the already documented Memmy legal HTTPS origins; the React production build and Tauri debug app bundle passed.
+- Output is a 1.00 GiB unsigned macOS arm64 application, confirmed Mach-O 64-bit arm64 binary.
+- Real artifact passed native bundle integrity and isolated bundled Memory CLI smoke; this does NOT constitute interactive native WebKit GUI E2E.
+- Remaining release gates: code signing and notarization, Windows and Linux builds, Native WebKit GUI clicks, Agent same-context Computer Use and the final seven preload methods.
