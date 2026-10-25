@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowRight, Clock3, RotateCw, Settings2, Trash2 } from 'luci
 import { useTranslation } from '../i18n/use-translation.js';
 import { BrowserAgentSettings } from './browser-agent-settings.js';
 import './browser-panel.css';
+import { createNativeBrowserAdapter, type NativeBrowserAdapter, type NativeBrowserBridge } from '../native-browser-adapter.js';
+import type { TauriWindow } from '../tauri-bridge.js';
 
 export const MEMMY_BROWSER_OPEN_EVENT = 'memmy:open-browser-url';
 export const MEMMY_BROWSER_NEW_TAB_EVENT = 'memmy:new-browser-tab';
@@ -142,6 +144,12 @@ export function BrowserPanel({ hidden = false, active = true, initialAddress,
   const onNavigationRef = useRef(onNavigation);
   onNavigationRef.current = onNavigation;
   const webviewRef = useRef<BrowserWebview | null>(null);
+  const nativeHost = Boolean((window as TauriWindow).__TAURI__?.core);
+  const nativeElementRef = useRef<HTMLDivElement | null>(null);
+  const nativeAdapterRef = useRef<NativeBrowserAdapter | null>(null);
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
+  const sectionRef = useRef<'browser' | 'settings' | 'clearData' | 'history'>('browser');
   const historyMigration = useRef<Promise<boolean> | null>(null);
   const webviewReady = useRef(false);
   const pendingNavigation = useRef<string | null>(null);
@@ -151,6 +159,7 @@ export function BrowserPanel({ hidden = false, active = true, initialAddress,
   const [canGoForward, setCanGoForward] = useState(false);
   const [address, setAddress] = useState(displayAddress(initialUrl.current, readBrowserPreferences().showFullUrl));
   const [section, setSection] = useState<'browser' | 'settings' | 'clearData' | 'history'>('browser');
+  sectionRef.current = section;
   const [preferences, setPreferences] = useState(readBrowserPreferences);
   const [history, setHistory] = useState<BrowserHistoryEntry[]>([]);
   const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
@@ -187,6 +196,51 @@ export function BrowserPanel({ hidden = false, active = true, initialAddress,
     }).catch(() => { if (active) setError(t('browser.error.unavailable')); });
     return () => { active = false; };
   }, [section, t]);
+
+  // The same toolbar, settings, history and tab React UI now hosts a Tauri child
+  // WebView on native builds; Electron keeps its untouched <webview> path.
+  useEffect(() => {
+    if (!nativeHost || !nativeElementRef.current || !window.memmy) return;
+    const element = nativeElementRef.current;
+    const adapter = createNativeBrowserAdapter(
+      element, window.memmy as unknown as NativeBrowserBridge, initialUrl.current || 'about:blank'
+    );
+    nativeAdapterRef.current = adapter;
+    webviewRef.current = adapter.view as BrowserWebview;
+    let frame = 0;
+    const sync = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        adapter.syncBounds(activeRef.current && !hiddenRef.current && sectionRef.current === 'browser');
+      });
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync);
+    observer?.observe(element);
+    window.addEventListener('resize', sync);
+    window.addEventListener('scroll', sync, true);
+    sync();
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('scroll', sync, true);
+      observer?.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+      adapter.destroy();
+      nativeAdapterRef.current = null;
+      webviewRef.current = null;
+    };
+  }, [nativeHost]);
+
+  useEffect(() => {
+    if (!nativeHost || !nativeAdapterRef.current) return;
+    const adapter = nativeAdapterRef.current;
+    adapter.syncBounds(active && !hidden && section === 'browser');
+    if (active && !hidden) {
+      void adapter.mount().catch(() => {
+        setOpening(false);
+        setError(t('browser.error.unavailable'));
+      });
+    }
+  }, [nativeHost, active, hidden, section, t]);
 
   useEffect(() => {
     const view = webviewRef.current;
@@ -352,12 +406,17 @@ export function BrowserPanel({ hidden = false, active = true, initialAddress,
       <div className="memmy-browser-content">
         {/* Serialize this Electron attribute as a string: React drops unknown boolean attributes.
             The main-process handler still denies native popups and routes valid URLs to Memmy tabs. */}
-        <webview ref={webviewRef} className="memmy-browser-webview" src={initialUrl.current || 'about:blank'}
-          allowpopups={"true" as unknown as boolean}
-          partition="persist:memmy-browser" style={section === 'browser'
-            ? { display: 'flex' }
-            : { position: 'fixed', left: -10_000, top: 0, width: 800, height: 600,
-              opacity: 0, pointerEvents: 'none' }} />
+        {nativeHost
+          ? <div ref={nativeElementRef} className="memmy-browser-webview" style={section === 'browser'
+              ? { display: 'flex' }
+              : { position: 'fixed', left: -10_000, top: 0, width: 800, height: 600,
+                opacity: 0, pointerEvents: 'none' }} />
+          : <webview ref={webviewRef} className="memmy-browser-webview" src={initialUrl.current || 'about:blank'}
+              allowpopups={"true" as unknown as boolean}
+              partition="persist:memmy-browser" style={section === 'browser'
+                ? { display: 'flex' }
+                : { position: 'fixed', left: -10_000, top: 0, width: 800, height: 600,
+                  opacity: 0, pointerEvents: 'none' }} />}
         {section === 'browser' && opening ? <div className="memmy-browser-loading">{t("browser.opening")}</div> : null}
         {section === 'settings' && !hidden && active ? (
           <div className="memmy-browser-settings">

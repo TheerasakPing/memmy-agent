@@ -36,7 +36,7 @@ for (const name of native) if (!bridgedNames.includes(name)) {
   throw new Error("listed Tauri method not implemented in renderer bridge: " + name);
 }
 const rustHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/lib.rs"), "utf8");
-const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_browser_extension.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
+const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_browser_extension.rs", "native_browser.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
   readFileSync(resolve(root, `App/shell/tauri/src-tauri/src/${name}`), "utf8")
 ).join("\n");
 for (const [, command] of bridgeObject.matchAll(/"(desktop_[a-z0-9_]+)"/g)) {
@@ -63,6 +63,17 @@ const uiHashes = Object.fromEntries(uiFiles.map((path) => [
 const originalWindowSource = readFileSync(resolve(root, "App/shell/desktop/src/main/window-mode.ts"), "utf8");
 const originalWindow = originalWindowSource.match(/export const fullWindowOptions = \{([\s\S]*?)\} as const;/);
 if (!originalWindow) throw new Error("original window baseline missing");
+// Native child WebViews render untrusted remote pages in the same main OS Window.
+ // A window-scoped Tauri capability would grant those pages first-party IPC rights.
+const capability = JSON.parse(readFileSync(resolve(root, "App/shell/tauri/src-tauri/capabilities/default.json"), "utf8"));
+if (capability.windows?.includes("main") || !capability.webviews?.includes("main") || !capability.webviews?.includes("pet")) {
+  throw new Error("native Browser requires first-party-webview-only IPC capability; never grant by parent window");
+}
+const childHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/native_browser.rs"), "utf8");
+if (!childHost.includes("on_navigation") || !childHost.includes("NewWindowResponse::Deny")
+  || !childHost.includes("native browser commands require main application window")) {
+  throw new Error("native Browser navigation/popups/source guards missing");
+}
 const tauriConfig = JSON.parse(readFileSync(resolve(root, "App/shell/tauri/src-tauri/tauri.conf.json"), "utf8"));
 for (const name of ["width", "height", "minWidth", "minHeight"]) {
   const value = originalWindow[1].match(new RegExp(String.raw`\b${name}: (\d+)`));

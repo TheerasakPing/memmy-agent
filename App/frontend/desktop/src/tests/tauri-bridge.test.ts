@@ -10,6 +10,7 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command.startsWith("desktop_get_browser_download") || command === "desktop_choose_browser_download_directory" || command === "desktop_reset_browser_download_directory" || command === "desktop_set_browser_ask_before_download") {
       return { directory: null, approvedDirectories: [], askBeforeDownload: args?.enabled === true };
     }
+    if (command === "desktop_native_browser_create") return "11111111-1111-4111-8111-111111111110";
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
     if (command === "desktop_export_diagnostics_report") return { canceled: false, exportPath: "/tmp/diagnostics.txt", bytes: 12 };
     if (command === "desktop_save_file") return { canceled: false, filePath: "/tmp/export.txt", bytes: 3 };
@@ -78,6 +79,23 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     const stopGatewayStartupIssue = api.onAgentGatewayStartupIssue!(onGatewayStartupIssue);
     stopGatewayStartupIssue();
     expect(await api.checkForUpdates()).toMatchObject({ status: "not-configured" });
+    const native = api as unknown as import("../native-browser-adapter.js").NativeBrowserBridge;
+    const rect = { x: 12, y: 80, width: 440, height: 320, visible: true };
+    const nativeId = await native.nativeBrowserCreate("https://example.org", rect);
+    expect(nativeId).toBe("11111111-1111-4111-8111-111111111110");
+    expect(invoke).toHaveBeenCalledWith("desktop_native_browser_create", {
+      initialUrl: "https://example.org", bounds: rect
+    });
+    await native.nativeBrowserBounds(nativeId, { ...rect, visible: false });
+    expect(invoke).toHaveBeenCalledWith("desktop_native_browser_bounds", {
+      id: nativeId, bounds: { ...rect, visible: false }
+    });
+    await native.nativeBrowserAction(nativeId, "reload");
+    expect(invoke).toHaveBeenCalledWith("desktop_native_browser_action", {
+      id: nativeId, action: "reload", url: undefined
+    });
+    await native.nativeBrowserDestroy(nativeId);
+    expect(invoke).toHaveBeenCalledWith("desktop_native_browser_destroy", { id: nativeId });
     expect(await api.getBrowserHistory()).toEqual([]);
     expect(await api.getBrowserAccessRules()).toEqual([]);
     expect(await api.getBrowserDownloadSettings()).toEqual({directory:null,approvedDirectories:[],askBeforeDownload:false});
