@@ -31,6 +31,9 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "setLogLevel",
   "openLogsDirectory",
   "checkForUpdates",
+  "downloadUpdate",
+  "onUpdateDownloadProgress",
+  "openUpdateInstaller",
   "getInstallationId",
   "sendAnalyticsClientId",
   "exportMemoryDatabase",
@@ -197,7 +200,32 @@ export function installTauriBridge(host: TauriWindow): boolean {
     setLogLevel: (level: "error" | "warn" | "info" | "debug") => invoke<void>("desktop_set_log_level", { level }),
     openLogsDirectory: () => invoke<void>("desktop_open_logs_directory"),
     getAppInfo: () => invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["getAppInfo"]>>>("desktop_app_info"),
-    checkForUpdates: () => invoke("desktop_check_for_updates"),
+    checkForUpdates: () => invoke("desktop_signed_check_for_updates"),
+    downloadUpdate: (
+      update: import("@memmy/desktop-interface").DesktopUpdateCheckResult,
+      options?: import("@memmy/desktop-interface").DesktopUpdateDownloadOptions
+    ) => invoke<import("@memmy/desktop-interface").DesktopUpdateInstallResult>(
+      "desktop_signed_download_update", { update, options }),
+    openUpdateInstaller: (filePath: string) =>
+      invoke<import("@memmy/desktop-interface").DesktopUpdateInstallResult>(
+        "desktop_signed_open_update_installer", { filePath }),
+    onUpdateDownloadProgress: (
+      callback: (progress: import("@memmy/desktop-interface").DesktopUpdateDownloadProgress) => void
+    ) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Native signed updater progress unavailable");
+      let active = true;
+      let dispose: (() => void) | undefined;
+      void listen<import("@memmy/desktop-interface").DesktopUpdateDownloadProgress>(
+        "memmy:update-download-progress", ({ payload }) => {
+          if (active && typeof payload?.downloadUrl === "string"
+              && typeof payload?.filePath === "string"
+              && Number.isSafeInteger(payload?.transferredBytes)
+              && payload.transferredBytes >= 0) callback(payload);
+        }
+      ).then(stop => { if (active) dispose = stop; else stop(); }).catch(() => undefined);
+      return () => { active = false; dispose?.(); };
+    },
     getInstallationId: () => invoke<string>("desktop_get_installation_id"),
     getLaunchAtLogin: () => invoke<boolean>("desktop_get_launch_at_login"),
     setLaunchAtLogin: (enabled: boolean) => invoke<boolean>("desktop_set_launch_at_login", { enabled }),

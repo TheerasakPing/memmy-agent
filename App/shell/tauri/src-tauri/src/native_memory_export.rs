@@ -32,6 +32,12 @@ fn trusted_endpoint(base: &str, token: &str) -> Result<String, String> {
     Ok(format!("{}api/v1/admin/export", url.as_str()))
 }
 fn download_export(base: &str, token: &str) -> Result<Vec<u8>, String> {
+    // The Tauri signed-updater and managed Memory HTTP client share reqwest/
+    // rustls. Register a single process-wide provider before either creates
+    // a client, including when Memory tests run without GUI/updater startup.
+    if rustls::crypto::CryptoProvider::get_default().is_none() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+    }
     let endpoint = trusted_endpoint(base, token)?;
     let client = Client::builder()
         .no_proxy()

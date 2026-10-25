@@ -17,6 +17,7 @@ mod native_os;
 mod native_permissions;
 mod native_pet;
 mod native_runtime;
+mod native_signed_updater;
 mod native_site_policy;
 mod native_tray;
 mod native_workspace;
@@ -92,16 +93,6 @@ fn desktop_app_info(app: AppHandle) -> serde_json::Value {
         "arch": std::env::consts::ARCH,
         "isPackaged": !cfg!(debug_assertions),
         "isWindowsStore": false
-    })
-}
-
-#[tauri::command]
-fn desktop_check_for_updates(app: AppHandle) -> serde_json::Value {
-    // An updater without signed Tauri release metadata must never claim a
-    // package update exists. This path remains a tracked parity blocker.
-    serde_json::json!({
-        "status": "not-configured",
-        "currentVersion": app.package_info().version.to_string()
     })
 }
 
@@ -269,6 +260,14 @@ pub fn run() {
         .manage(native_permissions::ComputerHistorySession::default())
         .manage(native_tray::TrayState::default())
         .manage(PendingWindowAction::default())
+        .manage(native_signed_updater::SignedUpdaterState::default())
+        // Public key is a build-time pinned trust root. Empty key disables native
+        // update discovery and all package operations, never enables unsigned.
+        .plugin(
+            tauri_plugin_updater::Builder::new()
+                .pubkey(option_env!("MEMMY_TAURI_UPDATER_PUBLIC_KEY").unwrap_or(""))
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
@@ -327,7 +326,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             desktop_runtime_config,
             desktop_app_info,
-            desktop_check_for_updates,
+            native_signed_updater::desktop_signed_check_for_updates,
+            native_signed_updater::desktop_signed_download_update,
+            native_signed_updater::desktop_signed_open_update_installer,
             desktop_open_external,
             desktop_fullscreen,
             desktop_complete_window_action,
