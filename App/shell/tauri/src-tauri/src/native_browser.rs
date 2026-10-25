@@ -359,7 +359,7 @@ pub fn desktop_native_browser_destroy(
 mod tests {
     use super::*;
     #[test]
-    fn URLs_never_allow_javascript_file_credentials_or_browser_internal_pages() {
+    fn urls_never_allow_javascript_file_credentials_or_browser_internal_pages() {
         for input in [
             "javascript:alert(1)",
             "file:///private/key",

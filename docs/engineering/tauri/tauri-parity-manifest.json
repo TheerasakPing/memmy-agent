@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 78,
-    "remainingMethods": 7,
+    "nativeMethods": 79,
+    "remainingMethods": 6,
     "routes": 14
   },
   "routes": [
@@ -297,8 +297,8 @@
     },
     {
       "name": "openAgentTool",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "openMailto",
