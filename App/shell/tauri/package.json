@@ -25,6 +25,8 @@
     "preview:app:mac": "bash packaging/package-app-macos.sh",
     "preview:dmg:mac": "bash packaging/create-dmg-macos.sh",
     "preview:dmg:unsigned:mac": "bash packaging/create-preview-dmg-unsigned.sh",
+    "preview:dmg:adhoc:mac": "bash packaging/create-preview-dmg-adhoc-macos.sh",
+    "release:gate:mac": "bash packaging/check-production-signing-macos.sh",
     "test:renderer:smoke": "node ../../../scripts/engineering/tauri-renderer-smoke.mjs"
   },
   "devDependencies": {

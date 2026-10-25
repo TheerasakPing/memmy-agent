@@ -22,9 +22,12 @@ trap cleanup EXIT
 /usr/bin/hdiutil attach -readonly -nobrowse -mountpoint "$mountpoint" "$dmg" >/dev/null
 mounted=1
 app="$mountpoint/Memmy Turbo Preview.app"
+if [[ "${2:-}" == "--require-valid-code-signature" ]]; then
+  /usr/bin/codesign --verify --deep --strict --verbose=2 "$app"
+fi
 [[ -x "$app/Contents/MacOS/memmy-turbo-tauri" ]] || { echo 'Mounted Tauri GUI missing' >&2; exit 1; }
 node "$pack/audit-bundle.mjs" "$app"
 NODE_OPTIONS=--no-experimental-webstorage node "$pack/smoke-macos-app.mjs" "$app"
 NODE_OPTIONS=--no-experimental-webstorage node "$pack/smoke-macos-services.mjs" "$app"
 NODE_OPTIONS=--no-experimental-webstorage node "$pack/smoke-macos-native-supervisor.mjs" "$app"
-echo 'PASS: mounted read-only unsigned DMG, actual CLI, bundled Agent Gateway and Rust supervisor'
+echo 'PASS: mounted read-only Developer Preview DMG, actual CLI, bundled Agent Gateway and Rust supervisor'
