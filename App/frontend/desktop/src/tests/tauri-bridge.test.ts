@@ -14,6 +14,9 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_get_browser_sidebar_surface") return null;
     if (command === "desktop_send_browser_sidebar_action") return true;
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
+    if (command === "desktop_export_memory_database") return {
+      canceled: false, exportPath: "/tmp/memmy-memory.json", bytes: 61
+    };
     if (command === "desktop_export_diagnostics_report") return { canceled: false, exportPath: "/tmp/diagnostics.txt", bytes: 12 };
     if (command === "desktop_save_file") return { canceled: false, filePath: "/tmp/export.txt", bytes: 3 };
     if (command === "desktop_save_image") return { canceled: false, filePath: "/tmp/image.png", bytes: 8 };
@@ -133,6 +136,10 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(invoke).toHaveBeenCalledWith("desktop_send_analytics_client_id", {
       payload: { clientId: "123.456", appEnv: "prod", appEdition: "intl" }
     });
+    expect(await api.exportMemoryDatabase()).toEqual({
+      canceled: false, exportPath: "/tmp/memmy-memory.json", bytes: 61
+    });
+    expect(invoke).toHaveBeenCalledWith("desktop_export_memory_database", undefined);
     expect(await api.getFullDiskAccessStatus?.()).toBe(true);
     expect(await api.guideMemmyPermission?.("accessibility")).toBe(true);
     expect(invoke).toHaveBeenCalledWith("desktop_guide_memmy_permission", {
@@ -293,9 +300,9 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(71);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(72);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
-    expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
+    expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");
   });
 });

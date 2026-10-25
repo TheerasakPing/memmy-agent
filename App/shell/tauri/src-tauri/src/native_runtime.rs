@@ -69,6 +69,7 @@ struct BackendState {
     memory: Option<Child>,
     gateway: Option<Child>,
     config: Option<Value>,
+    memory_export_auth: Option<(String, String)>,
     stopped_unexpectedly: bool,
 }
 
@@ -84,6 +85,28 @@ impl NativeRuntime {
         if let Ok(mut current) = self.event_app.lock() {
             *current = Some(app);
         }
+    }
+
+    // Never serializes the bearer token to React: the authenticated export request
+    // is issued exclusively by trusted Rust after validating a live managed child.
+    pub fn memory_export_auth(&self) -> Result<(String, String), String> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "Memory service lock unavailable")?;
+        if state.stopped_unexpectedly {
+            return Err("managed Memory runtime requires restart".into());
+        }
+        let Some(child) = state.memory.as_mut() else {
+            return Err("managed Memory service not ready".into());
+        };
+        if !matches!(child.try_wait(), Ok(None)) {
+            return Err("managed Memory service no longer running".into());
+        }
+        state
+            .memory_export_auth
+            .clone()
+            .ok_or("managed Memory session not ready".into())
     }
 
     pub fn browser_surface(&self, session_key: &str) -> Option<Value> {
@@ -232,6 +255,9 @@ impl NativeRuntime {
                     }
                 }
                 state.process = Some(child);
+                state.memory_export_auth = memory
+                    .as_ref()
+                    .map(|(_, url, token)| (url.clone(), token.clone()));
                 state.memory = memory.take().map(|(process, _, _)| process);
                 state.gateway = gateway;
                 state.config = Some(config.clone());
@@ -271,6 +297,7 @@ impl NativeRuntime {
                 stop_child(&mut memory);
             }
             state.config = None;
+            state.memory_export_auth = None;
             state.stopped_unexpectedly = true;
             self.browser_surfaces.clear();
         }
