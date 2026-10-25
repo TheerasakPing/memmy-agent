@@ -6,6 +6,8 @@
  * native capabilities are intentionally absent, not silently "successful".
  * Every missing contract is tracked in tauri-parity-manifest.json.
  */
+import { getNativeMicrophoneAccessStatus, requestNativeMicrophoneAccess } from "./native-microphone-permissions.js";
+
 interface TauriCore {
   invoke<T = unknown>(command: string, args?: Record<string, unknown>): Promise<T>;
 }
@@ -55,6 +57,10 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "getComputerHistoryPermissionSessionId",
   "getFullDiskAccessStatus",
   "openComputerHistoryMarkdown",
+  "getBrowserExtensionDirectory",
+  "revealBrowserExtension",
+  "getMicrophoneAccessStatus",
+  "requestMicrophoneAccess",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -130,6 +136,10 @@ export function installTauriBridge(host: TauriWindow): boolean {
     getComputerHistoryPermissionSessionId: () =>
       invoke<string>("desktop_get_computer_history_permission_session_id"),
     getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
+    getBrowserExtensionDirectory: () => invoke<string | null>("desktop_get_browser_extension_directory"),
+    revealBrowserExtension: () => invoke<boolean>("desktop_reveal_browser_extension"),
+    getMicrophoneAccessStatus: () => getNativeMicrophoneAccessStatus(host.navigator),
+    requestMicrophoneAccess: () => requestNativeMicrophoneAccess(host.navigator),
     openComputerHistoryMarkdown: (filePath: string) =>
       invoke<void>("desktop_open_computer_history_markdown", { filePath }),
     getLogLevel: () => invoke<"error" | "warn" | "info" | "debug">("desktop_get_log_level"),

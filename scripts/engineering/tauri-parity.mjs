@@ -36,7 +36,7 @@ for (const name of native) if (!bridgedNames.includes(name)) {
   throw new Error("listed Tauri method not implemented in renderer bridge: " + name);
 }
 const rustHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/lib.rs"), "utf8");
-const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
+const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_browser_extension.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
   readFileSync(resolve(root, `App/shell/tauri/src-tauri/src/${name}`), "utf8")
 ).join("\n");
 for (const [, command] of bridgeObject.matchAll(/"(desktop_[a-z0-9_]+)"/g)) {
