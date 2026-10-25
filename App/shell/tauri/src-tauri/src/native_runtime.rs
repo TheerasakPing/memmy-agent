@@ -532,6 +532,29 @@ fn launch_development_memory(
     launch_development_memory_fixed(data_dir, paths, port, &token)
 }
 
+/// Preview-only startup diagnostics. Log privately into this Tauri profile,
+/// never into the Original app or the global system log. A fresh attempt
+/// starts a fresh bounded-startup file; failures must not block launching.
+fn memory_startup_stderr(data_dir: &Path) -> Stdio {
+    let path = data_dir.join("memory-startup.log");
+    if let Ok(meta) = fs::symlink_metadata(&path) {
+        if meta.file_type().is_symlink() {
+            return Stdio::null();
+        }
+    }
+    let mut builder = OpenOptions::new();
+    builder.create(true).write(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        builder.mode(0o600);
+    }
+    match builder.open(&path) {
+        Ok(file) => Stdio::from(file),
+        Err(_) => Stdio::null(),
+    }
+}
+
 fn launch_development_memory_fixed(
     data_dir: &Path,
     paths: &RuntimePaths,
@@ -546,6 +569,12 @@ fn launch_development_memory_fixed(
     let url = format!("http://127.0.0.1:{port}");
     let mut command = Command::new(&paths.node);
     command.arg(script);
+    // Finder starts at "/" while a developer shell inherits the repository.
+    // Never let Memory scan or resolve relative paths from the filesystem root.
+    command.current_dir(data_dir);
+    if paths.bundled && cfg!(debug_assertions) {
+        command.env("MEMMY_TAURI_DEBUG_STARTUP", "1");
+    }
     // In a Finder-launched packaged preview there is no inherited shell cloud env.
     // This only selects the same historical default as the existing edition config;
     // it does not imply external cloud login has been verified.
@@ -566,9 +595,15 @@ fn launch_development_memory_fixed(
         .env("MEMMY_MEMORY_DB", data_dir.join("memory.sqlite"))
         .env("MEMMY_MEMORY_URL", &url)
         .env("MEMMY_CONFIG", data_dir.join("config.yaml"))
+        // Never consult the Original Electron ~/.memmy/runtime.json when
+        // bootstrapping the native Preview's token-budget / BYOK integration.
+        .env(
+            "MEMMY_RUNTIME_CONFIG_PATH",
+            data_dir.join("runtime-config.json"),
+        )
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(memory_startup_stderr(data_dir))
         .spawn()
         .map_err(|_| "cannot launch managed Memory service")?;
     // Large pre-existing SQLite profiles can need more time to initialize,
@@ -628,6 +663,7 @@ fn launch_development_backend(
     }
     let mut command = Command::new(&paths.node);
     command.arg(script);
+    command.current_dir(data_dir);
     // Finder-launched applications have no terminal environment. Match the
     // existing default cloud service for the configured international edition;
     // the app must still authenticate before cloud operations can succeed.
@@ -646,6 +682,10 @@ fn launch_development_backend(
     }
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
+        .env(
+            "MEMMY_RUNTIME_CONFIG_PATH",
+            data_dir.join("runtime-config.json"),
+        )
         .env("MEMMY_TAURI_DEV_BACKEND", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -723,6 +763,7 @@ fn launch_development_gateway(
     }
     let mut command = Command::new(&paths.node);
     command.arg(script);
+    command.current_dir(data_dir);
     // The real Agent child inherits this env from its managed shim. A Finder
     // process does not inherit shell environment variables, so the bundled
     // preview must configure its service origin at the Gateway boundary too.
@@ -734,6 +775,10 @@ fn launch_development_gateway(
     }
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
+        .env(
+            "MEMMY_RUNTIME_CONFIG_PATH",
+            data_dir.join("runtime-config.json"),
+        )
         .env("MEMMY_TAURI_DEV_GATEWAY", "1")
         // Enabled only for this trusted, Rust-owned native Gateway process.
         // Unknown Agent approvals fail closed in the wrapper; no renderer-set flag.
