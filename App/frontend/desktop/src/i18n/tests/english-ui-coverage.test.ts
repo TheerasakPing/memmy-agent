@@ -8,6 +8,8 @@ const srcDir = resolve(__dirname, "..", "..");
 const allowedSourceFiles = new Set([
   "i18n/error-notice-messages.ts",
   "i18n/messages.ts",
+  "i18n/th-messages.ts",
+  "i18n/th-generated-messages.ts",
   "i18n/error-notice-messages.ts",
   "lib/nickname.ts",
   "pages/memory/skill-demo-data.ts",

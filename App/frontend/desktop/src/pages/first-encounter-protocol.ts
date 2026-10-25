@@ -8,7 +8,7 @@ import {
 } from "@memmy/local-api-contracts";
 import { requestJson } from "../api/http.js";
 import { getRuntimeConfig } from "../api/runtime-config.js";
-import { enUSMessages, zhCNMessages, type ResolvedLanguage } from "../i18n/messages.js";
+import { messageCatalogs, type ResolvedLanguage } from "../i18n/messages.js";
 import { buildFirstEncounterRelayPrompt } from "./first-encounter-relay-prompt.js";
 
 // Covers the backend's 3-second sampling budget and 90-second model budget.
@@ -238,7 +238,7 @@ function toFirstEncounterReportPayload(
   const body = response.reportMarkdown.trim();
   const language = response.diagnostics.reportLanguage ?? fallbackLanguage;
   const workspacePath = response.diagnostics.latestWorkspacePath?.trim() || null;
-  const messages = language === "zh-CN" ? zhCNMessages : enUSMessages;
+  const messages = messageCatalogs[language];
 
   return body ? {
     body,
