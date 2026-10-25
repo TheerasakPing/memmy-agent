@@ -3,7 +3,10 @@
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashSet;
-use std::sync::Mutex;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc, Mutex,
+};
 use tauri::{
     webview::{NewWindowResponse, PageLoadEvent, WebviewBuilder},
     AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
@@ -38,6 +41,19 @@ fn browser_url(raw: &str) -> Result<Url, String> {
         return Err("browser only accepts normal HTTP(S) URLs without credentials".into());
     }
     Ok(url)
+}
+
+fn allowed_popup(counter: &AtomicUsize, raw: &str) -> Option<Url> {
+    let url = browser_url(raw).ok()?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return None;
+    }
+    counter
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+            (count < 8).then_some(count + 1)
+        })
+        .ok()?;
+    Some(url)
 }
 
 fn validate_bounds(
@@ -129,11 +145,25 @@ pub async fn desktop_native_browser_create(
     let event_id = id.clone();
     let app_for_load = app.clone();
     let app_for_title = app.clone();
+    let app_for_popup = app.clone();
+    // Cap page-authored window.open requests so an untrusted page cannot flood
+    // the trusted React Browser tab queue.
+    let popup_count = Arc::new(AtomicUsize::new(0));
     let load_id = event_id.clone();
     let title_id = event_id;
     let builder = WebviewBuilder::new(label, WebviewUrl::External(url))
         .on_navigation(|candidate| browser_url(candidate.as_str()).is_ok())
-        .on_new_window(|_, _| NewWindowResponse::Deny)
+        .on_new_window(move |candidate, _features| {
+            if let Some(url) = allowed_popup(&popup_count, candidate.as_str()) {
+                // The page gets NO Tauri IPC; its safe URL is sent to first-party React.
+                let _ = app_for_popup.emit_to(
+                    "main",
+                    "memmy:browser:open-url",
+                    json!({"url":url.as_str()}),
+                );
+            }
+            NewWindowResponse::Deny
+        })
         .on_page_load(move |_view, payload| {
             let kind = match payload.event() {
                 PageLoadEvent::Started => "started",
@@ -280,6 +310,44 @@ mod tests {
         ] {
             assert!(browser_url(url).is_ok(), "{url}");
         }
+    }
+    #[test]
+    fn webview_popup_open_urls_must_be_http_or_https_without_credentials() {
+        for raw in [
+            "about:blank",
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "data:text/html,evil",
+            "chrome://settings",
+            "https://user:pass@site.test/",
+        ] {
+            assert!(
+                !browser_url(raw).is_ok_and(|url| matches!(url.scheme(), "http" | "https")),
+                "{raw}"
+            );
+        }
+        assert_eq!(
+            browser_url("https://example.org/new-tab").unwrap().scheme(),
+            "https"
+        );
+    }
+    #[test]
+    fn browser_popup_rate_limit_cannot_be_exhausted_by_invalid_urls() {
+        let counter = AtomicUsize::new(0);
+        for raw in [
+            "about:blank",
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "https://user:pass@example.org/",
+        ] {
+            assert!(allowed_popup(&counter, raw).is_none());
+        }
+        assert_eq!(counter.load(Ordering::SeqCst), 0);
+        for _ in 0..8 {
+            assert!(allowed_popup(&counter, "https://example.org/new").is_some());
+        }
+        assert!(allowed_popup(&counter, "https://example.org/ninth").is_none());
+        assert_eq!(counter.load(Ordering::SeqCst), 8);
     }
     #[test]
     fn native_browser_bounds_reject_escaping_or_non_finite_geometry() {

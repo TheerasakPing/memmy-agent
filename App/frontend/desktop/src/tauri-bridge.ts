@@ -73,6 +73,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "getBrowserSidebarSurface",
   "sendBrowserSidebarAction",
   "onBrowserSidebarSurface",
+  "onEmbeddedBrowserOpen",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -309,6 +310,24 @@ export function installTauriBridge(host: TauriWindow): boolean {
     setPetWindow: (enabled: boolean, target?: { route?: string; hash?: string; agentChatId?: string; petIntent?: "user" }) =>
       invoke<void>("desktop_set_pet_window", { enabled, target }),
     hidePetWindow: () => invoke<void>("desktop_hide_pet_window"),
+    onEmbeddedBrowserOpen: (callback: (url: string, owner?: { scopeKey?: string; sourceGuestId?: number }) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Tauri native Browser popup listener unavailable");
+      let removed = false;
+      let unsubscribe: (() => void) | undefined;
+      void listen<{ url?: unknown }>("memmy:browser:open-url", (event) => {
+        if (removed || typeof event.payload?.url !== "string") return;
+        const raw = event.payload.url;
+        if (raw.length > 8192) return;
+        try {
+          const url = new URL(raw);
+          if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return;
+          callback(url.href);
+        } catch { /* Invalid popup navigation never enters first-party tab queue. */ }
+      }).then((stop) => { if (removed) stop(); else unsubscribe = stop; })
+        .catch(() => undefined);
+      return () => { removed = true; unsubscribe?.(); };
+    },
     onRouteTargetRequest: (callback: (target: { route?: string; hash?: string; agentChatId?: string }) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) throw new Error("Tauri route event bridge unavailable");
