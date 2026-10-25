@@ -74,6 +74,7 @@ const child = spawn(process.execPath, [agentScript, 'gateway', '--config', confi
 });
 if (surfaceRelayEnabled) {
   const { createNativeBrowserSurfaceRelay } = await import('./surface-relay.mjs');
+  const { unsupportedAgentIpcResponse } = await import('./agent-ipc-deny.mjs');
   const relay = createNativeBrowserSurfaceRelay({
     sendAction: (action) => {
       if (!child.connected || child.exitCode !== null) return false;
@@ -82,7 +83,13 @@ if (surfaceRelayEnabled) {
     },
     publish: (line) => { process.stdout.write(line + '\n'); },
   });
-  child.on('message', (message) => { relay.update(message); });
+  child.on('message', (message) => {
+    if (relay.update(message)) return;
+    const denied = unsupportedAgentIpcResponse(message);
+    if (denied && child.connected) {
+      try { child.send(denied, () => undefined); } catch { /* disconnected: deny by default */ }
+    }
+  });
   createInterface({ input: process.stdin, crlfDelay: Infinity })
     .on('line', (line) => { relay.action(line); });
   child.once('exit', () => relay.clear());

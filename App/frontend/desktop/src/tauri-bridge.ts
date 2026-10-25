@@ -61,6 +61,9 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "revealBrowserExtension",
   "getMicrophoneAccessStatus",
   "requestMicrophoneAccess",
+  "getBrowserSidebarSurface",
+  "sendBrowserSidebarAction",
+  "onBrowserSidebarSurface",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -174,6 +177,28 @@ export function installTauriBridge(host: TauriWindow): boolean {
       if (!listen) return Promise.reject(new Error("Tauri native browser event bridge unavailable"));
       return listen<import("./native-browser-adapter.js").NativeBrowserMessage>(
         "memmy:native-browser:event", event => callback(event.payload));
+    },
+    getBrowserSidebarSurface: (sessionKey: string) =>
+      invoke<import("@memmy/local-api-contracts").ComputerUseSurfaceMessage | null>(
+        "desktop_get_browser_sidebar_surface", { sessionKey }),
+    sendBrowserSidebarAction: (sessionKey: string, action:
+      Pick<import("@memmy/local-api-contracts").ComputerUseSurfaceAction,
+        "action" | "x" | "y" | "deltaY" | "key" | "url">) =>
+      invoke<boolean>("desktop_send_browser_sidebar_action", { sessionKey, action }),
+    onBrowserSidebarSurface: (
+      callback: (message: import("@memmy/local-api-contracts").ComputerUseSurfaceMessage) => void
+    ) => {
+      let active = true;
+      let stop: (() => void) | undefined;
+      if (tauri.event?.listen) void tauri.event.listen<
+        import("@memmy/local-api-contracts").ComputerUseSurfaceMessage
+      >("memmy:browser-sidebar:surface", ({ payload }) => {
+        if (active) callback(payload);
+      }).then(unsubscribe => {
+        if (active) stop = unsubscribe;
+        else unsubscribe();
+      }).catch(() => undefined);
+      return () => { active = false; stop?.(); };
     },
     getBrowserHistory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserHistory"]>>>>("desktop_get_browser_history"),
     importLegacyBrowserHistory: (entries: Parameters<NonNullable<NonNullable<Window["memmy"]>["importLegacyBrowserHistory"]>>[0]) =>

@@ -5,6 +5,7 @@ mod native_approvals;
 mod native_browser;
 mod native_browser_extension;
 mod native_browser_store;
+mod native_browser_surface;
 mod native_diagnostics;
 mod native_file_export;
 mod native_os;
@@ -161,6 +162,37 @@ fn desktop_complete_window_action(
     }
 }
 
+#[tauri::command]
+fn desktop_get_browser_sidebar_surface(
+    window: WebviewWindow,
+    supervisor: tauri::State<'_, Arc<native_runtime::NativeRuntime>>,
+    session_key: String,
+) -> Result<Option<serde_json::Value>, String> {
+    if window.label() != "main" {
+        return Err("only the main app can read Agent Browser surfaces".into());
+    }
+    Ok(supervisor.browser_surface(&session_key))
+}
+
+#[tauri::command]
+async fn desktop_send_browser_sidebar_action(
+    window: WebviewWindow,
+    supervisor: tauri::State<'_, Arc<native_runtime::NativeRuntime>>,
+    session_key: String,
+    action: serde_json::Value,
+) -> Result<bool, String> {
+    if window.label() != "main" {
+        return Err("only the main app can send Agent Browser actions".into());
+    }
+    // Child stdin writes can block under backpressure: never stall the WebKit UI thread.
+    let runtime = supervisor.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        runtime.send_browser_surface_action(&session_key, &action)
+    })
+    .await
+    .map_err(|_| "Agent Browser dispatcher unavailable".to_string())?
+}
+
 /// Validate an installed macOS preview without the GUI or production user data.
 /// This intentionally requires a real bundle and launches all three services.
 pub fn smoke_installed_runtime() -> i32 {
@@ -226,6 +258,11 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .setup(|app| {
+            app.state::<Arc<native_runtime::NativeRuntime>>()
+                .attach_app(app.handle().clone());
+            Ok(())
+        })
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -300,6 +337,8 @@ pub fn run() {
             native_browser::desktop_native_browser_bounds,
             native_browser::desktop_native_browser_action,
             native_browser::desktop_native_browser_destroy,
+            desktop_get_browser_sidebar_surface,
+            desktop_send_browser_sidebar_action,
             native_browser_store::desktop_get_browser_history,
             native_browser_store::desktop_import_legacy_browser_history,
             native_browser_store::desktop_remove_browser_history,

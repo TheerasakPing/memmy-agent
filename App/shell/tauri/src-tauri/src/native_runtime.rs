@@ -1,6 +1,7 @@
 //! Rust-managed local API child for Tauri. No arbitrary command from the webview.
 //! Development starts a known repository entry; packaged builds fail closed
 //! until signed cross-platform sidecars and the Memory/Agent stack are ready.
+use crate::native_browser_surface::{BrowserSurfaceStore, EVENT_PREFIX};
 use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
@@ -9,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter};
 
 use crate::is_loopback_runtime_config;
 
@@ -73,9 +75,52 @@ struct BackendState {
 #[derive(Default)]
 pub struct NativeRuntime {
     state: Mutex<BackendState>,
+    browser_surfaces: BrowserSurfaceStore,
+    event_app: Mutex<Option<AppHandle>>,
 }
 
 impl NativeRuntime {
+    pub fn attach_app(&self, app: AppHandle) {
+        if let Ok(mut current) = self.event_app.lock() {
+            *current = Some(app);
+        }
+    }
+
+    pub fn browser_surface(&self, session_key: &str) -> Option<Value> {
+        self.browser_surfaces.get(session_key)
+    }
+
+    pub fn send_browser_surface_action(
+        &self,
+        session_key: &str,
+        action: &Value,
+    ) -> Result<bool, String> {
+        let Some(line) = self.browser_surfaces.action_line(session_key, action) else {
+            return Ok(false);
+        };
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "native Gateway unavailable")?;
+        let Some(gateway) = state.gateway.as_mut() else {
+            return Ok(false);
+        };
+        if !matches!(gateway.try_wait(), Ok(None)) {
+            self.browser_surfaces.clear();
+            return Ok(false);
+        }
+        let Some(stdin) = gateway.stdin.as_mut() else {
+            return Ok(false);
+        };
+        stdin
+            .write_all(line.as_bytes())
+            .map_err(|_| "native Gateway action pipe disconnected")?;
+        stdin
+            .flush()
+            .map_err(|_| "native Gateway action pipe unresponsive")?;
+        Ok(true)
+    }
+
     pub fn config(&self, data_dir: &Path, bundled_root: Option<&Path>) -> Result<Value, String> {
         let mut state = self
             .state
@@ -90,6 +135,7 @@ impl NativeRuntime {
                     stop_child(&mut memory);
                 }
                 state.gateway.take();
+                self.browser_surfaces.clear();
                 state.config = None;
                 state.stopped_unexpectedly = true;
                 return Err("Tauri Agent Gateway stopped unexpectedly; restart the app".into());
@@ -164,7 +210,14 @@ impl NativeRuntime {
                         stop_child(&mut child);
                         return Err("Tauri Agent requires managed Memory".into());
                     };
-                    match launch_development_gateway(data_dir, url, token, &paths) {
+                    match launch_development_gateway(
+                        data_dir,
+                        url,
+                        token,
+                        &paths,
+                        self.browser_surfaces.clone(),
+                        self.event_app.lock().ok().and_then(|app| app.clone()),
+                    ) {
                         Ok((process, metadata)) => {
                             config["agentGateway"] = metadata;
                             gateway = Some(process);
@@ -219,6 +272,7 @@ impl NativeRuntime {
             }
             state.config = None;
             state.stopped_unexpectedly = true;
+            self.browser_surfaces.clear();
         }
     }
 }
@@ -496,6 +550,8 @@ fn launch_development_gateway(
     memory_url: &str,
     token: &str,
     paths: &RuntimePaths,
+    surfaces: BrowserSurfaceStore,
+    event_app: Option<AppHandle>,
 ) -> Result<(Child, Value), String> {
     let script = paths.sidecar.join("gateway.mjs");
     if !script.is_file() {
@@ -528,6 +584,9 @@ fn launch_development_gateway(
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_DEV_GATEWAY", "1")
+        // Enabled only for this trusted, Rust-owned native Gateway process.
+        // Unknown Agent approvals fail closed in the wrapper; no renderer-set flag.
+        .env("MEMMY_TAURI_BROWSER_SURFACE_RELAY", "1")
         .env(
             "MEMMY_NATIVE_APP_ALLOW_ALL_FILE",
             data_dir.join("computer-use/allow-all-apps.json"),
@@ -554,6 +613,16 @@ fn launch_development_gateway(
             if size == 0 {
                 break;
             }
+            if notified && line.starts_with(EVENT_PREFIX) {
+                if let Some(message) = surfaces.update(
+                    line.trim_end_matches(['\r', '\n'])
+                        .trim_start_matches(EVENT_PREFIX),
+                ) {
+                    if let Some(app) = event_app.as_ref() {
+                        let _ = app.emit_to("main", "memmy:browser-sidebar:surface", message);
+                    }
+                }
+            }
             if !notified && line.starts_with("MEMMY_TAURI_GATEWAY_READY ") {
                 notified = true;
                 let decoded = serde_json::from_str::<Value>(
@@ -575,6 +644,12 @@ fn launch_development_gateway(
                 let _ = tx.send(result.map_err(|error| error.to_string()));
             }
             line.clear();
+        }
+        // Prevent stale screenshot/action sessions when the managed Agent exits.
+        for closed in surfaces.clear() {
+            if let Some(app) = event_app.as_ref() {
+                let _ = app.emit_to("main", "memmy:browser-sidebar:surface", closed);
+            }
         }
         if !notified {
             let _ = tx.send(Err("Agent Gateway exited before readiness".into()));

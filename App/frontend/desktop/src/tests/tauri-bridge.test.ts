@@ -11,6 +11,8 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
       return { directory: null, approvedDirectories: [], askBeforeDownload: args?.enabled === true };
     }
     if (command === "desktop_native_browser_create") return "11111111-1111-4111-8111-111111111110";
+    if (command === "desktop_get_browser_sidebar_surface") return null;
+    if (command === "desktop_send_browser_sidebar_action") return true;
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
     if (command === "desktop_export_diagnostics_report") return { canceled: false, exportPath: "/tmp/diagnostics.txt", bytes: 12 };
     if (command === "desktop_save_file") return { canceled: false, filePath: "/tmp/export.txt", bytes: 3 };
@@ -96,6 +98,11 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     });
     await native.nativeBrowserDestroy(nativeId);
     expect(invoke).toHaveBeenCalledWith("desktop_native_browser_destroy", { id: nativeId });
+    expect(await api.getBrowserSidebarSurface?.("session-main")).toBeNull();
+    expect(await api.sendBrowserSidebarAction?.("session-main", { action: "reload" })).toBe(true);
+    expect(invoke).toHaveBeenCalledWith("desktop_send_browser_sidebar_action", {
+      sessionKey: "session-main", action: { action: "reload" }
+    });
     expect(await api.getBrowserHistory()).toEqual([]);
     expect(await api.getBrowserAccessRules()).toEqual([]);
     expect(await api.getBrowserDownloadSettings()).toEqual({directory:null,approvedDirectories:[],askBeforeDownload:false});
@@ -253,7 +260,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(61);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(64);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
