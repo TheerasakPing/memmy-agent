@@ -6,10 +6,12 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs::{self, OpenOptions};
 use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use uuid::Uuid;
 
+static HISTORY_IO: Mutex<()> = Mutex::new(());
 const HISTORY_LIMIT: usize = 500;
 const HISTORY_BYTES: u64 = 4 * 1024 * 1024;
 const PERMISSION_LIMIT: usize = 200;
@@ -186,6 +188,46 @@ fn import_legacy(path: &Path, incoming: Vec<HistoryEntry>) -> Result<bool, Strin
         current.truncate(HISTORY_LIMIT);
         atomic_json(path, &current, HISTORY_BYTES)?;
     }
+    Ok(true)
+}
+
+/// Persist actual Tauri child WebView page loads instead of silently leaving
+/// the legacy import-only history store empty on newly visited pages.
+pub(crate) fn record_native_visit(
+    path: &Path,
+    url: &str,
+    title: &str,
+    source: &str,
+) -> Result<bool, String> {
+    if !valid_web_url(url) || source != "other" {
+        return Ok(false); // Native WebKit is NOT the Agent Playwright context.
+    }
+    let _guard = HISTORY_IO
+        .lock()
+        .map_err(|_| "browser history writer unavailable")?;
+    let mut history = load_history(path)?;
+    let id = history
+        .iter()
+        .find(|entry| entry.url == url)
+        .and_then(|entry| entry.id.clone())
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
+    history.retain(|entry| entry.url != url);
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| "clock unavailable for browser visit")?
+        .as_millis() as f64;
+    history.insert(
+        0,
+        HistoryEntry {
+            id: Some(id),
+            url: url.to_string(),
+            title: title.chars().take(256).collect(),
+            visited_at: stamp,
+            visit_source: Some("other".into()),
+        },
+    );
+    history.truncate(HISTORY_LIMIT);
+    atomic_json(path, &history, HISTORY_BYTES)?;
     Ok(true)
 }
 
@@ -417,6 +459,9 @@ pub fn desktop_set_browser_ask_before_download(
 
 #[tauri::command]
 pub fn desktop_get_browser_history(app: AppHandle) -> Result<Vec<HistoryEntry>, String> {
+    let _guard = HISTORY_IO
+        .lock()
+        .map_err(|_| "browser history writer unavailable")?;
     load_history(&browser_folder(&app)?.join("history.json"))
 }
 
@@ -425,11 +470,17 @@ pub fn desktop_import_legacy_browser_history(
     app: AppHandle,
     entries: Vec<HistoryEntry>,
 ) -> Result<bool, String> {
+    let _guard = HISTORY_IO
+        .lock()
+        .map_err(|_| "browser history writer unavailable")?;
     import_legacy(&browser_folder(&app)?.join("history.json"), entries)
 }
 
 #[tauri::command]
 pub fn desktop_remove_browser_history(app: AppHandle, url: String) -> Result<bool, String> {
+    let _guard = HISTORY_IO
+        .lock()
+        .map_err(|_| "browser history writer unavailable")?;
     remove_one(&browser_folder(&app)?.join("history.json"), &url)
 }
 
@@ -438,6 +489,9 @@ pub fn desktop_remove_selected_browser_history(
     app: AppHandle,
     urls: Vec<String>,
 ) -> Result<usize, String> {
+    let _guard = HISTORY_IO
+        .lock()
+        .map_err(|_| "browser history writer unavailable")?;
     remove_selected(&browser_folder(&app)?.join("history.json"), &urls)
 }
 
@@ -478,6 +532,31 @@ mod tests {
             visit_source: None,
         }
     }
+    #[test]
+    fn native_page_visits_are_persisted_with_real_user_provenance() {
+        let dir = temp_store();
+        let path = dir.join("history.json");
+        assert!(!record_native_visit(&path, "file:///etc/passwd", "bad", "other").unwrap());
+        assert!(
+            !record_native_visit(&path, "https://user:pass@example.org/", "bad", "other").unwrap()
+        );
+        assert!(!record_native_visit(&path, "https://example.org/", "not-agent", "agent").unwrap());
+        assert!(
+            record_native_visit(&path, "https://example.org/page", "Native page", "other").unwrap()
+        );
+        assert!(
+            record_native_visit(&path, "https://example.org/page", "Updated page", "other")
+                .unwrap()
+        );
+        let entries = load_history(&path).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].title, "Updated page");
+        assert_eq!(entries[0].visit_source.as_deref(), Some("other"));
+        assert!(entries[0].visited_at > 1_000_000.0);
+        assert!(remove_one(&path, "https://example.org/page").unwrap());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn history_migration_persists_sorted_and_deletes_by_id_or_url() {
         let dir = temp_store();

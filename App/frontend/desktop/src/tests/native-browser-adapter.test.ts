@@ -3,7 +3,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   createNativeBrowserAdapter, nativeBrowserBounds, type NativeBrowserBridge, type NativeBrowserMessage,
 } from "../native-browser-adapter.js";
-import { selectNativeTab, onNativeTabClosed } from "../native-browser-tab-state.js";
+import { selectNativeTab, onNativeTabClosed, markNativeTabUserNavigation } from "../native-browser-tab-state.js";
 
 const make = () => {
   const element = document.createElement("div");
@@ -17,6 +17,7 @@ const make = () => {
     nativeBrowserBounds: vi.fn(async () => undefined),
     nativeBrowserAction: vi.fn(async () => undefined),
     nativeBrowserDestroy: vi.fn(async () => undefined),
+    nativeBrowserMarkUserNavigation: vi.fn(async () => undefined),
     onNativeBrowserEvent: vi.fn(async callback => { publish = callback; return vi.fn(); }),
   };
   return { element, bridge, publish: (message: NativeBrowserMessage) => publish(message) };
@@ -76,6 +77,20 @@ describe("native child WebView Electron-compatible adapter", () => {
     first.destroy();
     await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(2));
     unsubscribe();
+  });
+  it("only live native UI handles may report user navigation to their own Rust child", async () => {
+    const { element, bridge } = make();
+    const adapter = createNativeBrowserAdapter(element, bridge, "about:blank");
+    await adapter.mount();
+    const handle = adapter.view.getWebContentsId();
+    await markNativeTabUserNavigation(handle);
+    expect(bridge.nativeBrowserMarkUserNavigation).toHaveBeenCalledExactlyOnceWith("tab-1");
+    await expect(markNativeTabUserNavigation(0)).rejects.toThrow();
+    await expect(markNativeTabUserNavigation(999999)).rejects.toThrow();
+    adapter.destroy();
+    await vi.waitFor(async () => {
+      await expect(markNativeTabUserNavigation(handle)).rejects.toThrow();
+    });
   });
   it("does not flash a newly created WebView over the selected tab", async () => {
     const a = make();

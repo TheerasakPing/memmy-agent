@@ -1,4 +1,4 @@
-import { onNativeTabClosed, selectNativeTab } from "./native-browser-tab-state.js";
+import { markNativeTabUserNavigation, onNativeTabClosed, selectNativeTab } from "./native-browser-tab-state.js";
 /**
  * Tauri v2 native boundary for the existing React renderer.
  *
@@ -77,6 +77,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "onEmbeddedBrowserOpen",
   "onEmbeddedBrowserClose",
   "selectEmbeddedBrowserTab",
+  "markEmbeddedBrowserUserNavigation",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -212,6 +213,8 @@ export function installTauriBridge(host: TauriWindow): boolean {
     nativeBrowserAction: (id: string, action: "navigate" | "reload" | "back" | "forward", url?: string) =>
       invoke<void>("desktop_native_browser_action", { id, action, url }),
     nativeBrowserDestroy: (id: string) => invoke<void>("desktop_native_browser_destroy", { id }),
+    nativeBrowserMarkUserNavigation: (id: string) =>
+      invoke<void>("desktop_native_browser_mark_user_navigation", { id }),
     onNativeBrowserEvent: (callback: (value: import("./native-browser-adapter.js").NativeBrowserMessage) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) return Promise.reject(new Error("Tauri native browser event bridge unavailable"));
@@ -318,6 +321,8 @@ export function installTauriBridge(host: TauriWindow): boolean {
     selectEmbeddedBrowserTab: (tabId: number | null) => {
       selectNativeTab(tabId);
     },
+    markEmbeddedBrowserUserNavigation: (tabId: number) =>
+      markNativeTabUserNavigation(tabId),
     onEmbeddedBrowserOpen: (callback: (url: string, owner?: { scopeKey?: string; sourceGuestId?: number }) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) throw new Error("Tauri native Browser popup listener unavailable");

@@ -338,7 +338,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(76);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(77);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

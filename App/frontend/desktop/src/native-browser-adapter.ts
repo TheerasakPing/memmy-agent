@@ -11,6 +11,7 @@ export interface NativeBrowserBridge {
   nativeBrowserBounds(id: string, bounds: NativeBrowserBounds): Promise<void>;
   nativeBrowserAction(id: string, action: "navigate" | "reload" | "back" | "forward", url?: string): Promise<void>;
   nativeBrowserDestroy(id: string): Promise<void>;
+  nativeBrowserMarkUserNavigation(id: string): Promise<void>;
   onNativeBrowserEvent(callback: (message: NativeBrowserMessage) => void): Promise<() => void>;
 }
 
@@ -134,6 +135,9 @@ export function createNativeBrowserAdapter(
             visible && isNativeTabVisible(nativeUiHandle)))
             .catch(() => dispatch("did-fail-load"));
         }
+        }, async () => {
+          if (!id || destroyed) throw Error("native browser WebView not available");
+          await bridge.nativeBrowserMarkUserNavigation(id);
         });
       } catch (error) {
         id = null;
