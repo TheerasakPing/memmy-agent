@@ -66,7 +66,7 @@ fn select_native_runtime_root(
         return Err("bundled native runtime must be a real directory".into());
     }
     for entry in [
-        "node",
+        if cfg!(windows) { "node.exe" } else { "node" },
         "App/shell/tauri/sidecar/memory.mjs",
         "App/shell/tauri/sidecar/backend.mjs",
         "App/shell/tauri/sidecar/gateway.mjs",
@@ -243,15 +243,27 @@ async fn desktop_restart_memory_service(
 
 /// Validate an installed macOS preview without the GUI or production user data.
 /// This intentionally requires a real bundle and launches all three services.
+/// Resolve installed resources from the platform's actual installer layout.
+/// macOS: Foo.app/Contents/MacOS/Foo => Contents/Resources/runtime
+/// Windows: installation/Foo.exe => installation/runtime (NSIS or MSI).
+fn native_resources_for_executable(exe: &Path) -> Option<PathBuf> {
+    let bin = exe.parent()?;
+    #[cfg(target_os = "macos")]
+    {
+        Some(bin.parent()?.join("Resources/runtime"))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Some(bin.join("runtime"))
+    }
+}
+
 pub fn smoke_installed_runtime() -> i32 {
     let result = (|| -> Result<(), String> {
         let executable =
             std::env::current_exe().map_err(|_| "cannot resolve packaged executable")?;
-        let resources = executable
-            .parent()
-            .and_then(std::path::Path::parent)
-            .ok_or("expected macOS .app bundle layout")?
-            .join("Resources/runtime");
+        let resources = native_resources_for_executable(&executable)
+            .ok_or("native Tauri executable has no runtime resource directory")?;
         let data_dir =
             std::env::temp_dir().join(format!("memmy-standalone-smoke-{}", uuid::Uuid::new_v4()));
         let supervisor = native_runtime::NativeRuntime::default();
@@ -480,7 +492,7 @@ mod tests {
         std::fs::create_dir(&runtime).unwrap();
         assert!(select_native_runtime_root(&base, true).is_err());
         for entry in [
-            "node",
+            if cfg!(windows) { "node.exe" } else { "node" },
             "App/shell/tauri/sidecar/memory.mjs",
             "App/shell/tauri/sidecar/backend.mjs",
             "App/shell/tauri/sidecar/gateway.mjs",

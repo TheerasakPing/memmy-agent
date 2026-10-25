@@ -88,7 +88,7 @@ export function auditBundle(bundle, platform = process.platform) {
   // Runtime must live INSIDE the actual app/bundle, not in the developer checkout.
   const resources = platform === 'darwin' ? 'Contents/Resources/runtime' : 'runtime';
   for (const [part, label] of [
-    ['node', 'bundled Node runtime'],
+    [platform === 'win32' ? 'node.exe' : 'node', 'bundled Node runtime'],
     ['App/shell/tauri/sidecar/memory.mjs', 'Memory startup shim'],
     ['App/shell/tauri/sidecar/backend.mjs', 'Local API startup shim'],
     ['App/shell/tauri/sidecar/gateway.mjs', 'Agent startup shim'],

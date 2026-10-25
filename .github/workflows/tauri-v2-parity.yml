@@ -60,5 +60,111 @@ jobs:
       - run: cargo check --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml
       - run: cargo test --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml
 
+  windows-x64-installer-preview:
+    # Expensive native build runs ONLY when deliberately dispatched, not on
+    # unrelated pull_request events. Windows hosted runner uses MSVC/WebView2.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'codex/tauri-v2-windows-x64-nsis-20261025')
+    runs-on: windows-2025
+    timeout-minutes: 100
+    permissions:
+      contents: read
+    env:
+      NODE_OPTIONS: --no-experimental-webstorage
+      MEMMY_CLOUD_SERVICE: https://api.memmy.cn
+      MEMMY_LEGAL_CN_BASE_URL: https://memmy.cn
+      MEMMY_LEGAL_INTL_BASE_URL: https://memmy.bot
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node 26 for Windows x64 runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+          architecture: x64
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: App/shell/tauri/src-tauri
+
+      - name: Install exact root workspace dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile genuine Windows Node native SQLite bindings
+        run: npm rebuild better-sqlite3 sqlite-vec --foreground-scripts
+      - name: Build Memory / compiled API / React from existing source
+        run: |
+          npm run memory:build
+          npm run build -w @memmy/backend
+          npm run build -w @memmy/frontend-desktop
+      - name: Install and compile Agent's private dependency versions
+        run: |
+          npm --prefix App/memmy-agent ci --ignore-scripts --no-audit --no-fund
+          npm --prefix App/memmy-agent rebuild --foreground-scripts
+          npm --prefix App/memmy-agent run build
+      - name: Stage actual Windows x64 node.exe and Agent+Memory runtime
+        run: node App/shell/tauri/packaging/prepare-runtime-windows.mjs
+      - name: Test and enforce Windows legacy MAX_PATH in staged runtime
+        run: |
+          node --test App/shell/tauri/packaging/trim-windows-node-modules.test.mjs
+          node App/shell/tauri/packaging/trim-windows-node-modules.mjs App/shell/tauri/packaging/runtime
+      - name: Smoke genuine Windows Node + native SQLite + compiled Memory CLI
+        run: node App/shell/tauri/packaging/smoke-windows-runtime.mjs App/shell/tauri/packaging/runtime
+      - name: Check original React / native bridge and package security tests
+        run: |
+          node scripts/engineering/tauri-parity.mjs --check
+          npm run bundle:audit:test -w @memmy/tauri-shell
+      - name: Compile-check Rust/Tauri for Windows/MSVC
+        run: cargo check --locked --manifest-path App/shell/tauri/src-tauri/Cargo.toml --target x86_64-pc-windows-msvc
+      - name: Build unsigned Windows x64 NSIS installer (Developer Preview)
+        run: |
+          npm exec --workspace @memmy/tauri-shell -- tauri build --debug --bundles nsis --ci --config packaging/tauri-bundled.conf.json
+          if ($LASTEXITCODE -ne 0) { throw "Windows x64 Tauri NSIS native build failed" }
+      - name: Install actual x64 NSIS Preview on isolated Windows runner; smoke native Rust services
+        run: |
+          $dir = 'App/shell/tauri/src-tauri/target/debug/bundle/nsis'
+          $installer = Get-ChildItem $dir -Filter '*-setup.exe' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (!$installer) { throw 'No Windows x64 NSIS setup to test' }
+          $destination = Join-Path $env:RUNNER_TEMP 'memmy-win11-x64-installed-preview'
+          $install = Start-Process -FilePath $installer.FullName -ArgumentList @('/S',"/D=$destination") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "NSIS silent install returned $($install.ExitCode)" }
+          if (!(Test-Path "$destination/runtime/node.exe")) { throw 'NSIS installer omitted bundled node.exe' }
+          node App/shell/tauri/packaging/smoke-windows-runtime.mjs "$destination/runtime"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Windows native Runtime smoke failed' }
+          $native = Join-Path $destination 'memmy-turbo-tauri.exe'
+          if (!(Test-Path $native)) { throw 'Installed Rust Tauri x64 executable missing' }
+          & $native --smoke-native-runtime
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Rust-managed Memory/Agent Gateway startup failed' }
+      - name: Verify generated Windows NSIS executable and SHA-256
+        run: |
+          $dir = 'App/shell/tauri/src-tauri/target/debug/bundle/nsis'
+          $installer = Get-ChildItem $dir -Filter '*-setup.exe' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (!$installer) { throw 'Missing real x64 Tauri NSIS installer' }
+          $hash = (Get-FileHash -Algorithm SHA256 $installer.FullName).Hash
+          $bytes = $installer.Length
+          if ($bytes -lt 20000000) { throw 'Suspiciously tiny GUI-only installer: runtime likely absent' }
+          Write-Host "Windows NSIS Preview: $($installer.FullName); SHA256=$hash; bytes=$bytes"
+          @"
+          sha256=$hash
+          bytes=$bytes
+          arch=x86_64-pc-windows-msvc
+          signed=false
+          notarized=false
+          full_feature_parity=false
+          "@ | Set-Content -Path "$dir/BUILD-VERIFICATION.txt" -Encoding utf8
+      - name: Upload actual Windows 11-compatible x64 NSIS Developer Preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memmy-tauri-v2-win11-x64-nsis-unsigned-dev-preview
+          path: |
+            App/shell/tauri/src-tauri/target/debug/bundle/nsis/*-setup.exe
+            App/shell/tauri/src-tauri/target/debug/bundle/nsis/BUILD-VERIFICATION.txt
+          retention-days: 7
+          if-no-files-found: warn
+
 # This workflow is NOT release parity: all 85 native methods plus signed OS
 # installer E2E must pass before replacing the shipping Electron app.
