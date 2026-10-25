@@ -4,10 +4,11 @@
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { auditBundleSymlinks } from './audit-bundle.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const stage = join(root, 'App/shell/tauri/packaging/runtime');
 const nodeVersion = '26.8.2';
@@ -37,7 +38,8 @@ try {
 run(join(stage, 'node'), ['--version']);
 for (const relative of [
   'node_modules',
-  'App/memmy-agent/node_modules',
+  // Agent resolves its dependencies from staged /runtime/node_modules instead.
+  // Do not copy another host checkout symlink's entire dependency tree.
   'App/memmy-agent/dist',
   'Memory/dist',
   'App/backend/dist',
@@ -60,5 +62,14 @@ for (const relative of [
 ]) {
   console.log(`Bundling ${relative}`);
   await copy(relative);
+}
+// The Electron checkout sometimes links this package-local node_modules to an
+// absolute developer path. The staged Agent MUST resolve exclusively to the
+// bundled root dependency tree, not to any build host or duplicate 1+ GiB tree.
+await symlink('../../node_modules', join(stage, 'App/memmy-agent/node_modules'), 'dir');
+const integrityErrors = auditBundleSymlinks(stage, ['node_modules','App/memmy-agent/node_modules']);
+if (integrityErrors.length) {
+  throw Error('Staged Tauri runtime has external or broken dependency links: ' +
+    integrityErrors.slice(0, 12).join('; '));
 }
 console.log('Completed Tauri local runtime stage: ' + stage);
