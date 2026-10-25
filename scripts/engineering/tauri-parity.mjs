@@ -81,19 +81,37 @@ for (const name of ["width", "height", "minWidth", "minHeight"]) {
     throw new Error(`native Tauri ${name} diverged from original Electron UI window`);
   }
 }
+// Real Rust IPC exists, but the original Electron method supports five data
+// categories. Tauri currently preserves safety by implementing only the
+// native browsingHistory subset; cookies/cache/siteData/downloadHistory reject.
+const PARTIAL_NATIVE_METHODS = new Map([
+  ["clearBrowserData", "Only browsingHistory is implemented; four remaining selective categories fail closed"],
+]);
+for (const name of PARTIAL_NATIVE_METHODS.keys()) {
+  if (!native.includes(name)) throw new Error("Partial-method marker must have real native bridge: " + name);
+}
 const manifest = {
   schemaVersion: 1,
   source: "App/shell/desktop/src/preload/preload.cts:MemmyPreloadApi",
   frontend: "App/frontend/desktop/src/main.tsx",
   uiPolicy: "reuse original React entrypoint, CSS, pages, routes, tabs and components",
   immutableUiSha256: uiHashes,
-  fullFeatureParity: native.length === methods.length,
-  counts: { legacyMethods: methods.length, nativeMethods: native.length, remainingMethods: methods.length - native.length, routes: routes.length },
+  fullFeatureParity: native.length === methods.length && PARTIAL_NATIVE_METHODS.size === 0,
+  counts: {
+    legacyMethods: methods.length,
+    nativeMethods: native.length,
+    remainingMethods: methods.length - native.length,
+    partialNativeMethods: PARTIAL_NATIVE_METHODS.size,
+    remainingFullBehaviorMethods: methods.length - native.length + PARTIAL_NATIVE_METHODS.size,
+    routes: routes.length
+  },
   routes: routes.map((path) => ({ path, status: "original-react-reused" })),
   methods: methods.map((name) => ({
     name,
-    status: native.includes(name) ? "native-tauri-command-or-local-noop" : "NOT_MIGRATED",
-    acceptance: native.includes(name) ? "requires native E2E proof" : "must port and run original behavior E2E"
+    status: PARTIAL_NATIVE_METHODS.has(name) ? "PARTIAL_NATIVE_FUNCTIONALITY" :
+      native.includes(name) ? "native-tauri-command-or-local-noop" : "NOT_MIGRATED",
+    acceptance: PARTIAL_NATIVE_METHODS.get(name) ??
+      (native.includes(name) ? "requires native E2E proof" : "must port and run original behavior E2E")
   }))
 };
 const target = resolve(root, "docs/engineering/tauri/tauri-parity-manifest.json");

@@ -127,6 +127,10 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(invoke).toHaveBeenCalledWith("desktop_send_browser_sidebar_action", {
       sessionKey: "session-main", action: { action: "reload" }
     });
+    await api.clearBrowserData?.(["browsingHistory"]);
+    expect(invoke).toHaveBeenCalledWith("desktop_clear_browser_data", {
+      categories: ["browsingHistory"]
+    });
     expect(await api.getBrowserHistory()).toEqual([]);
     expect(await api.getBrowserAccessRules()).toEqual([]);
     expect(await api.getBrowserDownloadSettings()).toEqual({directory:null,approvedDirectories:[],askBeforeDownload:false});
@@ -356,7 +360,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(79);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(80);
     expect(host.memmy?.installCliTools).toBeTypeOf("function");
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

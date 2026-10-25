@@ -12,8 +12,10 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 79,
-    "remainingMethods": 6,
+    "nativeMethods": 80,
+    "remainingMethods": 5,
+    "partialNativeMethods": 1,
+    "remainingFullBehaviorMethods": 6,
     "routes": 14
   },
   "routes": [
@@ -127,8 +129,8 @@
     },
     {
       "name": "clearBrowserData",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "PARTIAL_NATIVE_FUNCTIONALITY",
+      "acceptance": "Only browsingHistory is implemented; four remaining selective categories fail closed"
     },
     {
       "name": "markEmbeddedBrowserUserNavigation",
