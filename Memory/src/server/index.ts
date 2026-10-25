@@ -14,6 +14,7 @@ import { requestMemoryServiceRestart } from "./service-restart.js";
 import { MEMORY_PROTOCOL_VERSION, MEMORY_SERVICE_VERSION } from "../version.js";
 import { SCHEMA_VERSION } from "../storage/schema.js";
 import { MEMORY_RUNTIME_BUILD_ID } from "../runtime-build.js";
+import { tauriManagedMemoryWorkerPolicy } from "./tauri-startup-policy.js";
 
 const logger = createMemoryLogger("server");
 
@@ -100,12 +101,14 @@ async function runMemoryService(argv: string[], lifecycle: {
             endpoint: config.storage.endpoint,
             token: config.storage.token
         });
+        if (process.env.MEMMY_TAURI_DEBUG_STARTUP === "1") process.stderr.write("[memmy-startup] storage-ready\n");
         service = new MemoryService({
             backend,
             mode: config.storage.mode,
             configPath,
             config
         });
+        if (process.env.MEMMY_TAURI_DEBUG_STARTUP === "1") process.stderr.write("[memmy-startup] service-created\n");
         const listening = await listenMemoryHttpServer({
             service,
             host,
@@ -122,14 +125,17 @@ async function runMemoryService(argv: string[], lifecycle: {
                 ? { localServiceToken: config.storage.token }
                 : { allowAnonymous: true },
             configPath,
-            startAgentSourceAutomation: true
+            startAgentSourceAutomation: true,
+            ...tauriManagedMemoryWorkerPolicy(configPath)
         });
         server = listening.server;
+        if (process.env.MEMMY_TAURI_DEBUG_STARTUP === "1") process.stderr.write("[memmy-startup] socket-listening\n");
         const { url } = listening;
         service.setViewerEndpoint(url);
         if (configPath) {
             await writeCurrentEndpoint(configPath, url);
         }
+        if (process.env.MEMMY_TAURI_DEBUG_STARTUP === "1") process.stderr.write("[memmy-startup] endpoint-persisted\n");
         writeRuntimeState(serviceHome, {
             pid: process.pid,
             endpoint: url,

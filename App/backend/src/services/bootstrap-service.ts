@@ -177,12 +177,21 @@ async function getLotteryStatus(cloudClient: CloudClient): Promise<LotteryStatus
   }
 }
 
-async function getMemoryHealth(memoryClient: MemoryClient): Promise<HealthStatus> {
+/** Bootstrap must render even if Memory is busy reconciling a legacy profile.
+ * The background worker can recover later; it must not hold the entire UI hostage.
+ */
+export async function getMemoryHealth(memoryClient: MemoryClient): Promise<HealthStatus> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const health = await memoryClient.health();
-    return health.ok ? "ok" : "unavailable";
-  } catch (error) {
-    return "unavailable";
+    return await Promise.race([
+      memoryClient.health().then((health): HealthStatus => health.ok ? "ok" : "unavailable")
+        .catch((): HealthStatus => "unavailable"),
+      new Promise<HealthStatus>((resolveTimeout) => {
+        timer = setTimeout(() => resolveTimeout("unavailable"), 3_500);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
