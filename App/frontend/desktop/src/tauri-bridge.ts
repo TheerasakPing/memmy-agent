@@ -80,6 +80,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "onEmbeddedBrowserClose",
   "selectEmbeddedBrowserTab",
   "markEmbeddedBrowserUserNavigation",
+  "clearBrowserData",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -249,6 +250,9 @@ export function installTauriBridge(host: TauriWindow): boolean {
       }).catch(() => undefined);
       return () => { active = false; stop?.(); };
     },
+    clearBrowserData: (categories?: Array<"cookies" | "siteData" | "cache" |
+      "downloadHistory" | "browsingHistory">) =>
+      invoke<void>("desktop_clear_browser_data", { categories }),
     getBrowserHistory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserHistory"]>>>>("desktop_get_browser_history"),
     importLegacyBrowserHistory: (entries: Parameters<NonNullable<NonNullable<Window["memmy"]>["importLegacyBrowserHistory"]>>[0]) =>
       invoke<boolean>("desktop_import_legacy_browser_history", { entries }),

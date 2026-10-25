@@ -371,6 +371,7 @@ pub fn run() {
             desktop_get_browser_sidebar_surface,
             desktop_send_browser_sidebar_action,
             native_browser_store::desktop_get_browser_history,
+            native_browser_store::desktop_clear_browser_data,
             native_browser_store::desktop_import_legacy_browser_history,
             native_browser_store::desktop_remove_browser_history,
             native_browser_store::desktop_remove_selected_browser_history,

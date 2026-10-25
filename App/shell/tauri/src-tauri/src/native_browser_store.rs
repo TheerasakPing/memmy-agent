@@ -495,6 +495,59 @@ pub fn desktop_remove_selected_browser_history(
     remove_selected(&browser_folder(&app)?.join("history.json"), &urls)
 }
 
+// Tauri 2's clear_all_browsing_data() is NOT equivalent to Electron's
+// category-scoped APIs. In particular, it could also wipe app authentication
+// when native child WebViews share WKWebsiteDataStore with the main window.
+const BROWSER_DATA_TYPES: [&str; 5] = [
+    "cookies",
+    "siteData",
+    "cache",
+    "downloadHistory",
+    "browsingHistory",
+];
+fn accepted_clear_categories(input: Option<&[String]>) -> Result<(), String> {
+    let Some(categories) = input else {
+        return Err("selective browser-data reset is required; native cookie/cache isolation is not yet verified".into());
+    };
+    if categories.is_empty() || categories.len() > BROWSER_DATA_TYPES.len() {
+        return Err("invalid browser data categories".into());
+    }
+    let mut seen = HashSet::new();
+    for category in categories {
+        if !BROWSER_DATA_TYPES.contains(&category.as_str()) || !seen.insert(category.as_str()) {
+            return Err("invalid or repeated browser data category".into());
+        }
+    }
+    if categories.len() != 1 || categories[0] != "browsingHistory" {
+        return Err("only browsingHistory can be cleared without impacting main-app authentication; cookies, cache, siteData and downloadHistory are not yet supported".into());
+    }
+    Ok(())
+}
+fn clear_history_only(path: &Path) -> Result<(), String> {
+    // Inspect the existing history *before* replacing it, so corrupt or
+    // symlinked inputs cannot be treated as an empty successful clear.
+    let _ = load_history(path)?;
+    atomic_json(path, &Vec::<HistoryEntry>::new(), HISTORY_BYTES)
+}
+
+/// A deliberately narrow but REAL subset of the Electron clearBrowserData API.
+/// Never silently clears more categories than the user explicitly requested.
+#[tauri::command]
+pub fn desktop_clear_browser_data(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    categories: Option<Vec<String>>,
+) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("Browser clearing requires first-party main app window".into());
+    }
+    accepted_clear_categories(categories.as_deref())?;
+    let _guard = HISTORY_IO
+        .lock()
+        .map_err(|_| "browser history writer unavailable")?;
+    clear_history_only(&browser_folder(&app)?.join("history.json"))
+}
+
 #[tauri::command]
 pub fn desktop_get_browser_access_rules(app: AppHandle) -> Result<Vec<AccessRecord>, String> {
     Ok(entries_access(&load_access(
@@ -532,6 +585,59 @@ mod tests {
             visit_source: None,
         }
     }
+    #[test]
+    fn browser_data_clear_rejects_unsupported_categories_without_expanding_scope() {
+        let accept = |categories: &[&str]| {
+            let values: Vec<String> = categories.iter().map(|v| (*v).into()).collect();
+            accepted_clear_categories(Some(&values))
+        };
+        assert!(accept(&["browsingHistory"]).is_ok());
+        assert!(accepted_clear_categories(None).is_err()); // no-category default is all
+        for invalid in [
+            vec![],
+            vec!["cookies"],
+            vec!["siteData"],
+            vec!["cache"],
+            vec!["downloadHistory"],
+            vec!["browsingHistory", "cookies"],
+            vec!["browsingHistory", "browsingHistory"],
+            vec!["../../secrets"],
+        ] {
+            assert!(
+                accept(&invalid).is_err(),
+                "must not clear unsupported subset: {invalid:?}"
+            );
+        }
+    }
+    #[test]
+    fn native_browser_clear_writes_empty_history_without_mutating_other_browser_settings() {
+        let dir = temp_store();
+        let history = dir.join("history.json");
+        let access = dir.join("access.json");
+        let settings = dir.join("download-settings.json");
+        fs::write(&access, br#"{"https://example.org":"allow"}"#).unwrap();
+        fs::write(&settings, br#"{"askBeforeDownload":true}"#).unwrap();
+        record_native_visit(&history, "https://example.org", "test", "other").unwrap();
+        assert_eq!(load_history(&history).unwrap().len(), 1);
+        clear_history_only(&history).unwrap();
+        assert!(load_history(&history).unwrap().is_empty());
+        assert_eq!(
+            fs::read(&access).unwrap(),
+            br#"{"https://example.org":"allow"}"#
+        );
+        assert_eq!(
+            fs::read(&settings).unwrap(),
+            br#"{"askBeforeDownload":true}"#
+        );
+        #[cfg(unix)]
+        {
+            fs::remove_file(&history).unwrap();
+            std::os::unix::fs::symlink("/etc/hosts", &history).unwrap();
+            assert!(clear_history_only(&history).is_err());
+        }
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     fn native_page_visits_are_persisted_with_real_user_provenance() {
         let dir = temp_store();
