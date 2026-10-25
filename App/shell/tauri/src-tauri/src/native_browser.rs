@@ -314,6 +314,37 @@ pub fn desktop_native_browser_action(
     }
 }
 
+/// Copy the URL of the *actual* Rust child WebView, not an invented
+/// plugin://browser@memmy Agent CDP tab reference.
+fn trusted_native_page_link(raw: &str) -> Result<&str, String> {
+    let parsed = browser_url(raw)?;
+    if !matches!(parsed.scheme(), "http" | "https") || raw.len() > 4096 {
+        return Err("only bounded HTTP(S) browser page URLs can be copied".into());
+    }
+    Ok(raw)
+}
+#[tauri::command]
+pub fn desktop_native_browser_copy_tab_url(
+    app: AppHandle,
+    window: WebviewWindow,
+    browsers: tauri::State<'_, NativeBrowsers>,
+    id: String,
+) -> Result<(), String> {
+    main_guard(&window)?;
+    let label = owned_label(&browsers, &id)?;
+    let view = app
+        .get_webview(&label)
+        .ok_or("native browser WebView no longer exists")?;
+    let actual_url = view
+        .url()
+        .map_err(|_| "cannot read native browser page URL")?;
+    let value = trusted_native_page_link(actual_url.as_str())?;
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    app.clipboard()
+        .write_text(value)
+        .map_err(|_| "cannot copy native browser page URL".into())
+}
+
 #[tauri::command]
 pub fn desktop_native_browser_mark_user_navigation(
     window: WebviewWindow,
@@ -398,6 +429,25 @@ mod tests {
         assert_eq!(
             browser_url("https://example.org/new-tab").unwrap().scheme(),
             "https"
+        );
+    }
+    #[test]
+    fn native_page_copy_never_forges_an_agent_browser_tab_mention() {
+        for raw in [
+            "about:blank",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "plugin://browser@memmy?mention=tab-v1",
+            "https://user:secret@example.org/",
+        ] {
+            assert!(trusted_native_page_link(raw).is_err(), "{raw}");
+        }
+        assert!(
+            trusted_native_page_link(&format!("https://example.org/{}", "a".repeat(4096))).is_err()
+        );
+        assert_eq!(
+            trusted_native_page_link("https://example.org/path?a=1&b=2").unwrap(),
+            "https://example.org/path?a=1&b=2"
         );
     }
     #[test]

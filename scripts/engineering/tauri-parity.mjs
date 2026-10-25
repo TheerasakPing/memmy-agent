@@ -89,6 +89,7 @@ const PARTIAL_NATIVE_METHODS = new Map([
   ["downloadUpdate", "Signature-verified native downloader is wired; production signer public key and signed update feed are not yet provisioned"],
   ["onUpdateDownloadProgress", "Live signed-download progress is wired but needs real production signed release E2E"],
   ["openUpdateInstaller", "Installs only signature-verified in-process staged artifacts; cross-restart/cross-platform acceptance not yet verified"],
+  ["copyEmbeddedBrowserTabMention", "Tauri copies a genuine live WebKit page URL, not an Agent-actionable browser/CDP tab mention; shared-session integration pending"],
 ]);
 for (const name of PARTIAL_NATIVE_METHODS.keys()) {
   if (!native.includes(name)) throw new Error("Partial-method marker must have real native bridge: " + name);

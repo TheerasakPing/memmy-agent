@@ -863,6 +863,8 @@ function ThreadTabs(props: {
   copiedBrowserTabId: number | null;
 }) {
   const { t } = useTranslation();
+  const nativeTabUrlFallback = typeof window !== "undefined" &&
+    Boolean((window as Window & { __TAURI__?: unknown }).__TAURI__);
   const listRef = useRef<HTMLDivElement | null>(null);
   const items = [
     ...props.tabs.map((tab) => ({ kind: "file" as const, key: tab.id, tab })),
@@ -979,8 +981,10 @@ function ThreadTabs(props: {
               <button
                 type="button"
                 className="thread-tab__close"
-                aria-label={t("browser.copyTabMention")}
-                title={t(props.copiedBrowserTabId === tab.id ? "browser.copiedTabMention" : "browser.copyTabMention")}
+                aria-label={t(nativeTabUrlFallback ? "browser.copyNativePageUrl" : "browser.copyTabMention")}
+                title={t(nativeTabUrlFallback
+                  ? (props.copiedBrowserTabId === tab.id ? "browser.copiedNativePageUrl" : "browser.copyNativePageUrl")
+                  : (props.copiedBrowserTabId === tab.id ? "browser.copiedTabMention" : "browser.copyTabMention"))}
                 tabIndex={-1}
                 onClick={(event) => {
                   event.stopPropagation();

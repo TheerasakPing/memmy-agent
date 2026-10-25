@@ -369,6 +369,7 @@ pub fn run() {
             native_browser::desktop_native_browser_action,
             native_browser::desktop_native_browser_destroy,
             native_browser::desktop_native_browser_mark_user_navigation,
+            native_browser::desktop_native_browser_copy_tab_url,
             desktop_get_browser_sidebar_surface,
             desktop_send_browser_sidebar_action,
             native_browser_store::desktop_get_browser_history,

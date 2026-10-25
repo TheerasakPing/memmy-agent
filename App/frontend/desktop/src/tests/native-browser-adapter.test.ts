@@ -3,7 +3,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   createNativeBrowserAdapter, nativeBrowserBounds, type NativeBrowserBridge, type NativeBrowserMessage,
 } from "../native-browser-adapter.js";
-import { selectNativeTab, onNativeTabClosed, markNativeTabUserNavigation } from "../native-browser-tab-state.js";
+import { selectNativeTab, onNativeTabClosed, markNativeTabUserNavigation, copyNativeTabPageUrl } from "../native-browser-tab-state.js";
 
 const make = () => {
   const element = document.createElement("div");
@@ -18,6 +18,7 @@ const make = () => {
     nativeBrowserAction: vi.fn(async () => undefined),
     nativeBrowserDestroy: vi.fn(async () => undefined),
     nativeBrowserMarkUserNavigation: vi.fn(async () => undefined),
+    nativeBrowserCopyTabUrl: vi.fn(async () => undefined),
     onNativeBrowserEvent: vi.fn(async callback => { publish = callback; return vi.fn(); }),
   };
   return { element, bridge, publish: (message: NativeBrowserMessage) => publish(message) };
@@ -90,6 +91,21 @@ describe("native child WebView Electron-compatible adapter", () => {
     adapter.destroy();
     await vi.waitFor(async () => {
       await expect(markNativeTabUserNavigation(handle)).rejects.toThrow();
+    });
+  });
+  it("copies only real live native page URLs by registered tab handle", async () => {
+    const { element, bridge } = make();
+    const adapter = createNativeBrowserAdapter(element, bridge, "about:blank");
+    await adapter.mount();
+    const handle = adapter.view.getWebContentsId();
+    await copyNativeTabPageUrl(handle);
+    expect(bridge.nativeBrowserCopyTabUrl).toHaveBeenCalledExactlyOnceWith("tab-1");
+    await expect(copyNativeTabPageUrl(0)).rejects.toThrow();
+    await expect(copyNativeTabPageUrl(-4)).rejects.toThrow();
+    await expect(copyNativeTabPageUrl(Number.MAX_SAFE_INTEGER)).rejects.toThrow();
+    adapter.destroy();
+    await vi.waitFor(async () => {
+      await expect(copyNativeTabPageUrl(handle)).rejects.toThrow();
     });
   });
   it("does not flash a newly created WebView over the selected tab", async () => {
