@@ -29,6 +29,9 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_get_full_disk_access_status") return true;
     if (command === "desktop_get_browser_extension_directory") return "/tmp/browser-extension";
     if (command === "desktop_reveal_browser_extension") return true;
+    if (command === "desktop_prepare_browser_extension") return {
+      status: "browser-opened", directory: "/tmp/browser-extension"
+    };
     if (command === "desktop_fullscreen") return { isFullScreen: false };
     if (command === "desktop_get_installation_id") return "00000000-0000-4000-8000-000000000001";
     if (command === "desktop_get_launch_at_login" || command === "desktop_set_launch_at_login") return true;
@@ -120,6 +123,12 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(await api.getFullDiskAccessStatus?.()).toBe(true);
     expect(await api.getBrowserExtensionDirectory()).toBe("/tmp/browser-extension");
     expect(await api.revealBrowserExtension()).toBe(true);
+    expect(await api.prepareBrowserExtension?.("chrome", false)).toEqual({
+      status: "browser-opened", directory: "/tmp/browser-extension"
+    });
+    expect(invoke).toHaveBeenCalledWith("desktop_prepare_browser_extension", {
+      browser: "chrome", revealFolder: false
+    });
     expect(await api.getMicrophoneAccessStatus()).toBe("unsupported");
     expect(await api.requestMicrophoneAccess()).toBe("unsupported");
     await api.openComputerHistoryMarkdown("/private/data/computer-history/histories/summary.md");
@@ -260,7 +269,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(64);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(65);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();

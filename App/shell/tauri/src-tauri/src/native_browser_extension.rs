@@ -82,6 +82,118 @@ pub fn desktop_reveal_browser_extension(
     Ok(true)
 }
 
+// Never run a renderer-provided executable or URL. The only permitted commands
+// open Chrome/Edge's own extension manager, as the original Electron UX does.
+fn extension_manager_command(
+    browser: &str,
+    platform: &str,
+) -> Option<(PathBuf, Vec<String>, bool)> {
+    let (display_name, scheme, exe, product) = match browser {
+        "chrome" => (
+            "Google Chrome",
+            "chrome://extensions",
+            "chrome.exe",
+            ["Google", "Chrome"],
+        ),
+        "edge" => (
+            "Microsoft Edge",
+            "edge://extensions",
+            "msedge.exe",
+            ["Microsoft", "Edge"],
+        ),
+        _ => return None,
+    };
+    match platform {
+        "macos" => Some((
+            PathBuf::from("/usr/bin/open"),
+            vec!["-a".into(), display_name.into(), scheme.into()],
+            true,
+        )),
+        "windows" => {
+            for key in ["PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA"] {
+                let Some(root) = std::env::var_os(key) else {
+                    continue;
+                };
+                let candidate = PathBuf::from(root)
+                    .join(product[0])
+                    .join(product[1])
+                    .join("Application")
+                    .join(exe);
+                if fs::symlink_metadata(&candidate)
+                    .ok()
+                    .is_some_and(|info| info.file_type().is_file())
+                {
+                    return Some((candidate, vec![scheme.into()], false));
+                }
+            }
+            None
+        }
+        // Preserve Electron behavior: Linux has no supported launcher yet.
+        _ => None,
+    }
+}
+
+fn open_extension_manager(browser: &str) -> &'static str {
+    let Some((exe, args, wait)) = extension_manager_command(browser, std::env::consts::OS) else {
+        return "browser-not-found";
+    };
+    let Ok(mut child) = std::process::Command::new(exe).args(&args).spawn() else {
+        return "browser-launch-failed";
+    };
+    if !wait {
+        return "browser-opened";
+    }
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                return if status.success() {
+                    "browser-opened"
+                } else {
+                    "browser-launch-failed"
+                }
+            }
+            Err(_) => return "browser-launch-failed",
+            Ok(None) if std::time::Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return "browser-launch-failed";
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(25)),
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn desktop_prepare_browser_extension(
+    app: AppHandle,
+    window: WebviewWindow,
+    browser: String,
+    reveal_folder: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    if window.label() != "main" {
+        return Err("browser extension preparation requires main window".into());
+    }
+    if browser != "chrome" && browser != "edge" {
+        return Err("unsupported extension browser".into());
+    }
+    let Some(folder) = locate_extension(&app) else {
+        return Ok(serde_json::json!({"status":"extension-missing","directory":null}));
+    };
+    let outcome = tauri::async_runtime::spawn_blocking(move || open_extension_manager(&browser))
+        .await
+        .map_err(|_| "browser extension launcher unavailable")?;
+    if reveal_folder.unwrap_or(true) {
+        app.opener()
+            .open_path(folder.to_string_lossy().into_owned(), None::<&str>)
+            .map_err(|_| "failed to reveal bundled browser extension")?;
+    }
+    Ok(serde_json::json!({
+        "status": outcome,
+        "directory": folder.to_string_lossy()
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,6 +226,19 @@ mod tests {
             assert!(extension_root(&temp).is_none());
         }
         fs::remove_dir_all(&temp).unwrap();
+    }
+
+    #[test]
+    fn browser_manager_command_is_fully_allowlisted_and_never_accepts_user_paths() {
+        assert!(extension_manager_command("../../../bin/sh", "macos").is_none());
+        assert!(extension_manager_command("firefox", "macos").is_none());
+        assert!(extension_manager_command("chrome", "linux").is_none());
+        let chrome = extension_manager_command("chrome", "macos").unwrap();
+        assert_eq!(chrome.0, PathBuf::from("/usr/bin/open"));
+        assert_eq!(chrome.1, vec!["-a", "Google Chrome", "chrome://extensions"]);
+        assert!(chrome.2);
+        let edge = extension_manager_command("edge", "macos").unwrap();
+        assert_eq!(edge.1, vec!["-a", "Microsoft Edge", "edge://extensions"]);
     }
 
     #[test]
