@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 74,
-    "remainingMethods": 11,
+    "nativeMethods": 76,
+    "remainingMethods": 9,
     "routes": 14
   },
   "routes": [
@@ -432,8 +432,8 @@
     },
     {
       "name": "onEmbeddedBrowserClose",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "copyEmbeddedBrowserTabMention",
@@ -442,8 +442,8 @@
     },
     {
       "name": "selectEmbeddedBrowserTab",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "setMenuBarIcon",

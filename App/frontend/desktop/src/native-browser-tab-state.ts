@@ -1,0 +1,35 @@
+/** Native UI tab IDs are process-local handles, NEVER Electron webContents IDs
+ * and NEVER identities for the independent Agent Playwright/browser executor.
+ */
+type NativeTab = { onSelection: () => void };
+const tabs = new Map<number, NativeTab>();
+const listeners = new Set<(handle: number) => void>();
+let nextId = 1;
+let selected: number | null | undefined = undefined;
+
+export function registerNativeTab(onSelection: () => void): number {
+  if (tabs.size >= 10 || !Number.isSafeInteger(nextId)) throw Error("native tab budget exhausted");
+  const id = nextId++;
+  tabs.set(id, { onSelection });
+  return id;
+}
+export function isNativeTabVisible(id: number): boolean {
+  return selected === undefined || selected === id;
+}
+export function selectNativeTab(id: number | null): void {
+  if (id !== null && (!Number.isSafeInteger(id) || id <= 0 || !tabs.has(id))) return;
+  if (selected === id) return;
+  selected = id;
+  for (const tab of tabs.values()) tab.onSelection();
+}
+export function releaseNativeTab(id: number, confirmedClosed = true): void {
+  if (!tabs.delete(id)) return;
+  if (selected === id) selected = null;
+  for (const tab of tabs.values()) tab.onSelection();
+  if (confirmedClosed) for (const callback of [...listeners]) callback(id);
+  if (tabs.size === 0) selected = undefined;
+}
+export function onNativeTabClosed(callback: (handle: number) => void): () => void {
+  listeners.add(callback);
+  return () => { listeners.delete(callback); };
+}

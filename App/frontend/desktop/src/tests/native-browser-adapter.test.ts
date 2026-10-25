@@ -3,6 +3,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   createNativeBrowserAdapter, nativeBrowserBounds, type NativeBrowserBridge, type NativeBrowserMessage,
 } from "../native-browser-adapter.js";
+import { selectNativeTab, onNativeTabClosed } from "../native-browser-tab-state.js";
 
 const make = () => {
   const element = document.createElement("div");
@@ -24,18 +25,94 @@ const make = () => {
 afterEach(() => document.body.replaceChildren());
 
 describe("native child WebView Electron-compatible adapter", () => {
-  it("keeps offscreen tabs hidden without reporting a fake Electron guest ID", async () => {
+  it("uses a scoped native UI handle rather than a fake Electron guest ID", async () => {
     const { element, bridge } = make();
     expect(nativeBrowserBounds(element, false)).toEqual({x:0,y:0,width:0,height:0,visible:false});
     const adapter = createNativeBrowserAdapter(element, bridge, "about:blank");
     expect(adapter.view.getWebContentsId()).toBe(0);
     await adapter.mount();
+    expect(adapter.view.getWebContentsId()).toBeGreaterThan(0);
     expect(bridge.nativeBrowserCreate).toHaveBeenCalledWith("about:blank", expect.objectContaining({ visible: false }));
     adapter.syncBounds(true);
     expect(bridge.nativeBrowserBounds).toHaveBeenCalledWith("tab-1", expect.objectContaining({ visible: true }));
     adapter.destroy();
     expect(bridge.nativeBrowserDestroy).toHaveBeenCalledWith("tab-1");
   });
+  it("selects only the registered native WebView and closes only after Rust confirms", async () => {
+    const a = make();
+    const b = make();
+    vi.mocked(b.bridge.nativeBrowserCreate).mockResolvedValue("tab-2");
+    const first = createNativeBrowserAdapter(a.element, a.bridge, "about:blank");
+    const second = createNativeBrowserAdapter(b.element, b.bridge, "about:blank");
+    await first.mount();
+    await second.mount();
+    const firstId = first.view.getWebContentsId();
+    const secondId = second.view.getWebContentsId();
+    expect(firstId).toBeGreaterThan(0);
+    expect(secondId).toBeGreaterThan(firstId);
+    const close = vi.fn();
+    const unsubscribe = onNativeTabClosed(close);
+    first.syncBounds(true);
+    second.syncBounds(true);
+    selectNativeTab(firstId);
+    expect(a.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-1",
+      expect.objectContaining({ visible: true }));
+    expect(b.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-2",
+      expect.objectContaining({ visible: false }));
+    selectNativeTab(secondId);
+    expect(a.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-1",
+      expect.objectContaining({ visible: false }));
+    expect(b.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-2",
+      expect.objectContaining({ visible: true }));
+    selectNativeTab(999_999_999);
+    expect(b.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-2",
+      expect.objectContaining({ visible: true }));
+    second.destroy();
+    await vi.waitFor(() => expect(close).toHaveBeenCalledWith(secondId));
+    expect(close).toHaveBeenCalledTimes(1);
+    selectNativeTab(firstId);
+    expect(a.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-1",
+      expect.objectContaining({ visible: true }));
+    first.destroy();
+    await vi.waitFor(() => expect(close).toHaveBeenCalledTimes(2));
+    unsubscribe();
+  });
+  it("does not flash a newly created WebView over the selected tab", async () => {
+    const a = make();
+    const b = make();
+    vi.mocked(b.bridge.nativeBrowserCreate).mockResolvedValue("tab-2");
+    const first = createNativeBrowserAdapter(a.element, a.bridge, "about:blank");
+    first.syncBounds(true);
+    await first.mount();
+    selectNativeTab(first.view.getWebContentsId());
+    const second = createNativeBrowserAdapter(b.element, b.bridge, "about:blank");
+    second.syncBounds(true);
+    await second.mount();
+    expect(b.bridge.nativeBrowserCreate).toHaveBeenCalledWith("about:blank",
+      expect.objectContaining({ visible: false }));
+    expect(b.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-2",
+      expect.objectContaining({ visible: false }));
+    selectNativeTab(second.view.getWebContentsId());
+    expect(b.bridge.nativeBrowserBounds).toHaveBeenLastCalledWith("tab-2",
+      expect.objectContaining({ visible: true }));
+    first.destroy();
+    second.destroy();
+    await Promise.resolve();
+  });
+  it("never fires a successful close callback when native destroy fails", async () => {
+    const { element, bridge } = make();
+    vi.mocked(bridge.nativeBrowserDestroy).mockRejectedValue(Error("guest close failed"));
+    const adapter = createNativeBrowserAdapter(element, bridge, "about:blank");
+    await adapter.mount();
+    const close = vi.fn();
+    const unsubscribe = onNativeTabClosed(close);
+    adapter.destroy();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(close).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it("maps real native navigation and titles to existing Electron-like DOM events", async () => {
     const { element, bridge, publish } = make();
     const adapter = createNativeBrowserAdapter(element, bridge, "about:blank");
