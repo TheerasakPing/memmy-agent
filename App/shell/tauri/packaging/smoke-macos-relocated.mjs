@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { auditBundle } from './audit-bundle.mjs';
 import { smokeMacApp } from './smoke-macos-app.mjs';
 import { smokeMacBundledServices } from './smoke-macos-services.mjs';
+import { smokeMacNativeSupervisor } from './smoke-macos-native-supervisor.mjs';
 
 /** Prove an app works OUTSIDE the source checkout. An app tested only under
  * target/debug/bundle can resolve missing modules from ancestor node_modules.
@@ -30,9 +31,13 @@ export async function smokeRelocatedMacApp(source) {
     const cli = smokeMacApp(copy);
     if (!cli.ok) return { ok: false, reason: 'relocated-cli-failed', cli };
     const services = await smokeMacBundledServices(copy);
-    return { ok: services.ok, relocated: true, isolatedHome: true,
-      originalUiPreserved: true, cliOk: true, authenticatedGateway: services.authenticatedGateway,
-      ...(services.ok ? {} : { reason: 'relocated-services-failed', services }) };
+    if (!services.ok) return { ok: false, relocated: true,
+      reason: 'relocated-services-failed', services };
+    const native = await smokeMacNativeSupervisor(copy);
+    return { ok: native.ok, relocated: true, isolatedHome: true,
+      originalUiPreserved: true, cliOk: true, authenticatedGateway: true,
+      nativeRustSupervisor: native.nativeStartedAndStopped ?? false,
+      ...(native.ok ? {} : { reason: 'relocated-rust-supervisor-failed', native }) };
   } finally { rmSync(temp, { recursive: true, force: true }); }
 }
 

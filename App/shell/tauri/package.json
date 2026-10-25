@@ -20,6 +20,8 @@
     "bundle:smoke:mac": "node packaging/smoke-macos-app.mjs",
     "bundle:smoke:services:mac": "node packaging/smoke-macos-services.mjs",
     "bundle:smoke:relocated:mac": "node packaging/smoke-macos-relocated.mjs",
+    "bundle:smoke:native:mac": "node packaging/smoke-macos-native-supervisor.mjs",
+    "bundle:smoke:dmg:mac": "bash packaging/smoke-mounted-dmg-macos.sh",
     "preview:app:mac": "bash packaging/package-app-macos.sh",
     "preview:dmg:mac": "bash packaging/create-dmg-macos.sh",
     "preview:dmg:unsigned:mac": "bash packaging/create-preview-dmg-unsigned.sh",
