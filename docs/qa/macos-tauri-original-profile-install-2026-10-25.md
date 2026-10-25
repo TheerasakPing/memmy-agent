@@ -88,3 +88,13 @@ Mac A/B test: `open -n --env "MEMMY_RUNTIME_CONFIG_PATH=$HOME/Library/Applicatio
 Permanent change in `native_runtime.rs`: pass `MEMMY_RUNTIME_CONFIG_PATH` pointing at the Preview data directory for Memory, Backend and Gateway. Do not modify or share the Original runtime.json. This is required for launching from Finder without `open --env` or terminal. Diagnostic constructor checkpoints are dev-only and should be removed or retained only for private QA. Large-profile automatic worker safe-mode remains an acknowledged production-parity gap.
 
 **Acceptance:** after compiling signed macOS Bundle, launch through Finder/LaunchServices WITHOUT manual env vars and check Preview Memory Health, Bootstrap HTTP 200, GUI main content, Original DB sizes/mtimes unchanged, 60+ sec stability, and rollback path.
+
+### Final macOS Finder regression (2026-10-26)
+
+- Git commit `c4d1d562` sets `MEMMY_RUNTIME_CONFIG_PATH` to the independent Preview `runtime-config.json` for all Rust-owned Memory/Backend/Gateway child processes. This prevents fallback to Original `~/.memmy/runtime.json` and fixes the synchronous startup budget-reconciliation stall.
+- `cargo check` passed, `tauri build --debug --bundles app --no-sign` passed, then updated the complete 2.2-GB staged app preserving sidecar runtime. ad-hoc `codesign --verify --deep --strict` passed.
+- Installed to `~/Applications/Memmy Turbo Preview.app` from a signed staging folder. Prior app saved at `~/Applications/.memmy-preview-rollback-before-final-runtime-isolation-20261026.app`. `/Applications/Memmy.app` unchanged.
+- Launched with regular `open -n "$HOME/Applications/Memmy Turbo Preview.app"` with **no** env overrides. Mac screen API confirmed a `Memmy Turbo Preview` window, 1200x780. The app remained running.
+- Real Preview DB / local-loopback service 90-sec E2E: Memory Health passed 15/15 measurements (first verified ready at monitor second 20), `/api/health` and `/api/app/bootstrap` passed 4/4, `/api/agent-sources` passed 4/4, no errors. Private startup log reached `service-created`, `socket-listening` and `endpoint-persisted`.
+- Original data preservation validated after final install: Original app-state DB 8007680 bytes with mtime 1792806288, Original Memory DB 1778192384 bytes with mtime 1792810805; both unchanged since initial snapshot. Preview Memory DB remains separate.
+- **Limits**: macOS on-screen window presence and React renderer smoke are verified separately; human visual E2E of every tab has not been established. Ad-hoc signing is for this machine, not notarization. For imported Memory SQLite ≥512 MiB, background auto-workers remain paused in containment mode until off-event-loop worker execution is implemented and stress tested.
