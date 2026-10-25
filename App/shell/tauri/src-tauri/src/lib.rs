@@ -1,5 +1,6 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 mod native_agent_tool;
 mod native_analytics;
@@ -46,6 +47,51 @@ fn is_loopback_runtime_config(value: &serde_json::Value) -> bool {
         && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
 }
 
+/// A debug .app is still a packaged application. Detect actual bundled
+/// resources, not Rust optimization profile. Only unbundled source development
+/// may use repo paths when runtime/ is entirely absent.
+fn select_native_runtime_root(
+    resources: &Path,
+    allow_source_fallback: bool,
+) -> Result<Option<PathBuf>, String> {
+    let root = resources.join("runtime");
+    let info = match std::fs::symlink_metadata(&root) {
+        Ok(info) => info,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound && allow_source_fallback => {
+            return Ok(None)
+        }
+        Err(_) => return Err("bundled native runtime folder unavailable".into()),
+    };
+    if info.file_type().is_symlink() || !info.is_dir() {
+        return Err("bundled native runtime must be a real directory".into());
+    }
+    for entry in [
+        "node",
+        "App/shell/tauri/sidecar/memory.mjs",
+        "App/shell/tauri/sidecar/backend.mjs",
+        "App/shell/tauri/sidecar/gateway.mjs",
+        "Memory/dist/src/server/index.js",
+        "App/backend/dist/src/index.js",
+        "App/memmy-agent/dist/main.js",
+    ] {
+        let path = root.join(entry);
+        let info =
+            std::fs::symlink_metadata(path).map_err(|_| "bundled native runtime is incomplete")?;
+        if info.file_type().is_symlink() || !info.is_file() {
+            return Err("bundled native runtime entrypoint is unsafe".into());
+        }
+    }
+    Ok(Some(root))
+}
+fn app_native_runtime_root(app: &AppHandle) -> Result<Option<PathBuf>, String> {
+    let resources = match app.path().resource_dir() {
+        Ok(resources) => resources,
+        Err(_) if cfg!(debug_assertions) => return Ok(None),
+        Err(_) => return Err("native resource directory unavailable".into()),
+    };
+    select_native_runtime_root(&resources, cfg!(debug_assertions))
+}
+
 #[tauri::command]
 async fn desktop_runtime_config(
     app: AppHandle,
@@ -56,15 +102,7 @@ async fn desktop_runtime_config(
         .app_local_data_dir()
         .map_err(|_| "app data directory unavailable")?;
     let runtime = supervisor.inner().clone();
-    #[cfg(not(debug_assertions))]
-    let bundled_root = Some(
-        app.path()
-            .resource_dir()
-            .map_err(|_| "native resource directory unavailable")?
-            .join("runtime"),
-    );
-    #[cfg(debug_assertions)]
-    let bundled_root: Option<std::path::PathBuf> = None;
+    let bundled_root = app_native_runtime_root(&app)?;
     let config = tauri::async_runtime::spawn_blocking(move || {
         runtime.config(&directory, bundled_root.as_deref())
     })
@@ -91,7 +129,7 @@ fn desktop_app_info(app: AppHandle) -> serde_json::Value {
         "version": app.package_info().version.to_string(),
         "platform": electron_compatible_platform(),
         "arch": std::env::consts::ARCH,
-        "isPackaged": !cfg!(debug_assertions),
+        "isPackaged": app_native_runtime_root(&app).ok().flatten().is_some(),
         "isWindowsStore": false
     })
 }
@@ -406,8 +444,8 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        electron_compatible_platform, is_loopback_runtime_config, validate_pending_action,
-        PendingWindowAction,
+        electron_compatible_platform, is_loopback_runtime_config, select_native_runtime_root,
+        validate_pending_action, PendingWindowAction,
     };
 
     #[test]
@@ -430,6 +468,50 @@ mod tests {
         assert_eq!(electron_compatible_platform(), expected);
     }
     use serde_json::json;
+
+    #[test]
+    fn packaged_debug_app_never_falls_back_to_developer_source_if_runtime_exists() {
+        let base =
+            std::env::temp_dir().join(format!("memmy-runtime-detect-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&base).unwrap();
+        assert!(select_native_runtime_root(&base, true).unwrap().is_none());
+        assert!(select_native_runtime_root(&base, false).is_err());
+        let runtime = base.join("runtime");
+        std::fs::create_dir(&runtime).unwrap();
+        assert!(select_native_runtime_root(&base, true).is_err());
+        for entry in [
+            "node",
+            "App/shell/tauri/sidecar/memory.mjs",
+            "App/shell/tauri/sidecar/backend.mjs",
+            "App/shell/tauri/sidecar/gateway.mjs",
+            "Memory/dist/src/server/index.js",
+            "App/backend/dist/src/index.js",
+            "App/memmy-agent/dist/main.js",
+        ] {
+            let path = runtime.join(entry);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, b"compiled entrypoint test fixture").unwrap();
+        }
+        assert_eq!(
+            select_native_runtime_root(&base, true).unwrap(),
+            Some(runtime.clone())
+        );
+        assert_eq!(
+            select_native_runtime_root(&base, false).unwrap(),
+            Some(runtime.clone())
+        );
+        #[cfg(unix)]
+        {
+            let payload = runtime.join("App/backend/dist/src/index.js");
+            std::fs::remove_file(&payload).unwrap();
+            std::os::unix::fs::symlink("/etc/hosts", &payload).unwrap();
+            assert!(select_native_runtime_root(&base, true).is_err());
+            std::fs::remove_dir_all(&runtime).unwrap();
+            std::os::unix::fs::symlink("/tmp", &runtime).unwrap();
+            assert!(select_native_runtime_root(&base, true).is_err());
+        }
+        std::fs::remove_dir_all(&base).unwrap();
+    }
 
     #[test]
     fn runtime_config_requires_local_origin_and_auth_token() {
