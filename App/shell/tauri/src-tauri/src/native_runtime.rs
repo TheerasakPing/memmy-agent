@@ -440,34 +440,72 @@ fn ensure_managed_data_dir(path: &Path) -> Result<(), String> {
 }
 
 fn memory_is_ready(port: u16, token: &str) -> bool {
+    // Memory writes an explicit Content-Length. Read only the complete HTTP
+    // body; waiting for TCP EOF incorrectly times out on keep-alive sockets.
+    // Never trust an open port alone: validate the real Memory JSON contract.
+    const MAX_HEALTH_BODY: usize = 128 * 1024;
+    const MAX_HTTP_HEADERS: usize = 16 * 1024;
     let address = SocketAddr::from(([127, 0, 0, 1], port));
-    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(350)) else {
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(750)) else {
         return false;
     };
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(3)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(3)));
     let request = format!("GET /api/v1/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAuthorization: Bearer {token}\r\nConnection: close\r\n\r\n");
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }
-    let mut output = String::new();
-    if stream.take(128 * 1024).read_to_string(&mut output).is_err() {
-        return false;
+    let mut output = Vec::with_capacity(8192);
+    let mut chunk = [0u8; 8192];
+    loop {
+        let Ok(n) = stream.read(&mut chunk) else {
+            return false;
+        };
+        if n == 0 {
+            return false; // Explicit Content-Length is required by this local contract.
+        }
+        output.extend_from_slice(&chunk[..n]);
+        if output.len() > MAX_HTTP_HEADERS + MAX_HEALTH_BODY {
+            return false;
+        }
+        let Some(header_end) = output.windows(4).position(|bytes| bytes == b"\r\n\r\n") else {
+            continue;
+        };
+        if header_end > MAX_HTTP_HEADERS {
+            return false;
+        }
+        let Ok(headers) = std::str::from_utf8(&output[..header_end]) else {
+            return false;
+        };
+        if !headers.starts_with("HTTP/1.1 200 ") {
+            return false;
+        }
+        let length = headers.lines().find_map(|header| {
+            let (key, value) = header.split_once(':')?;
+            key.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().ok())
+                .flatten()
+        });
+        let Some(length) = length.filter(|length| *length <= MAX_HEALTH_BODY) else {
+            return false;
+        };
+        let Some(end) = header_end
+            .checked_add(4)
+            .and_then(|start| start.checked_add(length))
+        else {
+            return false;
+        };
+        if output.len() < end {
+            continue;
+        }
+        let Ok(health) = serde_json::from_slice::<Value>(&output[header_end + 4..end]) else {
+            return false;
+        };
+        return health["ok"] == true
+            && health["storage"]["ready"] == true
+            && health["protocolVersion"].is_number()
+            && health["serviceVersion"].is_string();
     }
-    let Some((headers, body)) = output.split_once("\r\n\r\n") else {
-        return false;
-    };
-    if !headers.starts_with("HTTP/1.1 200") {
-        return false;
-    }
-    // Health payload is explicitly from the actual Memory service. We do not
-    // accept a mere open TCP listener as 'healthy'.
-    let Ok(health) = serde_json::from_str::<Value>(body) else {
-        return false;
-    };
-    health["ok"] == true
-        && health["storage"]["ready"] == true
-        && health["protocolVersion"].is_number()
-        && health["serviceVersion"].is_string()
 }
 
 fn launch_development_memory(
@@ -533,7 +571,9 @@ fn launch_development_memory_fixed(
         .stderr(Stdio::null())
         .spawn()
         .map_err(|_| "cannot launch managed Memory service")?;
-    let deadline = Instant::now() + Duration::from_secs(45);
+    // Large pre-existing SQLite profiles can need more time to initialize,
+    // but readiness remains authenticated and strictly time bounded.
+    let deadline = Instant::now() + Duration::from_secs(120);
     loop {
         if memory_is_ready(port, &token) {
             return Ok((child, url, token.to_owned()));
@@ -796,6 +836,33 @@ mod tests {
         assert!(runtime.memory_export_auth().is_err());
         runtime.stop();
         assert!(runtime.restart_memory().is_err());
+    }
+
+    #[test]
+    fn native_memory_health_accepts_valid_content_length_without_socket_eof() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let serve = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0u8; 1024];
+            let bytes = stream.read(&mut request).unwrap();
+            let text = String::from_utf8_lossy(&request[..bytes]);
+            assert!(text.contains("GET /api/v1/health"));
+            let body = r#"{"ok":true,"storage":{"ready":true},"protocolVersion":1,"serviceVersion":"2.1.7"}"#;
+            let headers = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: keep-alive\r\n\r\n{body}",
+                body.len()
+            );
+            stream.write_all(headers.as_bytes()).unwrap();
+            // Simulates a healthy Node server retaining the TCP socket. The
+            // Rust probe must not wait for connection close to accept JSON.
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        });
+        let start = std::time::Instant::now();
+        assert!(super::memory_is_ready(port, "a-valid-local-token"));
+        assert!(start.elapsed() < std::time::Duration::from_millis(1600));
+        serve.join().unwrap();
     }
 
     #[test]
