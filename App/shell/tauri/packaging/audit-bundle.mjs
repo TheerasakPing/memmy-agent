@@ -1,14 +1,68 @@
 /** Fail-closed release gate: do not publish a UI-only Tauri app. */
-import { existsSync, statSync, readdirSync, readFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { existsSync, lstatSync, statSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { resolve, join, relative, isAbsolute, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/**
+ * Reject broken/external npm workspace symlinks in the packaged runtime.
+ * Allow links ONLY if realpath resolves inside this app, never in a checkout.
+ * Do not follow symlink directories during this walk.
+ */
+export function auditBundleSymlinks(root, relativePaths) {
+  const errors = [];
+  let visited = 0;
+  const canonicalRoot = realpathSync(root);
+  const withinRoot = (destination) => {
+    const rest = relative(canonicalRoot, destination);
+    return rest === '' || (rest !== '..' && !rest.startsWith('..' + sep) && !isAbsolute(rest));
+  };
+  const stack = relativePaths.map(name => join(root, name));
+  while (stack.length) {
+    if (++visited > 250_000) {
+      errors.push('bundle dependency tree exceeds 250000 entries');
+      break;
+    }
+    const path = stack.pop();
+    let metadata;
+    try {
+      metadata = lstatSync(path);
+    } catch {
+      errors.push('bundle dependency directory missing/unreadable: ' + relative(root,path));
+      continue;
+    }
+    if (metadata.isSymbolicLink()) {
+      try {
+        const target = realpathSync(path);
+        if (!withinRoot(target)) {
+          errors.push('bundle symlink escapes app: ' + relative(root,path));
+        }
+      } catch {
+        errors.push('bundle symlink is broken: ' + relative(root,path));
+      }
+      continue;
+    }
+    if (!metadata.isDirectory()) continue;
+    let children;
+    try {
+      children = readdirSync(path);
+    } catch {
+      errors.push('bundle dependency directory unreadable: ' + relative(root,path));
+      continue;
+    }
+    for (const name of children) stack.push(join(path,name));
+    if (errors.length >= 24) break;
+  }
+  return errors;
+}
 
 export function auditBundle(bundle, platform = process.platform) {
   const root = resolve(bundle);
   const errors = [];
   const requireFile = (relative, label) => {
     const path = join(root, relative);
-    if (!existsSync(path) || !statSync(path).isFile()) errors.push(`${label} missing: ${relative}`);
+    let valid = false;
+    try { valid = existsSync(path) && statSync(path).isFile(); } catch { valid = false; }
+    if (!valid) errors.push(`${label} missing: ${relative}`);
   };
   if (platform === 'darwin') {
     requireFile('Contents/MacOS/memmy-turbo-tauri', 'Tauri GUI executable');
@@ -44,6 +98,9 @@ export function auditBundle(bundle, platform = process.platform) {
     ['App/memmy-agent/dist/main.js', 'compiled Agent Gateway'],
     ['node_modules/better-sqlite3/build/Release/better_sqlite3.node', 'SQLite native addon']
   ]) requireFile(join(resources, part), label);
+  // Release fail-closed: a relocated app cannot reference the build host.
+  const scanPaths = [resources, extensionDir].filter(path => existsSync(join(root,path)));
+  if (existsSync(root)) errors.push(...auditBundleSymlinks(root, scanPaths));
   if (platform === 'darwin') {
     const nodePath = join(root, resources, 'node');
     if (existsSync(nodePath) && (statSync(nodePath).mode & 0o111) === 0) errors.push('bundled Node is not executable');
