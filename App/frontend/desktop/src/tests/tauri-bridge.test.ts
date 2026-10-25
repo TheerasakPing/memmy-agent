@@ -256,11 +256,18 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     installTauriBridge(host);
     const route = vi.fn();
     const action = vi.fn();
+    const browserPopup = vi.fn();
+    const stopBrowserPopup = host.memmy!.onEmbeddedBrowserOpen!(browserPopup);
     const stopRoute = host.memmy!.onRouteTargetRequest(route);
     const stopAction = host.memmy!.onMainWindowActionRequest(action);
     await Promise.resolve();
     expect(listen).toHaveBeenCalledWith("memmy:route-target-request", expect.any(Function));
     expect(listen).toHaveBeenCalledWith("memmy:main-window-action-request", expect.any(Function));
+    expect(listen).toHaveBeenCalledWith("memmy:browser:open-url", expect.any(Function));
+    emit("memmy:browser:open-url", { url: "https://example.org/popup" });
+    emit("memmy:browser:open-url", { url: "javascript:alert(1)" });
+    emit("memmy:browser:open-url", { url: "https://x:y@example.org/private" });
+    expect(browserPopup).toHaveBeenCalledExactlyOnceWith("https://example.org/popup");
     emit("memmy:route-target-request", { route: "/settings", hash: "pet-avatar" });
     emit("memmy:main-window-action-request", { id: "00000000-0000-4000-8000-000000000001", action: "close" });
     expect(route).toHaveBeenCalledWith({ route: "/settings", hash: "pet-avatar" });
@@ -271,7 +278,10 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     });
     stopRoute();
     stopAction();
-    expect(unsubscribe).toHaveBeenCalledTimes(2);
+    stopBrowserPopup();
+    emit("memmy:browser:open-url", { url: "https://example.org/too-late" });
+    expect(browserPopup).toHaveBeenCalledTimes(1);
+    expect(unsubscribe).toHaveBeenCalledTimes(3);
   });
 
   it("replays a validated Agent Gateway issue to listeners registered after bootstrap", async () => {
@@ -307,7 +317,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(73);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(74);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

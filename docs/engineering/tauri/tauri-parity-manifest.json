@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 73,
-    "remainingMethods": 12,
+    "nativeMethods": 74,
+    "remainingMethods": 11,
     "routes": 14
   },
   "routes": [
@@ -427,8 +427,8 @@
     },
     {
       "name": "onEmbeddedBrowserOpen",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "onEmbeddedBrowserClose",
