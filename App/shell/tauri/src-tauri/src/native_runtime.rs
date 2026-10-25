@@ -18,6 +18,7 @@ const READY_PREFIX: &str = "MEMMY_TAURI_READY ";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Native runtime entrypoints are chosen by the application, not by webview IPC.
+#[derive(Clone)]
 struct RuntimePaths {
     node: PathBuf,
     sidecar: PathBuf,
@@ -70,6 +71,7 @@ struct BackendState {
     gateway: Option<Child>,
     config: Option<Value>,
     memory_export_auth: Option<(String, String)>,
+    memory_launch: Option<(PathBuf, RuntimePaths)>,
     stopped_unexpectedly: bool,
 }
 
@@ -107,6 +109,70 @@ impl NativeRuntime {
             .memory_export_auth
             .clone()
             .ok_or("managed Memory session not ready".into())
+    }
+
+    /// Restart only the managed Memory sidecar at the SAME address and bearer token.
+    /// Existing React Local API and Agent Gateway connections therefore remain valid.
+    pub fn restart_memory(&self) -> Result<Value, String> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "managed Memory lock unavailable")?;
+        if state.stopped_unexpectedly {
+            return Err("native runtime needs app restart".into());
+        }
+        let (base, token) = state
+            .memory_export_auth
+            .clone()
+            .ok_or("managed Memory service unavailable")?;
+        let (data_dir, paths) = state
+            .memory_launch
+            .clone()
+            .ok_or("managed Memory launch parameters unavailable")?;
+        let port = url::Url::parse(&base)
+            .map_err(|_| "Memory endpoint corrupted")?
+            .port()
+            .ok_or("Memory endpoint port unavailable")?;
+        let Some(mut old) = state.memory.take() else {
+            return Err("managed Memory process unavailable".into());
+        };
+        stop_child(&mut old);
+        match launch_development_memory_fixed(&data_dir, &paths, port, &token) {
+            Ok((new_child, new_base, new_token)) if new_base == base && new_token == token => {
+                state.memory = Some(new_child);
+                Ok(serde_json::json!({"ok":true,"baseUrl":base}))
+            }
+            Ok((mut unexpected, _, _)) => {
+                stop_child(&mut unexpected);
+                if let Some(mut backend) = state.process.take() {
+                    stop_child(&mut backend);
+                }
+                if let Some(mut gateway) = state.gateway.take() {
+                    stop_child(&mut gateway);
+                }
+                state.memory_export_auth = None;
+                state.memory_launch = None;
+                state.config = None;
+                state.stopped_unexpectedly = true;
+                Err("Memory service restart session mismatch; app restart required".into())
+            }
+            Err(error) => {
+                // Never leave the UI believing it has a healthy managed Memory child.
+                if let Some(mut backend) = state.process.take() {
+                    stop_child(&mut backend);
+                }
+                if let Some(mut gateway) = state.gateway.take() {
+                    stop_child(&mut gateway);
+                }
+                state.memory_export_auth = None;
+                state.memory_launch = None;
+                state.config = None;
+                state.stopped_unexpectedly = true;
+                Err(format!(
+                    "managed Memory restart failed; app restart required: {error}"
+                ))
+            }
+        }
     }
 
     pub fn browser_surface(&self, session_key: &str) -> Option<Value> {
@@ -258,6 +324,9 @@ impl NativeRuntime {
                 state.memory_export_auth = memory
                     .as_ref()
                     .map(|(_, url, token)| (url.clone(), token.clone()));
+                state.memory_launch = memory
+                    .as_ref()
+                    .map(|_| (data_dir.to_path_buf(), paths.clone()));
                 state.memory = memory.take().map(|(process, _, _)| process);
                 state.gateway = gateway;
                 state.config = Some(config.clone());
@@ -298,6 +367,7 @@ impl NativeRuntime {
             }
             state.config = None;
             state.memory_export_auth = None;
+            state.memory_launch = None;
             state.stopped_unexpectedly = true;
             self.browser_surfaces.clear();
         }
@@ -421,6 +491,20 @@ fn launch_development_memory(
         uuid::Uuid::new_v4().simple(),
         uuid::Uuid::new_v4().simple()
     );
+    launch_development_memory_fixed(data_dir, paths, port, &token)
+}
+
+fn launch_development_memory_fixed(
+    data_dir: &Path,
+    paths: &RuntimePaths,
+    port: u16,
+    token: &str,
+) -> Result<(Child, String, String), String> {
+    ensure_managed_data_dir(data_dir)?;
+    let script = paths.sidecar.join("memory.mjs");
+    if !script.is_file() {
+        return Err("managed Memory sidecar entrypoint missing".into());
+    }
     let url = format!("http://127.0.0.1:{port}");
     let mut command = Command::new(&paths.node);
     command.arg(script);
@@ -452,7 +536,7 @@ fn launch_development_memory(
     let deadline = Instant::now() + Duration::from_secs(45);
     loop {
         if memory_is_ready(port, &token) {
-            return Ok((child, url, token));
+            return Ok((child, url, token.to_owned()));
         }
         if !matches!(child.try_wait(), Ok(None)) {
             stop_child(&mut child);
@@ -705,6 +789,15 @@ mod tests {
     use serde_json::json;
     #[cfg(debug_assertions)]
     use std::fs;
+    #[test]
+    fn memory_restart_rejects_absent_or_stopped_native_runtime() {
+        let runtime = NativeRuntime::default();
+        assert!(runtime.restart_memory().is_err());
+        assert!(runtime.memory_export_auth().is_err());
+        runtime.stop();
+        assert!(runtime.restart_memory().is_err());
+    }
+
     #[test]
     #[cfg(debug_assertions)]
     fn real_backend_and_memory_rust_owner_smoke_when_opted_in() {
