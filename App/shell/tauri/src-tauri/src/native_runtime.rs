@@ -27,7 +27,7 @@ struct RuntimePaths {
 
 fn runtime_paths(bundled_root: Option<&Path>) -> Result<RuntimePaths, String> {
     if let Some(root) = bundled_root {
-        let node = root.join("node");
+        let node = root.join(if cfg!(windows) { "node.exe" } else { "node" });
         let sidecar = root.join("App/shell/tauri/sidecar");
         for path in [
             &node,
@@ -53,7 +53,7 @@ fn runtime_paths(bundled_root: Option<&Path>) -> Result<RuntimePaths, String> {
     #[cfg(debug_assertions)]
     {
         Ok(RuntimePaths {
-            node: PathBuf::from("node"),
+            node: PathBuf::from(if cfg!(windows) { "node.exe" } else { "node" }),
             sidecar: Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar"),
             bundled: false,
         })
