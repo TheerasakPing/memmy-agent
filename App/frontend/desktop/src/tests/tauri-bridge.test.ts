@@ -59,7 +59,13 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_select_project_directory") return { canceled: false, path: "/tmp/my-workspace" };
     if (command === "desktop_select_empty_project_directory") return { canceled: true };
     if (command === "desktop_read_workspace_directory") return { rootPath: "/tmp/my-workspace", relativePath: "", entries: [], truncated: false };
-    if (command === "desktop_check_for_updates") return { status: "not-configured", currentVersion: "1.2.4" };
+    if (command === "desktop_signed_check_for_updates") return { status: "not-configured", currentVersion: "1.2.4" };
+    if (command === "desktop_signed_download_update") return {
+      filePath: "/private/tmp/signed-updates/verified.update", opened: false
+    };
+    if (command === "desktop_signed_open_update_installer") return {
+      filePath: "/private/tmp/signed-updates/verified.update", opened: true
+    };
     if (command === "desktop_runtime_config") return {
       baseUrl: "http://127.0.0.1:3000", localToken: "native-runtime-token"
     };
@@ -95,7 +101,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   });
 
   it("passes native operations into named Rust commands with their arguments", async () => {
-    const { host, invoke } = setup();
+    const { host, invoke, emit } = setup();
     expect(installTauriBridge(host)).toBe(true);
     const api = host.memmy!;
     expect(api.platform).toBe("darwin");
@@ -105,6 +111,28 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     const stopGatewayStartupIssue = api.onAgentGatewayStartupIssue!(onGatewayStartupIssue);
     stopGatewayStartupIssue();
     expect(await api.checkForUpdates()).toMatchObject({ status: "not-configured" });
+    const update = {
+      status: "available" as const, currentVersion: "1.2.5", latestVersion: "1.2.6",
+      downloadUrl: "https://updates.memmy.example/app.tar.gz"
+    };
+    expect(await api.downloadUpdate(update, { openInstaller: false })).toEqual({
+      filePath: "/private/tmp/signed-updates/verified.update", opened: false
+    });
+    expect(invoke).toHaveBeenCalledWith("desktop_signed_download_update", {
+      update, options: { openInstaller: false }
+    });
+    expect(await api.openUpdateInstaller("/private/tmp/signed-updates/verified.update")).toMatchObject({
+      opened: true
+    });
+    const progress = vi.fn();
+    const stopProgress = api.onUpdateDownloadProgress(progress);
+    await Promise.resolve();
+    emit("memmy:update-download-progress", {
+      downloadUrl: update.downloadUrl, filePath: "/private/tmp/signed-updates/verified.update",
+      transferredBytes: 10, totalBytes: 20, percent: 50
+    });
+    expect(progress).toHaveBeenCalledTimes(1);
+    stopProgress();
     const native = api as unknown as import("../native-browser-adapter.js").NativeBrowserBridge;
     const rect = { x: 12, y: 80, width: 440, height: 320, visible: true };
     const nativeId = await native.nativeBrowserCreate("https://example.org", rect);
@@ -360,7 +388,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(80);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(83);
     expect(host.memmy?.installCliTools).toBeTypeOf("function");
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

@@ -36,7 +36,7 @@ for (const name of native) if (!bridgedNames.includes(name)) {
   throw new Error("listed Tauri method not implemented in renderer bridge: " + name);
 }
 const rustHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/lib.rs"), "utf8");
-const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_analytics.rs", "native_cli_install.rs", "native_agent_tool.rs", "native_memory_export.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_browser_extension.rs", "native_browser_inventory.rs", "native_browser.rs", "native_browser_surface.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
+const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_analytics.rs", "native_cli_install.rs", "native_agent_tool.rs", "native_signed_updater.rs", "native_memory_export.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_browser_extension.rs", "native_browser_inventory.rs", "native_browser.rs", "native_browser_surface.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
   readFileSync(resolve(root, `App/shell/tauri/src-tauri/src/${name}`), "utf8")
 ).join("\n");
 for (const [, command] of bridgeObject.matchAll(/"(desktop_[a-z0-9_]+)"/g)) {
@@ -86,6 +86,9 @@ for (const name of ["width", "height", "minWidth", "minHeight"]) {
 // native browsingHistory subset; cookies/cache/siteData/downloadHistory reject.
 const PARTIAL_NATIVE_METHODS = new Map([
   ["clearBrowserData", "Only browsingHistory is implemented; four remaining selective categories fail closed"],
+  ["downloadUpdate", "Signature-verified native downloader is wired; production signer public key and signed update feed are not yet provisioned"],
+  ["onUpdateDownloadProgress", "Live signed-download progress is wired but needs real production signed release E2E"],
+  ["openUpdateInstaller", "Installs only signature-verified in-process staged artifacts; cross-restart/cross-platform acceptance not yet verified"],
 ]);
 for (const name of PARTIAL_NATIVE_METHODS.keys()) {
   if (!native.includes(name)) throw new Error("Partial-method marker must have real native bridge: " + name);
