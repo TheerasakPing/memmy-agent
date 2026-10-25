@@ -63,7 +63,7 @@ jobs:
   windows-x64-installer-preview:
     # Expensive native build runs ONLY when deliberately dispatched, not on
     # unrelated pull_request events. Windows hosted runner uses MSVC/WebView2.
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'codex/tauri-v2-windows-x64-nsis-20261025')
     runs-on: windows-2025
     timeout-minutes: 100
     permissions:
@@ -107,6 +107,8 @@ jobs:
           npm --prefix App/memmy-agent run build
       - name: Stage actual Windows x64 node.exe and Agent+Memory runtime
         run: node App/shell/tauri/packaging/prepare-runtime-windows.mjs
+      - name: Smoke genuine Windows Node + native SQLite + compiled Memory CLI
+        run: node App/shell/tauri/packaging/smoke-windows-runtime.mjs App/shell/tauri/packaging/runtime
       - name: Check original React / native bridge and package security tests
         run: |
           node scripts/engineering/tauri-parity.mjs --check
@@ -117,6 +119,21 @@ jobs:
         run: |
           npm exec --workspace @memmy/tauri-shell -- tauri build --debug --bundles nsis --ci --config packaging/tauri-bundled.conf.json
           if ($LASTEXITCODE -ne 0) { throw "Windows x64 Tauri NSIS native build failed" }
+      - name: Install actual x64 NSIS Preview on isolated Windows runner; smoke native Rust services
+        run: |
+          $dir = 'App/shell/tauri/src-tauri/target/debug/bundle/nsis'
+          $installer = Get-ChildItem $dir -Filter '*-setup.exe' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (!$installer) { throw 'No Windows x64 NSIS setup to test' }
+          $destination = Join-Path $env:RUNNER_TEMP 'memmy-win11-x64-installed-preview'
+          $install = Start-Process -FilePath $installer.FullName -ArgumentList @('/S',"/D=$destination") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "NSIS silent install returned $($install.ExitCode)" }
+          if (!(Test-Path "$destination/runtime/node.exe")) { throw 'NSIS installer omitted bundled node.exe' }
+          node App/shell/tauri/packaging/smoke-windows-runtime.mjs "$destination/runtime"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Windows native Runtime smoke failed' }
+          $native = Join-Path $destination 'memmy-turbo-tauri.exe'
+          if (!(Test-Path $native)) { throw 'Installed Rust Tauri x64 executable missing' }
+          & $native --smoke-native-runtime
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Rust-managed Memory/Agent Gateway startup failed' }
       - name: Verify generated Windows NSIS executable and SHA-256
         run: |
           $dir = 'App/shell/tauri/src-tauri/target/debug/bundle/nsis'
