@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 mod native_approvals;
 mod native_browser;
 mod native_browser_extension;
+mod native_browser_inventory;
 mod native_browser_store;
 mod native_browser_surface;
 mod native_diagnostics;
@@ -334,6 +335,9 @@ pub fn run() {
             native_browser_extension::desktop_get_browser_extension_directory,
             native_browser_extension::desktop_reveal_browser_extension,
             native_browser_extension::desktop_prepare_browser_extension,
+            native_browser_inventory::desktop_get_browser_extension_installation,
+            native_browser_inventory::desktop_list_installed_browser_extensions,
+            native_browser_inventory::desktop_list_running_external_browsers,
             native_browser::desktop_native_browser_create,
             native_browser::desktop_native_browser_bounds,
             native_browser::desktop_native_browser_action,
