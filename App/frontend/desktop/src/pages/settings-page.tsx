@@ -138,7 +138,7 @@ type DiagnosticsReportExportResult = { canceled: true } | DiagnosticsReportExpor
 /** Contract for renderer diagnostics report input. */
 interface RendererDiagnosticsReportInput {
   state: AppState;
-  language: Language;
+  language: Language | "th-TH";
   bridgeAvailable: boolean;
   exportBridgeAvailable: boolean;
 }
@@ -1795,7 +1795,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
             onChange={handleLanguageChange}
             options={[
               { value: "zh-CN", label: t("settings.general.language.zh") },
-              { value: "en-US", label: "English" }
+              { value: "en-US", label: "English" },
+              { value: "th-TH", label: "ไทย" }
             ]}
           />
         </Section>
@@ -3650,7 +3651,7 @@ export function isPendingQuotaRequestError(error: unknown): boolean {
  */
 export function resolveQuotaEligibilityMessage(
   eligibility: TokenQuotaEligibility | null,
-  language: "zh-CN" | "en-US"
+  language: "zh-CN" | "en-US" | "th-TH"
 ): QuotaEligibilityMessage | null {
   if (!eligibility || eligibility.state === "available") {
     return null;
@@ -3704,7 +3705,7 @@ function normalizeQuotaReviewNote(value: string | null): string | null {
   return normalized || null;
 }
 
-function formatQuotaNextAllowedAt(epochMs: number, language: "zh-CN" | "en-US"): string {
+function formatQuotaNextAllowedAt(epochMs: number, language: "zh-CN" | "en-US" | "th-TH"): string {
   const date = new Date(epochMs);
   if (language === "zh-CN") {
     const pad = (value: number) => String(value).padStart(2, "0");

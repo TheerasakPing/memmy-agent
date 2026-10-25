@@ -583,7 +583,7 @@ export type UploadAgentMediaInput = {
 export type MemmyAgentMediaInput = UploadedAgentMedia;
 
 export type MemmyAgentMediaKind = "image" | "video" | "file";
-export type MemmyAgentUiLanguage = "zh-CN" | "en-US";
+export type MemmyAgentUiLanguage = "zh-CN" | "en-US" | "th-TH";
 
 export type MemmyAgentMediaAttachment = {
   url?: string;

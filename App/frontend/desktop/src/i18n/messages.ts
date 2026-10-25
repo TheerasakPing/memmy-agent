@@ -1,8 +1,9 @@
 /** Messages module. */
 import type { Language } from "@memmy/local-api-contracts";
+import { thMessages } from "./th-messages.js";
 import { enUSErrorNoticeMessages, zhCNErrorNoticeMessages } from "./error-notice-messages.js";
 
-export type ResolvedLanguage = "zh-CN" | "en-US";
+export type ResolvedLanguage = "zh-CN" | "en-US" | "th-TH";
 
 export const MEMORY_ADD_STATUS_SUMMARIES = [
   "摘要排队中",
@@ -4479,11 +4480,12 @@ export type MessageValues = Record<string, string | number>;
 
 export const messageCatalogs: Record<ResolvedLanguage, Record<MessageKey, string>> = {
   "zh-CN": zhCNMessages,
-  "en-US": enUSMessages
+  "en-US": enUSMessages,
+  "th-TH": { ...enUSMessages, ...thMessages }
 };
 
 export function resolveLanguage(language: Language | string | undefined): ResolvedLanguage {
-  return language === "en-US" ? "en-US" : "zh-CN";
+  return language === "th-TH" ? "th-TH" : language === "en-US" ? "en-US" : "zh-CN";
 }
 
 export function formatMessage(template: string, values: MessageValues = {}): string {
