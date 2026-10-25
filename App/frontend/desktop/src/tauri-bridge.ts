@@ -35,6 +35,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "sendAnalyticsClientId",
   "exportMemoryDatabase",
   "restartMemoryService",
+  "installCliTools",
   "getLaunchAtLogin",
   "setLaunchAtLogin",
   "notifyTaskDone",
@@ -154,6 +155,8 @@ export function installTauriBridge(host: TauriWindow): boolean {
       invoke<string>("desktop_get_computer_history_permission_session_id"),
     restartMemoryService: () =>
       invoke<{ ok: true; baseUrl: string }>("desktop_restart_memory_service"),
+    installCliTools: () => invoke<NonNullable<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["installCliTools"]>>>>>(
+      "desktop_install_cli_tools"),
     exportMemoryDatabase: () => invoke<
       { canceled: true } | { canceled: false; exportPath: string; bytes: number }
     >("desktop_export_memory_database"),
