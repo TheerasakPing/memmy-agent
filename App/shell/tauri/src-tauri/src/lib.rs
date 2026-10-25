@@ -10,6 +10,7 @@ mod native_browser_store;
 mod native_browser_surface;
 mod native_diagnostics;
 mod native_file_export;
+mod native_memory_export;
 mod native_os;
 mod native_permissions;
 mod native_pet;
@@ -320,6 +321,7 @@ pub fn run() {
             native_os::desktop_set_launch_at_login,
             native_os::desktop_get_installation_id,
             native_analytics::desktop_send_analytics_client_id,
+            native_memory_export::desktop_export_memory_database,
             native_os::desktop_select_project_directory,
             native_os::desktop_select_empty_project_directory,
             native_workspace::desktop_read_workspace_directory,

@@ -32,6 +32,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "checkForUpdates",
   "getInstallationId",
   "sendAnalyticsClientId",
+  "exportMemoryDatabase",
   "getLaunchAtLogin",
   "setLaunchAtLogin",
   "notifyTaskDone",
@@ -145,6 +146,9 @@ export function installTauriBridge(host: TauriWindow): boolean {
         "desktop_export_diagnostics_report"),
     getComputerHistoryPermissionSessionId: () =>
       invoke<string>("desktop_get_computer_history_permission_session_id"),
+    exportMemoryDatabase: () => invoke<
+      { canceled: true } | { canceled: false; exportPath: string; bytes: number }
+    >("desktop_export_memory_database"),
     sendAnalyticsClientId: (payload: {
       clientId: string; appEnv: "dev" | "prod"; appEdition: "cn" | "intl";
     }) => {

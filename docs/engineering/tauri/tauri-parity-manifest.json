@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 71,
-    "remainingMethods": 14,
+    "nativeMethods": 72,
+    "remainingMethods": 13,
     "routes": 14
   },
   "routes": [
@@ -322,8 +322,8 @@
     },
     {
       "name": "exportMemoryDatabase",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     },
     {
       "name": "installCliTools",
