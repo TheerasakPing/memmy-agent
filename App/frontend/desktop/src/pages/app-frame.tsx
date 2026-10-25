@@ -1111,7 +1111,7 @@ export function AppFrame(props: AppFrameProps) {
             </div>
             <div className="app-frame-settings-nav flex-1 min-h-0 pb-4 overflow-y-auto" aria-label={t("settings.title")}>
               <nav className="space-y-1" aria-label={t("settings.title")}>
-                {SETTINGS_NAV_ITEMS.map((item) => {
+                {SETTINGS_NAV_ITEMS.filter((item) => !(window as Window & { __TAURI__?: unknown }).__TAURI__ || (item.id !== "account" && item.id !== "tokens")).map((item) => {
                   const active = props.settingsNav?.activeTab === item.id;
                   const icon = item.id === "account"
                     ? <User size={16} />

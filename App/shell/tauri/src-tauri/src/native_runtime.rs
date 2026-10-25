@@ -588,6 +588,7 @@ fn launch_development_memory_fixed(
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_MEMORY_PORT", port.to_string())
         .env("MEMMY_TAURI_DEV_BACKEND", "1")
+        .env("MEMMY_TAURI_LOCAL_ONLY", "1")
         .env("MEMMY_MEMORY_TOKEN", &token)
         .env("MEMMY_MEMORY_LAYER_TOKEN", &token)
         .env("MEMMY_MEMORY_MODE", "local")
@@ -687,6 +688,7 @@ fn launch_development_backend(
             data_dir.join("runtime-config.json"),
         )
         .env("MEMMY_TAURI_DEV_BACKEND", "1")
+        .env("MEMMY_TAURI_LOCAL_ONLY", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

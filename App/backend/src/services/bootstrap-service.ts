@@ -34,18 +34,19 @@ export function createBootstrapService(options: CreateBootstrapServiceOptions): 
     async getBootstrap() {
       const bootstrap = options.appStateStore.repositories.bootstrap;
       const appSettings = bootstrap.getAppSettings();
-      const onboarding = await reconcileImprovementProgram(options, appSettings, bootstrap.getOnboardingState());
+      const localOnly = process.env.MEMMY_TAURI_LOCAL_ONLY === "1";
+      const onboarding = localOnly ? bootstrap.getOnboardingState() : await reconcileImprovementProgram(options, appSettings, bootstrap.getOnboardingState());
       const [memoryHealth, cloudHealth, tokenUsage, legal, promotions, lotteryStatus] = await Promise.all([
         getMemoryHealth(options.memoryClient),
-        getCloudHealth(options.cloudClient),
-        refreshTokenUsage(options),
-        getLegalUrls(options.cloudClient),
-        getPromotions(options.cloudClient),
-        getLotteryStatus(options.cloudClient)
+        localOnly ? Promise.resolve({ status: "unavailable" as const, checkedAt: new Date().toISOString() }) : getCloudHealth(options.cloudClient),
+        localOnly ? Promise.resolve(undefined) : refreshTokenUsage(options),
+        localOnly ? Promise.resolve(undefined) : getLegalUrls(options.cloudClient),
+        localOnly ? Promise.resolve({ ...PROMOTIONS_FALLBACK, loginBanner: false, applyMore: false }) : getPromotions(options.cloudClient),
+        localOnly ? Promise.resolve(undefined) : getLotteryStatus(options.cloudClient)
       ]);
 
       return AppBootstrapResponseSchema.parse({
-        app: appSettings,
+        app: localOnly ? { ...appSettings, userMode: "byok" } : appSettings,
         onboarding:
           options.bootstrapScenario === "completed"
             ? {
