@@ -24,6 +24,9 @@ rm -f "$dmg"
 /usr/bin/hdiutil create -ov -volname 'Memmy Turbo Unsigned Dev Preview' \
   -srcfolder "$app" -format UDZO "$dmg"
 /usr/bin/hdiutil verify "$dmg"
+# The checksum alone does not prove a relocated app works. Mount the ACTUAL
+# read-only image, then test bundled Memory CLI, Gateway auth and Rust supervisor.
+bash "$pack/smoke-mounted-dmg-macos.sh" "$dmg"
 echo 'UNSIGNED development disk image successfully verified:'
 echo "$dmg"
 echo 'NOT notarized, NOT Developer ID signed, NOT production-ready.'
