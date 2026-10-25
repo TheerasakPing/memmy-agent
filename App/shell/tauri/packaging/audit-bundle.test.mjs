@@ -29,7 +29,10 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
         .map(x => join('Contents/Resources/browser-extension', x)),
       ...['node', 'App/shell/tauri/sidecar/memory.mjs', 'App/shell/tauri/sidecar/backend.mjs', 'App/shell/tauri/sidecar/gateway.mjs',
          'Memory/dist/src/server/index.js','Memory/dist/src/cli/index.js','App/backend/dist/src/index.js',
-         'App/memmy-agent/dist/main.js','node_modules/better-sqlite3/build/Release/better_sqlite3.node']
+         'App/memmy-agent/dist/main.js','node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+         'App/memmy-agent/node_modules/@anthropic-ai/sdk/package.json',
+         'App/memmy-agent/node_modules/openai/package.json',
+         'App/memmy-agent/node_modules/@aws-sdk/client-bedrock-runtime/package.json']
          .map((x) => join('Contents/Resources/runtime', x))
     ];
     for (const name of names) {
@@ -46,6 +49,10 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
     assert.ok(auditBundle(dir,'darwin').errors.some(error => error.includes('bundle symlink escapes app')));
     rmSync(injected);
     assert.deepEqual(auditBundle(dir, 'darwin').errors, []);
+    const sdk=join(dir,'Contents/Resources/runtime/App/memmy-agent/node_modules/@anthropic-ai/sdk/package.json');
+    rmSync(sdk);
+    assert.ok(auditBundle(dir,'darwin').errors.some(e => e.includes('Agent-private Anthropic SDK')));
+    writeFileSync(sdk,'fixture');
     rmSync(join(dir, 'Contents/Resources/runtime/Memory/dist/src/cli/index.js'));
     assert.ok(auditBundle(dir, 'darwin').errors.some(e => e.includes('bundled Memory CLI entrypoint')));
     writeFileSync(join(dir, 'Contents/Resources/runtime/Memory/dist/src/cli/index.js'), 'fixture');
