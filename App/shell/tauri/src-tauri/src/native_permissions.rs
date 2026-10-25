@@ -122,9 +122,112 @@ pub fn desktop_open_computer_history_markdown(
         .map_err(|_| "cannot open Computer History Markdown".into())
 }
 
+// Match the macOS privacy page keys in the original Electron permission guide,
+// but do not claim user consent merely because System Settings opened.
+fn privacy_settings_page(permission: &str) -> Option<&'static str> {
+    match permission {
+        "accessibility" => {
+            Some("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        }
+        "inputMonitoring" => {
+            Some("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+        }
+        "screenRecording" => {
+            Some("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        }
+        _ => None,
+    }
+}
+
+#[tauri::command]
+pub async fn desktop_guide_memmy_permission(
+    window: WebviewWindow,
+    permission: String,
+) -> Result<bool, String> {
+    require_main(&window)?;
+    let Some(page) = privacy_settings_page(&permission) else {
+        return Err("unsupported Computer History permission".into());
+    };
+    if !cfg!(target_os = "macos") {
+        return Ok(false);
+    }
+    let page = page.to_string();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut child = std::process::Command::new("/usr/bin/open")
+            .arg(&page)
+            .spawn()
+            .map_err(|_| "cannot launch macOS Privacy Settings")?;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(8);
+        loop {
+            match child.try_wait() {
+                Ok(Some(status)) => return Ok(status.success()),
+                Ok(None) if std::time::Instant::now() > deadline => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Ok(false);
+                }
+                Err(_) => return Err("Privacy Settings launch failed".into()),
+                Ok(None) => std::thread::sleep(std::time::Duration::from_millis(25)),
+            }
+        }
+    })
+    .await
+    .map_err(|_| "Privacy Settings opener unavailable".to_string())?
+}
+
+/// An explicit user-requested app restart after the React permission check.
+/// The Rust supervisor stops all three managed services before relaunching.
+#[tauri::command]
+pub async fn desktop_restart_for_computer_history_permissions(
+    app: AppHandle,
+    window: WebviewWindow,
+    supervisor: tauri::State<'_, std::sync::Arc<crate::native_runtime::NativeRuntime>>,
+) -> Result<(), String> {
+    require_main(&window)?;
+    if !cfg!(target_os = "macos") {
+        return Err("Computer History permission restart requires macOS".into());
+    }
+    let runtime = supervisor.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        runtime.stop();
+        // Tauri process restart relaunches the actual .app; unlike renderer reload,
+        // TCC gets a new native process after all managed Agent children stop.
+        tauri::process::restart(&app.env());
+    })
+    .await
+    .map_err(|_| "native Computer History restart unavailable".to_string())?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn mac_privacy_links_are_fixed_and_other_schemes_never_open() {
+        assert_eq!(
+            privacy_settings_page("accessibility"),
+            Some("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        );
+        assert_eq!(
+            privacy_settings_page("inputMonitoring"),
+            Some("x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+        );
+        assert_eq!(
+            privacy_settings_page("screenRecording"),
+            Some("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+        );
+        for attack in [
+            "",
+            "file:///etc/passwd",
+            "https://example.org",
+            "Accessibility",
+            "accessibility;open /tmp",
+            "fullDiskAccess",
+            "ScreenRecording",
+        ] {
+            assert_eq!(privacy_settings_page(attack), None);
+        }
+    }
     #[test]
     fn process_session_id_is_stable_per_instance_and_unique_across_instances() {
         let a = ComputerHistorySession::default();

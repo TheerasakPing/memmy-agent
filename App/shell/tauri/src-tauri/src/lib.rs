@@ -331,6 +331,8 @@ pub fn run() {
             native_file_export::desktop_export_diagnostics_report,
             native_permissions::desktop_get_computer_history_permission_session_id,
             native_permissions::desktop_get_full_disk_access_status,
+            native_permissions::desktop_guide_memmy_permission,
+            native_permissions::desktop_restart_for_computer_history_permissions,
             native_permissions::desktop_open_computer_history_markdown,
             native_browser_extension::desktop_get_browser_extension_directory,
             native_browser_extension::desktop_reveal_browser_extension,
