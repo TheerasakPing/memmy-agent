@@ -31,6 +31,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "openLogsDirectory",
   "checkForUpdates",
   "getInstallationId",
+  "sendAnalyticsClientId",
   "getLaunchAtLogin",
   "setLaunchAtLogin",
   "notifyTaskDone",
@@ -144,6 +145,14 @@ export function installTauriBridge(host: TauriWindow): boolean {
         "desktop_export_diagnostics_report"),
     getComputerHistoryPermissionSessionId: () =>
       invoke<string>("desktop_get_computer_history_permission_session_id"),
+    sendAnalyticsClientId: (payload: {
+      clientId: string; appEnv: "dev" | "prod"; appEdition: "cn" | "intl";
+    }) => {
+      // Original Electron contract is fire-and-forget: report Rust persistence failures
+      // rather than wrongly claiming the analytics cache has been saved.
+      void invoke<void>("desktop_send_analytics_client_id", { payload }).catch(error =>
+        console.warn("Tauri managed analytics client ID cache unavailable", error));
+    },
     getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
     guideMemmyPermission: (permission: "accessibility" | "inputMonitoring" | "screenRecording") =>
       invoke<boolean>("desktop_guide_memmy_permission", { permission }),
