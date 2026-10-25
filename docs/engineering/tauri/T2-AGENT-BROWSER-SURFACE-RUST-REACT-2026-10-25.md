@@ -8,8 +8,8 @@
 - [x] A4 Access controls: reject unknown sessionKey, cross-chat/target rebind, missing typed fields, oversize payload and unsafe navigation, coordinates and command fields. Unsupported browser access/capability/download/embedded automation requests get immediate schema-valid DENY, never silent grant or five-minute delay.
 - [x] A5 Targeted automated checks: Rust 39/39 on hardened integration, React Browser/Computer Use 29/29, Node allowlist and denial 7/7, genuine child IPC round trip 1/1, Rust cargo check PASS, parity 64/85/14 routes, renderer Chromium smoke 3/3 PASS.
 - [x] A5 Rust rerun after optional-field and session hardening — 39/39 PASS.
-- [ ] A5 Full sidecar test suite under sequential execution — parallel full test initially failed Local API and Gateway under shared load. Isolated Local API 2/2 PASS; Gateway recheck pending.
-- [ ] A5 TypeScript full workspace typecheck — terminated after it stalled for several minutes during heavy shared Mac compile load; retry needed before release.
+- [ ] A5 Full sidecar test suite under sequential execution — FAILED Gateway in combined run under shared Mac load. Individually isolated Local API 2/2 PASS and real Gateway startup 1/1 PASS. Combined suite remains a release blocker.
+- [ ] A5 TypeScript full workspace typecheck — initial combined build stalled under shared Mac load. Direct isolated TypeScript check initiated; full check result not yet certified.
 - [ ] A5 macOS installed native WebKit GUI/browser surface clicks, Windows 11 x64/Linux installed GUI E2E.
 - [ ] A4 Independent human security review of Child WebView ACL, IPC source identity, surfacing credentials and screenshot privacy.
 - [ ] LEAD production signoff BLOCKED; keep releaseReady=false, PR draft, Electron fallback intact.
