@@ -233,7 +233,7 @@ type SessionDeletionServices = {
   cronService: CronService;
   sessionDagQueue: SessionDagQueueManager | null;
 };
-export type WebuiLanguage = "zh-CN" | "en-US";
+export type WebuiLanguage = "zh-CN" | "en-US" | "th-TH";
 
 export type WebuiMessageDigestInput = {
   chatId: string;
@@ -267,7 +267,7 @@ export function computeWebuiMessageDigest(input: WebuiMessageDigestInput): strin
 
 const CHAT_ID_RE = /^[A-Za-z0-9_:-]{1,64}$/;
 const API_KEY_RE = /^[A-Za-z0-9_:.-]{1,128}$/;
-const WEBUI_LANGUAGE_VALUES = new Set<WebuiLanguage>(["zh-CN", "en-US"]);
+const WEBUI_LANGUAGE_VALUES = new Set<WebuiLanguage>(["zh-CN", "en-US", "th-TH"]);
 const TURN_CONTENT_EVENTS = new Set([
   "context_compaction",
   "delta",

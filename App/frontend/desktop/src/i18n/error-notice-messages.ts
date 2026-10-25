@@ -92,3 +92,44 @@ export const ERROR_NOTICE_KEYS = {
     autoRetryScheduled: "memory.memories.processing.autoRetryScheduledTitle"
   }
 } as const;
+
+/** Thai equivalents for governed Agent/model and memory error notices. */
+export const thErrorNoticeMessages = {
+  "agent.error.modelFailed": "เรียกใช้โมเดลไม่สำเร็จ กรุณาลองอีกครั้งในภายหลัง",
+  "agent.error.connectionFailed": "ไม่สามารถเชื่อมต่อบริการโมเดล กรุณาตรวจสอบเครือข่ายหรือการตั้งค่า API",
+  "agent.error.authFailed": "คีย์ API ไม่ถูกต้องหรือหมดอายุ กรุณาตรวจสอบการตั้งค่าแล้วลองใหม่",
+  "agent.error.loginExpired": "เซสชันเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง",
+  "agent.error.rateLimited": "ส่งคำขอบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่",
+  "agent.error.quotaExceeded": "โทเคนของโมเดลปัจจุบันไม่เพียงพอ กรุณาเปลี่ยนโมเดลแล้วลองใหม่",
+  "agent.error.imageInputUnsupported": "โมเดลปัจจุบันไม่รองรับภาพ กรุณาเลือกโมเดลที่รองรับภาพแล้วลองใหม่",
+  "agent.error.imageAnalysisFailed": "วิเคราะห์ภาพไม่สำเร็จ กรุณาลองอีกครั้งในภายหลัง",
+  "agent.error.retrying": "เรียกใช้โมเดลไม่สำเร็จ จะลองใหม่ในอีก {seconds} วินาที (ครั้งที่ {attempt})",
+  "agent.error.retryWait": "กำลังรอลองเรียกใช้โมเดลใหม่ในอีก {seconds} วินาที (ครั้งที่ {attempt})",
+  "agent.error.givingUp": "เรียกใช้โมเดลไม่สำเร็จหลังจากลองใหม่หลายครั้ง",
+  "agent.error.persistentStopped": "หยุดลองใหม่เนื่องจากเกิดข้อผิดพลาดเดิมซ้ำต่อเนื่อง",
+  "agent.error.showDetails": "แสดงรายละเอียด",
+  "agent.error.hideDetails": "ซ่อนรายละเอียด",
+  "memory.memories.processing.summary": "กำลังสร้างบทสรุป",
+  "memory.memories.processing.index": "กำลังสร้างดัชนี",
+  "memory.memories.processing.reflection": "กำลังสร้างข้อคิดวิเคราะห์",
+  "memory.memories.processing.failed": "ประมวลผลไม่สำเร็จ",
+  "memory.memories.processing.stage": "ขั้นตอนที่ล้มเหลว",
+  "memory.memories.processing.stageSummary": "สรุปข้อมูล",
+  "memory.memories.processing.stageEmbedding": "สร้างดัชนี",
+  "memory.memories.processing.reason": "สาเหตุ",
+  "memory.memories.processing.failedAt": "เวลาที่เกิดข้อผิดพลาด",
+  "memory.memories.processing.previousReason": "สาเหตุครั้งก่อน",
+  "memory.memories.processing.previousFailedAt": "เวลาที่เกิดข้อผิดพลาดครั้งก่อน",
+  "memory.memories.processing.retry": "ลองใหม่ตอนนี้",
+  "memory.memories.processing.retrying": "กำลังลองใหม่",
+  "memory.memories.processing.retrySucceeded": "ลองใหม่สำเร็จ",
+  "memory.memories.processing.openSettings": "ตรวจสอบการตั้งค่าโมเดล",
+  "memory.memories.processing.retryFailed": "ยังประมวลผลไม่สำเร็จหลังจากลองใหม่",
+  "memory.memories.processing.retryTimeout": "หมดเวลารอลองใหม่ กรุณาลองอีกครั้งในภายหลัง",
+  "memory.memories.processing.retryError": "การลองใหม่ครั้งนี้ไม่สำเร็จ: {message}",
+  "memory.memories.processing.retryEndpointUnavailable": "บริการความจำในเครื่องยังไม่รองรับการลองใหม่ กรุณาปิด Memmy ให้สนิทแล้วเปิดอีกครั้ง",
+  "memory.memories.processing.missing": "ไม่พบสถานะการประมวลผลของความจำรายการนี้",
+  "memory.memories.processing.failureTitle": "ประมวลผลความจำรายการนี้ไม่สำเร็จ",
+  "memory.memories.processing.quotaExhaustedTitle": "โทเคนของโมเดลปัจจุบันไม่เพียงพอ ทำให้ประมวลผลความจำไม่สำเร็จ กรุณาเปลี่ยนโมเดลแล้วลองใหม่",
+  "memory.memories.processing.autoRetryScheduledTitle": "ประมวลผลความจำไม่สำเร็จ ระบบจะลองใหม่อัตโนมัติในภายหลัง"
+} satisfies Record<keyof typeof zhCNErrorNoticeMessages, string>;

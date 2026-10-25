@@ -41,6 +41,7 @@ export function HistoryDagPanel(props: {
   state: HistoryDagPanelState;
   closeLabel: string;
   loadingLabel: string;
+  ariaLabel?: string;
   labels: HistoryDagPanelLabels;
   onClose: () => void;
 }) {
@@ -62,7 +63,7 @@ export function HistoryDagPanel(props: {
   return (
     <div
       role="dialog"
-      aria-label="History DAG"
+      aria-label={props.ariaLabel ?? "History DAG"}
       className="history-dag-panel rounded-card border border-border-stone/40 bg-background-paper shadow-xl overflow-hidden"
       style={{ width: "100%", height: HISTORY_DAG_PANEL_HEIGHT }}
     >

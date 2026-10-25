@@ -408,6 +408,7 @@ function escapeXmlText(value: string): string {
 
 const PLATFORM_API_ERROR_FALLBACK_ZH = "平台服务响应异常，请稍后重试。";
 const PLATFORM_API_ERROR_FALLBACK_EN = "The platform service returned an unexpected response. Please try again later.";
+const PLATFORM_API_ERROR_FALLBACK_TH = "บริการโมเดลตอบกลับผิดปกติ กรุณาลองใหม่อีกครั้ง";
 const USER_FACING_API_ERROR_PATTERNS = [
   /\bAPI returned empty choices\b/i,
   /^Error calling LLM:/i,
@@ -418,23 +419,28 @@ function usesChineseWebuiLanguage(language: any): boolean {
   return String(language ?? "").toLowerCase().startsWith("zh");
 }
 
+function usesThaiWebuiLanguage(language: any): boolean {
+  return String(language ?? "").toLowerCase().startsWith("th");
+}
+
 function platformApiErrorFallback(language: any): string {
-  return usesChineseWebuiLanguage(language)
-    ? PLATFORM_API_ERROR_FALLBACK_ZH
-    : PLATFORM_API_ERROR_FALLBACK_EN;
+  return usesThaiWebuiLanguage(language) ? PLATFORM_API_ERROR_FALLBACK_TH
+    : usesChineseWebuiLanguage(language) ? PLATFORM_API_ERROR_FALLBACK_ZH : PLATFORM_API_ERROR_FALLBACK_EN;
 }
 
 const QUOTA_API_ERROR_FALLBACK_ZH = "当前模型额度已用完";
 const QUOTA_API_ERROR_FALLBACK_EN = "This model's quota has been used up.";
+const QUOTA_API_ERROR_FALLBACK_TH = "โควตาของโมเดลนี้ถูกใช้หมดแล้ว";
 const IMAGE_INPUT_UNSUPPORTED_ZH = "当前模型不支持图片输入，请切换到支持多模态能力的模型后重试";
 const IMAGE_INPUT_UNSUPPORTED_EN = "The current model does not support image input. Switch to a multimodal model and try again.";
+const IMAGE_INPUT_UNSUPPORTED_TH = "โมเดลปัจจุบันไม่รองรับการรับภาพ กรุณาเปลี่ยนเป็นโมเดลที่รองรับหลายสื่อแล้วลองใหม่";
 const IMAGE_ANALYSIS_FAILED_ZH = "图片解析失败，请稍后重试";
 const IMAGE_ANALYSIS_FAILED_EN = "Image analysis failed. Please try again later.";
+const IMAGE_ANALYSIS_FAILED_TH = "วิเคราะห์ภาพไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
 
 function quotaApiErrorFallback(language: any): string {
-  return usesChineseWebuiLanguage(language)
-    ? QUOTA_API_ERROR_FALLBACK_ZH
-    : QUOTA_API_ERROR_FALLBACK_EN;
+  return usesThaiWebuiLanguage(language) ? QUOTA_API_ERROR_FALLBACK_TH
+    : usesChineseWebuiLanguage(language) ? QUOTA_API_ERROR_FALLBACK_ZH : QUOTA_API_ERROR_FALLBACK_EN;
 }
 
 function isUserFacingApiError(content: string | null | undefined, stopReason: string): boolean {
@@ -2902,12 +2908,13 @@ export class AgentLoop {
 
   private contextCompactionLabel(ctx: TurnContext, status: TokenCompactionStatus): string {
     const language = ctx.msg.metadata?.[WEBUI_LANGUAGE_METADATA_KEY] ?? ctx.session?.metadata?.[WEBUI_LANGUAGE_METADATA_KEY] ?? null;
-    const labels: Record<TokenCompactionStatus, { zh: string; en: string }> = {
-      running: { zh: "会话压缩中", en: "Summarizing chat context" },
-      done: { zh: "压缩已完成", en: "Context summary complete" },
-      error: { zh: "压缩失败", en: "Context summary failed" },
+    const labels: Record<TokenCompactionStatus, { zh: string; en: string; th: string }> = {
+      running: { zh: "会话压缩中", en: "Summarizing chat context", th: "กำลังสรุปบริบทการสนทนา" },
+      done: { zh: "压缩已完成", en: "Context summary complete", th: "สรุปบริบทเสร็จแล้ว" },
+      error: { zh: "压缩失败", en: "Context summary failed", th: "สรุปบริบทไม่สำเร็จ" },
     };
-    return usesChineseWebuiLanguage(language) ? labels[status].zh : labels[status].en;
+    return usesThaiWebuiLanguage(language) ? labels[status].th
+      : usesChineseWebuiLanguage(language) ? labels[status].zh : labels[status].en;
   }
 
   private async publishWebuiContextCompaction(ctx: TurnContext, status: TokenCompactionStatus): Promise<void> {
@@ -3219,14 +3226,12 @@ export class AgentLoop {
   ): string | null {
     const language = metadata?.[WEBUI_LANGUAGE_METADATA_KEY] ?? session?.metadata?.[WEBUI_LANGUAGE_METADATA_KEY] ?? null;
     if (stopReason === "error" && errorCategory === "image_input_unsupported") {
-      return usesChineseWebuiLanguage(language)
-        ? IMAGE_INPUT_UNSUPPORTED_ZH
-        : IMAGE_INPUT_UNSUPPORTED_EN;
+      return usesThaiWebuiLanguage(language) ? IMAGE_INPUT_UNSUPPORTED_TH
+        : usesChineseWebuiLanguage(language) ? IMAGE_INPUT_UNSUPPORTED_ZH : IMAGE_INPUT_UNSUPPORTED_EN;
     }
     if (stopReason === "error" && errorCategory === "image_analysis_failed") {
-      return usesChineseWebuiLanguage(language)
-        ? IMAGE_ANALYSIS_FAILED_ZH
-        : IMAGE_ANALYSIS_FAILED_EN;
+      return usesThaiWebuiLanguage(language) ? IMAGE_ANALYSIS_FAILED_TH
+        : usesChineseWebuiLanguage(language) ? IMAGE_ANALYSIS_FAILED_ZH : IMAGE_ANALYSIS_FAILED_EN;
     }
     if (!isWebuiVisible(channel, metadata)) return content ?? null;
     if (stopReason === "error" && errorCategory === "quota_exhausted") {

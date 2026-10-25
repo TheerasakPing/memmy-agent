@@ -13,6 +13,8 @@ export const MEMORY_ADD_STATUS_SUMMARIES = [
 ] as const;
 
 export const zhCNMessages = {
+  "common.previousImage": "上一张图片",
+  "common.nextImage": "下一张图片",
   "browser.title": "浏览器",
   "browser.newTab": "新建标签页",
   "browser.blankTab": "新标签页",
@@ -2244,6 +2246,8 @@ export const zhCNMessages = {
 } as const;
 
 export const enUSMessages: Record<keyof typeof zhCNMessages, string> = {
+  "common.previousImage": "Previous image",
+  "common.nextImage": "Next image",
   "browser.title": "Browser",
   "browser.newTab": "New tab",
   "browser.blankTab": "New Tab",
