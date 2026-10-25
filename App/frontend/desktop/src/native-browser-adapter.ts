@@ -12,6 +12,7 @@ export interface NativeBrowserBridge {
   nativeBrowserAction(id: string, action: "navigate" | "reload" | "back" | "forward", url?: string): Promise<void>;
   nativeBrowserDestroy(id: string): Promise<void>;
   nativeBrowserMarkUserNavigation(id: string): Promise<void>;
+  nativeBrowserCopyTabUrl(id: string): Promise<void>;
   onNativeBrowserEvent(callback: (message: NativeBrowserMessage) => void): Promise<() => void>;
 }
 
@@ -138,6 +139,9 @@ export function createNativeBrowserAdapter(
         }, async () => {
           if (!id || destroyed) throw Error("native browser WebView not available");
           await bridge.nativeBrowserMarkUserNavigation(id);
+        }, async () => {
+          if (!id || destroyed) throw Error("native browser WebView not available");
+          await bridge.nativeBrowserCopyTabUrl(id);
         });
       } catch (error) {
         id = null;

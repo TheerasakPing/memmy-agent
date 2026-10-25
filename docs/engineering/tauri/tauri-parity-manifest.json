@@ -12,9 +12,9 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 83,
-    "remainingMethods": 2,
-    "partialNativeMethods": 4,
+    "nativeMethods": 84,
+    "remainingMethods": 1,
+    "partialNativeMethods": 5,
     "remainingFullBehaviorMethods": 6,
     "routes": 14
   },
@@ -439,8 +439,8 @@
     },
     {
       "name": "copyEmbeddedBrowserTabMention",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "PARTIAL_NATIVE_FUNCTIONALITY",
+      "acceptance": "Tauri copies a genuine live WebKit page URL, not an Agent-actionable browser/CDP tab mention; shared-session integration pending"
     },
     {
       "name": "selectEmbeddedBrowserTab",

@@ -1,4 +1,4 @@
-import { markNativeTabUserNavigation, onNativeTabClosed, selectNativeTab } from "./native-browser-tab-state.js";
+import { copyNativeTabPageUrl, markNativeTabUserNavigation, onNativeTabClosed, selectNativeTab } from "./native-browser-tab-state.js";
 /**
  * Tauri v2 native boundary for the existing React renderer.
  *
@@ -83,6 +83,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "onEmbeddedBrowserClose",
   "selectEmbeddedBrowserTab",
   "markEmbeddedBrowserUserNavigation",
+  "copyEmbeddedBrowserTabMention",
   "clearBrowserData",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
@@ -250,6 +251,8 @@ export function installTauriBridge(host: TauriWindow): boolean {
     nativeBrowserDestroy: (id: string) => invoke<void>("desktop_native_browser_destroy", { id }),
     nativeBrowserMarkUserNavigation: (id: string) =>
       invoke<void>("desktop_native_browser_mark_user_navigation", { id }),
+    nativeBrowserCopyTabUrl: (id: string) =>
+      invoke<void>("desktop_native_browser_copy_tab_url", { id }),
     onNativeBrowserEvent: (callback: (value: import("./native-browser-adapter.js").NativeBrowserMessage) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) return Promise.reject(new Error("Tauri native browser event bridge unavailable"));
@@ -361,6 +364,10 @@ export function installTauriBridge(host: TauriWindow): boolean {
     },
     markEmbeddedBrowserUserNavigation: (tabId: number) =>
       markNativeTabUserNavigation(tabId),
+    // Tauri WebKit is NOT the Agent's Playwright/CDP context. Instead of
+    // forging an actionable plugin:// mention, safely copy the real page URL.
+    copyEmbeddedBrowserTabMention: (tabId: number) =>
+      copyNativeTabPageUrl(tabId),
     onEmbeddedBrowserOpen: (callback: (url: string, owner?: { scopeKey?: string; sourceGuestId?: number }) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) throw new Error("Tauri native Browser popup listener unavailable");
