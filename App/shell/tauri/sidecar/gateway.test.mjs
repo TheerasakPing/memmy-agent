@@ -16,7 +16,7 @@ async function stop(child){if(!child||child.exitCode!==null)return; const wait=n
 async function waitMemory(child,url){for(let i=0;i<150;i++){if(child.exitCode!==null)throw Error('memory exited');const r=await fetch(url+'/api/v1/health').catch(()=>null);if(r?.ok && (await r.json()).storage?.ready)return;await new Promise(r=>setTimeout(r,120));}throw Error('memory timeout');}
 async function ready(child,marker){let err='';child.stderr.on('data',d=>{err=(err+String(d)).slice(-4000)});return Promise.race([new Promise((resolve,reject)=>{createInterface({input:child.stdout}).on('line',l=>{if(l.startsWith(marker))resolve(JSON.parse(l.slice(marker.length)))});child.once('exit',c=>reject(Error(`${marker} exit ${c}: ${err}`)))}),new Promise((_,reject)=>setTimeout(()=>reject(Error(`${marker} timeout: ${err}`)),51000).unref())]);}
 
-test('real Agent Gateway starts after Memory+Local API and serves WebUI bootstrap', {timeout:110000},async()=>{
+test('real Agent Gateway with managed Browser IPC starts after Memory+Local API and serves WebUI bootstrap', {timeout:110000},async()=>{
  const home=await mkdtemp(join(tmpdir(),'memmy-tauri-gateway-'));
  const memPort=await port(),wsPort=await port(),healthPort=await port();
  const memUrl=`http://127.0.0.1:${memPort}`, token=randomBytes(32).toString('hex');
@@ -30,7 +30,7 @@ test('real Agent Gateway starts after Memory+Local API and serves WebUI bootstra
  backend=spawn(process.execPath,[script('backend')],{env:{...process.env,MEMMY_TAURI_DATA_DIR:home,MEMMY_TAURI_DEV_BACKEND:'1',MEMMY_MEMORY_LAYER_URL:memUrl,MEMMY_MEMORY_LAYER_TOKEN:token,MEMMY_CLOUD_URL:memUrl},stdio:['pipe','pipe','pipe']});
  const backendCfg=await ready(backend,'MEMMY_TAURI_READY ');
  assert.ok(backendCfg.baseUrl);
- gateway=spawn(process.execPath,[script('gateway')],{env:{...process.env,MEMMY_TAURI_DATA_DIR:home,MEMMY_TAURI_DEV_GATEWAY:'1',MEMMY_TAURI_GATEWAY_WS_PORT:String(wsPort),MEMMY_TAURI_GATEWAY_HEALTH_PORT:String(healthPort),MEMMY_MEMORY_URL:memUrl,MEMMY_MEMORY_TOKEN:token,MEMMY_CLOUD_URL:memUrl},stdio:['pipe','pipe','pipe']});
+ gateway=spawn(process.execPath,[script('gateway')],{env:{...process.env,MEMMY_TAURI_DATA_DIR:home,MEMMY_TAURI_DEV_GATEWAY:'1',MEMMY_TAURI_BROWSER_SURFACE_RELAY:'1',MEMMY_TAURI_GATEWAY_WS_PORT:String(wsPort),MEMMY_TAURI_GATEWAY_HEALTH_PORT:String(healthPort),MEMMY_MEMORY_URL:memUrl,MEMMY_MEMORY_TOKEN:token,MEMMY_CLOUD_URL:memUrl},stdio:['pipe','pipe','pipe']});
  const agentCfg=await ready(gateway,'MEMMY_TAURI_GATEWAY_READY ');
  assert.equal(agentCfg.baseUrl,`http://127.0.0.1:${wsPort}`);
  const saved=YAML.parse(await readFile(config,'utf8'));
