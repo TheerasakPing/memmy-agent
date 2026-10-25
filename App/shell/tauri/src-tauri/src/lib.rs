@@ -8,6 +8,7 @@ mod native_browser_extension;
 mod native_browser_inventory;
 mod native_browser_store;
 mod native_browser_surface;
+mod native_cli_install;
 mod native_diagnostics;
 mod native_file_export;
 mod native_memory_export;
@@ -336,6 +337,7 @@ pub fn run() {
             native_os::desktop_get_installation_id,
             native_analytics::desktop_send_analytics_client_id,
             native_memory_export::desktop_export_memory_database,
+            native_cli_install::desktop_install_cli_tools,
             desktop_restart_memory_service,
             native_os::desktop_select_project_directory,
             native_os::desktop_select_empty_project_directory,

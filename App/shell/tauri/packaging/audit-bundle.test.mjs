@@ -28,7 +28,7 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
       ...['manifest.json','background.js','history-content.js','history-sensor.js']
         .map(x => join('Contents/Resources/browser-extension', x)),
       ...['node', 'App/shell/tauri/sidecar/memory.mjs', 'App/shell/tauri/sidecar/backend.mjs', 'App/shell/tauri/sidecar/gateway.mjs',
-         'Memory/dist/src/server/index.js','App/backend/dist/src/index.js',
+         'Memory/dist/src/server/index.js','Memory/dist/src/cli/index.js','App/backend/dist/src/index.js',
          'App/memmy-agent/dist/main.js','node_modules/better-sqlite3/build/Release/better_sqlite3.node']
          .map((x) => join('Contents/Resources/runtime', x))
     ];
@@ -40,6 +40,9 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
     writeFileSync(join(dir, 'Contents/Resources/browser-extension/manifest.json'),
       JSON.stringify({manifest_version: 3, background: {service_worker: 'background.js'}}));
     assert.deepEqual(auditBundle(dir, 'darwin').errors, []);
+    rmSync(join(dir, 'Contents/Resources/runtime/Memory/dist/src/cli/index.js'));
+    assert.ok(auditBundle(dir, 'darwin').errors.some(e => e.includes('bundled Memory CLI entrypoint')));
+    writeFileSync(join(dir, 'Contents/Resources/runtime/Memory/dist/src/cli/index.js'), 'fixture');
     rmSync(join(dir, 'Contents/Resources/browser-extension/background.js'));
     assert.ok(auditBundle(dir, 'darwin').errors.some(e => e.includes('bundled Browser Extension')));
   } finally { rmSync(dir, { recursive: true, force: true }); }

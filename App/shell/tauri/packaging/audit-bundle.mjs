@@ -39,6 +39,7 @@ export function auditBundle(bundle, platform = process.platform) {
     ['App/shell/tauri/sidecar/backend.mjs', 'Local API startup shim'],
     ['App/shell/tauri/sidecar/gateway.mjs', 'Agent startup shim'],
     ['Memory/dist/src/server/index.js', 'compiled Memory Service'],
+    ['Memory/dist/src/cli/index.js', 'bundled Memory CLI entrypoint'],
     ['App/backend/dist/src/index.js', 'compiled Local API'],
     ['App/memmy-agent/dist/main.js', 'compiled Agent Gateway'],
     ['node_modules/better-sqlite3/build/Release/better_sqlite3.node', 'SQLite native addon']
