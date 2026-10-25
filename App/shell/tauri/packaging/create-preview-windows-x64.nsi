@@ -6,10 +6,10 @@
 Unicode true
 CRCCheck on
 Name "Memmy Turbo Preview (Windows x64)"
-OutFile "${MEMMY_WIN_PREVIEW_ROOT}/Memmy-Turbo-Tauri-1.2.5-alpha.3-win11-x64-UNSIGNED-DEVELOPER-PREVIEW-Setup.exe"
-InstallDir "$LOCALAPPDATA\MemmyTurboPreview"
+OutFile "${MEMMY_WIN_PREVIEW_ROOT}/Memmy-Turbo-Tauri-1.2.5-alpha.3-win11-x64-MAXPATH-FIX-DEVELOPER-PREVIEW-Setup.exe"
+InstallDir "$LOCALAPPDATA\Memmy"
 RequestExecutionLevel user
-SetCompressor /SOLID lzma
+SetCompressor /SOLID zlib
 ShowInstDetails show
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -25,6 +25,12 @@ Function .onInit
   ${EndIf}
 FunctionEnd
 Section "Memmy Turbo Preview" SecMain
+  ; Prevent partial installation from nested Agent path exceeding Win32 MAX_PATH.
+  StrLen $0 "$INSTDIR"
+  ${If} $0 > 46
+    MessageBox MB_ICONSTOP "Installation folder is too long. Choose a shorter folder such as C:\Memmy."
+    Abort
+  ${EndIf}
   SetOutPath "$INSTDIR"
   File "/oname=memmy-turbo-tauri.exe" "${MEMMY_WIN_PREVIEW_ROOT}/memmy-turbo-tauri.exe"
   SetOutPath "$INSTDIR\runtime"

@@ -107,6 +107,10 @@ jobs:
           npm --prefix App/memmy-agent run build
       - name: Stage actual Windows x64 node.exe and Agent+Memory runtime
         run: node App/shell/tauri/packaging/prepare-runtime-windows.mjs
+      - name: Test and enforce Windows legacy MAX_PATH in staged runtime
+        run: |
+          node --test App/shell/tauri/packaging/trim-windows-node-modules.test.mjs
+          node App/shell/tauri/packaging/trim-windows-node-modules.mjs App/shell/tauri/packaging/runtime
       - name: Smoke genuine Windows Node + native SQLite + compiled Memory CLI
         run: node App/shell/tauri/packaging/smoke-windows-runtime.mjs App/shell/tauri/packaging/runtime
       - name: Check original React / native bridge and package security tests
