@@ -15,6 +15,7 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_get_browser_sidebar_surface") return null;
     if (command === "desktop_send_browser_sidebar_action") return true;
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
+    if (command === "desktop_open_agent_tool") return { opened: true };
     if (command === "desktop_install_cli_tools") return {
       ok: true, binDirectory: "/tmp/home/.local/bin",
       installed: [{ name: "memmy-memory", source: "/runtime/Memory/dist/src/cli/index.js",
@@ -145,6 +146,10 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     });
     expect(invoke).toHaveBeenCalledWith("desktop_send_analytics_client_id", {
       payload: { clientId: "123.456", appEnv: "prod", appEdition: "intl" }
+    });
+    expect(await api.openAgentTool("codex", "Review this PR")).toEqual({ opened: true });
+    expect(invoke).toHaveBeenCalledWith("desktop_open_agent_tool", {
+      sourceId: "codex", prompt: "Review this PR"
     });
     expect(await api.installCliTools()).toEqual({
       ok: true, binDirectory: "/tmp/home/.local/bin",
@@ -351,7 +356,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(78);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(79);
     expect(host.memmy?.installCliTools).toBeTypeOf("function");
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

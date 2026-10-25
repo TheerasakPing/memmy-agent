@@ -36,6 +36,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "exportMemoryDatabase",
   "restartMemoryService",
   "installCliTools",
+  "openAgentTool",
   "getLaunchAtLogin",
   "setLaunchAtLogin",
   "notifyTaskDone",
@@ -157,6 +158,8 @@ export function installTauriBridge(host: TauriWindow): boolean {
       invoke<{ ok: true; baseUrl: string }>("desktop_restart_memory_service"),
     installCliTools: () => invoke<NonNullable<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["installCliTools"]>>>>>(
       "desktop_install_cli_tools"),
+    openAgentTool: (sourceId: string, prompt: string) =>
+      invoke<{ opened: boolean }>("desktop_open_agent_tool", { sourceId, prompt }),
     exportMemoryDatabase: () => invoke<
       { canceled: true } | { canceled: false; exportPath: string; bytes: number }
     >("desktop_export_memory_database"),
