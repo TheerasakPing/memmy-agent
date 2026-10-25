@@ -53,6 +53,7 @@ describe("browser sidebar settings", () => {
     act(() => root.unmount());
     while (takePendingBrowserNewTab()) { /* Drain queued test requests. */ }
     Reflect.deleteProperty(window, "memmy");
+    Reflect.deleteProperty(window, "__TAURI__");
     container.remove();
   });
 
@@ -72,6 +73,33 @@ describe("browser sidebar settings", () => {
       expect(takePendingBrowserNewTab()).toBeNull();
       expect(hasPendingBrowserOpen()).toBe(false);
     } finally { window.removeEventListener(MEMMY_BROWSER_OPEN_EVENT, observe); }
+  });
+
+  it("mounts an actual Tauri child Browser host instead of an inert Electron webview placeholder", async () => {
+    const create = vi.fn(async () => "native-tab-1");
+    const bounds = vi.fn(async () => undefined);
+    const destroy = vi.fn(async () => undefined);
+    const listen = vi.fn(async () => vi.fn());
+    Object.defineProperty(window, "__TAURI__", { configurable: true, value: { core: { invoke: vi.fn() } } });
+    Object.assign(window.memmy!, {
+      nativeBrowserCreate: create,
+      nativeBrowserBounds: bounds,
+      nativeBrowserAction: vi.fn(async () => undefined),
+      nativeBrowserDestroy: destroy,
+      onNativeBrowserEvent: listen,
+    });
+    await act(async () => root.render(
+      <I18nProvider language="zh-CN"><BrowserPanel initialAddress="https://example.test" /></I18nProvider>
+    ));
+    expect(container.querySelector("webview")).toBeNull();
+    expect(container.querySelector("div.memmy-browser-webview")).not.toBeNull();
+    // Happy DOM does not lay out the 420px browser host: native bounds remain hidden
+    // until the real WebView reports a nonzero rectangle.
+    expect(create).toHaveBeenCalledWith("https://example.test", expect.objectContaining({visible:false}));
+    await act(async () => root.unmount());
+    expect(destroy).toHaveBeenCalledWith("native-tab-1");
+    // afterEach still expects an initialized root; remount an empty host.
+    root = createRoot(container);
   });
 
   it("opens a typed URL in the live webview without invoking Computer Use", async () => {

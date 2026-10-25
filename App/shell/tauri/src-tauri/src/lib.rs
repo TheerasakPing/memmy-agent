@@ -2,6 +2,7 @@
 //! routed through typed, auditable Rust commands; no generic shell invoke.
 use std::sync::{Arc, Mutex};
 mod native_approvals;
+mod native_browser;
 mod native_browser_extension;
 mod native_browser_store;
 mod native_diagnostics;
@@ -212,6 +213,7 @@ pub fn run() {
         .manage(Arc::new(native_runtime::NativeRuntime::default()))
         .manage(native_workspace::WorkspaceGrants::default())
         .manage(native_approvals::ApprovalLock::default())
+        .manage(native_browser::NativeBrowsers::default())
         .manage(native_pet::PetDragState::default())
         .manage(native_permissions::ComputerHistorySession::default())
         .manage(native_tray::TrayState::default())
@@ -294,6 +296,10 @@ pub fn run() {
             native_permissions::desktop_open_computer_history_markdown,
             native_browser_extension::desktop_get_browser_extension_directory,
             native_browser_extension::desktop_reveal_browser_extension,
+            native_browser::desktop_native_browser_create,
+            native_browser::desktop_native_browser_bounds,
+            native_browser::desktop_native_browser_action,
+            native_browser::desktop_native_browser_destroy,
             native_browser_store::desktop_get_browser_history,
             native_browser_store::desktop_import_legacy_browser_history,
             native_browser_store::desktop_remove_browser_history,

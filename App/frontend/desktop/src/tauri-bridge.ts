@@ -161,6 +161,20 @@ export function installTauriBridge(host: TauriWindow): boolean {
         "desktop_read_workspace_directory", { rootPath, relativePath }),
     writeWorkspaceFile: (rootPath: string, filePath: string, contents: string) =>
       invoke<void>("desktop_write_workspace_file", { rootPath, filePath, contents }),
+    // Child WebViews live in the original main window; remote origins do not receive native ACL grants.
+    nativeBrowserCreate: (initialUrl: string, bounds: import("./native-browser-adapter.js").NativeBrowserBounds) =>
+      invoke<string>("desktop_native_browser_create", { initialUrl, bounds }),
+    nativeBrowserBounds: (id: string, bounds: import("./native-browser-adapter.js").NativeBrowserBounds) =>
+      invoke<void>("desktop_native_browser_bounds", { id, bounds }),
+    nativeBrowserAction: (id: string, action: "navigate" | "reload" | "back" | "forward", url?: string) =>
+      invoke<void>("desktop_native_browser_action", { id, action, url }),
+    nativeBrowserDestroy: (id: string) => invoke<void>("desktop_native_browser_destroy", { id }),
+    onNativeBrowserEvent: (callback: (value: import("./native-browser-adapter.js").NativeBrowserMessage) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) return Promise.reject(new Error("Tauri native browser event bridge unavailable"));
+      return listen<import("./native-browser-adapter.js").NativeBrowserMessage>(
+        "memmy:native-browser:event", event => callback(event.payload));
+    },
     getBrowserHistory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserHistory"]>>>>("desktop_get_browser_history"),
     importLegacyBrowserHistory: (entries: Parameters<NonNullable<NonNullable<Window["memmy"]>["importLegacyBrowserHistory"]>>[0]) =>
       invoke<boolean>("desktop_import_legacy_browser_history", { entries }),
