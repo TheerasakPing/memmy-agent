@@ -7,7 +7,7 @@
     "tauri:dev": "tauri dev",
     "backend:build": "npm --prefix ../../.. run build -w @memmy/backend",
     "memory:build": "npm --prefix ../../.. run memory:build",
-    "sidecar:test": "node --test sidecar/backend.test.mjs sidecar/memory.test.mjs sidecar/gateway.test.mjs sidecar/surface-relay.test.mjs sidecar/agent-ipc-deny.test.mjs sidecar/surface-relay.ipc.test.mjs",
+    "sidecar:test": "node --test --test-concurrency=1 sidecar/backend.test.mjs sidecar/memory.test.mjs sidecar/gateway.test.mjs sidecar/surface-relay.test.mjs sidecar/agent-ipc-deny.test.mjs sidecar/surface-relay.ipc.test.mjs",
     "agent:build": "npm --prefix ../../memmy-agent run build",
     "tauri:build": "tauri build",
     "tauri:rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
