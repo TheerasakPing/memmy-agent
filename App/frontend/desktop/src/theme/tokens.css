@@ -135,3 +135,40 @@
   --space-5: 20px;
   --space-6: 24px;
 }
+
+/* Soft, low-glare night palette. Override design tokens rather than altering layout. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas-oat: #101719;
+  --color-background-paper: #1a2427;
+  --color-sidebar-bg: #141e21;
+  --color-sidebar-divider: #314449;
+  --color-content-base: #192326;
+  --color-content-bg: #192326;
+  --color-content-glow-neon: rgb(93 200 173 / 0.025);
+  --color-content-glow-ember: rgb(245 158 107 / 0.012);
+  --color-text-ink: #dceae8;
+  --color-border-stone: #34484b;
+  --color-outline-ebony: #ddebe8;
+  --color-action-sky: #6bd3bd;
+  --color-action-sky-hover: #87e3ce;
+  --color-nav-active-bg: #254139;
+  --color-footer-slate: #263c3b;
+  --color-accent-lemon: #65552a;
+  --color-status-success-soft: #203c34;
+  --color-status-error-soft: #482c38;
+  --color-role-assistant-soft: #303950;
+  --color-surface-muted: #233034;
+  --shadow-card: 0 16px 38px rgb(0 0 0 / 0.23);
+  --shadow-soft: 0 8px 24px rgb(0 0 0 / 0.2);
+  --shadow-popover: 0 18px 52px rgb(0 0 0 / 0.4);
+}
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] #root { background: var(--color-canvas-oat); color: var(--color-text-ink); }
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select { color-scheme: dark; }
+:root[data-theme="dark"] .bg-white { background-color: var(--color-background-paper); }
+:root[data-theme="dark"] .text-black { color: var(--color-text-ink); }
+:root[data-theme="dark"] .bg-canvas-oat { background-color: var(--color-canvas-oat); }
+:root[data-theme="dark"] .bg-background-paper { background-color: var(--color-background-paper); }

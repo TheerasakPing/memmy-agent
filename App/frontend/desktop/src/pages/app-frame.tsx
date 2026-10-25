@@ -1,4 +1,5 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, Moon, Sun } from "lucide-react";
+import { readNightMode, writeNightMode, NIGHT_MODE_EVENT } from "../theme/night-mode.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -69,6 +70,25 @@ import {
 import { AppContentTopbar } from "./app-content-topbar.js";
 import { SETTINGS_BROWSER_EXTENSION_EVENT, SETTINGS_EXCEL_CONNECTION_EVENT, SETTINGS_NAV_ITEMS, writeSettingsMemoryBudgetFocus, type SettingsTabId } from "./settings-nav.js";
 import { ArrowDown, Check, CheckCheck, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Folder, FolderOpen, FolderPlus, ListFilter, MoreHorizontal, MousePointer2, Plus, RotateCcw } from "lucide-react";
+
+function NightModeToggle() {
+  const [mode, setMode] = useState(readNightMode);
+  useEffect(() => {
+    const update = () => setMode(readNightMode());
+    window.addEventListener(NIGHT_MODE_EVENT, update);
+    return () => window.removeEventListener(NIGHT_MODE_EVENT, update);
+  }, []);
+  const dark = document.documentElement.dataset.theme === "dark";
+  return (
+    <button type="button" className="app-frame-profile-settings shrink-0 inline-flex items-center justify-center"
+      onClick={() => writeNightMode(dark ? "light" : "dark")}
+      title={dark ? "Light mode / โหมดสว่าง" : "Dark mode / โหมดกลางคืน"}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-pressed={dark}>
+      {mode === "dark" || dark ? <Sun size={16} /> : <Moon size={16} />}
+    </button>
+  );
+}
 
 export interface SettingsSidebarNav {
   activeTab: SettingsTabId;
@@ -1425,6 +1445,7 @@ export function AppFrame(props: AppFrameProps) {
 
         {props.settingsNav ? null : sidebarUpdateAction ? (
           <div className="app-frame-sidebar-footer app-frame-sidebar-footer--compound">
+            <NightModeToggle />
             <button
               type="button"
               onClick={openSettingsFromSidebar}
