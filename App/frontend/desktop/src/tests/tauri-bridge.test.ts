@@ -27,6 +27,7 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_set_browser_allow_all") return { enabled: args?.enabled === true, inherited: false, effective: args?.enabled === true };
     if (command === "desktop_get_computer_history_permission_session_id") return "11111111-1111-4111-8111-111111111111";
     if (command === "desktop_get_full_disk_access_status") return true;
+    if (command === "desktop_guide_memmy_permission") return true;
     if (command === "desktop_get_browser_extension_directory") return "/tmp/browser-extension";
     if (command === "desktop_reveal_browser_extension") return true;
     if (command === "desktop_get_browser_extension_installation") return {
@@ -127,6 +128,12 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     await api.openMailto("mailto:team@example.com");
     expect(await api.getComputerHistoryPermissionSessionId?.()).toBe("11111111-1111-4111-8111-111111111111");
     expect(await api.getFullDiskAccessStatus?.()).toBe(true);
+    expect(await api.guideMemmyPermission?.("accessibility")).toBe(true);
+    expect(invoke).toHaveBeenCalledWith("desktop_guide_memmy_permission", {
+      permission: "accessibility"
+    });
+    await api.restartForComputerHistoryPermissions?.();
+    expect(invoke).toHaveBeenCalledWith("desktop_restart_for_computer_history_permissions", undefined);
     expect(await api.getBrowserExtensionDirectory()).toBe("/tmp/browser-extension");
     expect(await api.revealBrowserExtension()).toBe(true);
     expect(await api.getBrowserExtensionInstallation?.()).toEqual({
@@ -280,9 +287,9 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(68);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(70);
     expect(host.memmy?.installCliTools).toBeUndefined();
-    expect(host.memmy?.guideMemmyPermission).toBeUndefined();
+    expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();
   });
 });

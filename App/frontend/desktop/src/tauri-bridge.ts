@@ -56,6 +56,8 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "exportDiagnosticsReport",
   "getComputerHistoryPermissionSessionId",
   "getFullDiskAccessStatus",
+  "guideMemmyPermission",
+  "restartForComputerHistoryPermissions",
   "openComputerHistoryMarkdown",
   "getBrowserExtensionDirectory",
   "revealBrowserExtension",
@@ -143,6 +145,10 @@ export function installTauriBridge(host: TauriWindow): boolean {
     getComputerHistoryPermissionSessionId: () =>
       invoke<string>("desktop_get_computer_history_permission_session_id"),
     getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
+    guideMemmyPermission: (permission: "accessibility" | "inputMonitoring" | "screenRecording") =>
+      invoke<boolean>("desktop_guide_memmy_permission", { permission }),
+    restartForComputerHistoryPermissions: () =>
+      invoke<void>("desktop_restart_for_computer_history_permissions"),
     getBrowserExtensionDirectory: () => invoke<string | null>("desktop_get_browser_extension_directory"),
     revealBrowserExtension: () => invoke<boolean>("desktop_reveal_browser_extension"),
     getBrowserExtensionInstallation: () =>
