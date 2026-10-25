@@ -18,6 +18,9 @@ export function createNativeBrowserSurfaceRelay({ sendAction, publish }) {
       if (!isComputerUseSurfaceMessage(raw) || raw.surface !== 'browser') return false;
       const encoded = JSON.stringify(raw);
       if (Buffer.byteLength(encoded) > MAX_EVENT_BYTES) return false;
+      const previous = sessions.get(raw.sessionKey);
+      // A sessionKey can never be reused to hijack another task or target.
+      if (previous && ['channel','chatId','targetId'].some(k => previous[k] !== raw[k])) return false;
       if (raw.type.endsWith(':close')) {
         if (!raw.presentationOnly) sessions.delete(raw.sessionKey);
       } else {

@@ -82,3 +82,15 @@ test('oversize and unrelated child IPC are never forwarded', () => {
   assert.equal(relay.activeCount(), 0);
   assert.deepEqual(published, []);
 });
+
+test('Agent session identity cannot be silently rebound to a different chat or tab', () => {
+  const {relay,actions} = setup();
+  assert.equal(relay.update(snapshot()),true);
+  assert.equal(relay.update({...snapshot(), chatId:'different-chat'}),false);
+  assert.equal(relay.update({...snapshot(), targetId:'another-tab'}),false);
+  assert.equal(relay.update({...snapshot(), type:'memmy:computer-use-surface:close',channel:'other-channel'}),false);
+  assert.equal(relay.activeCount(),1);
+  assert.equal(relay.action(action('chat-A',{action:'reload'})),true);
+  assert.equal(actions[0].chatId,'chat-001');
+  relay.clear();
+});
