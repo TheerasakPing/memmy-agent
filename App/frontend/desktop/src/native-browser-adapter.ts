@@ -1,3 +1,5 @@
+import { isNativeTabVisible, registerNativeTab, releaseNativeTab } from "./native-browser-tab-state.js";
+
 /** Adapts a real Tauri child WebView to the existing Electron BrowserPanel controls.
  * This is a browser host, not a native Computer Use or arbitrary page IPC grant.
  */
@@ -50,6 +52,7 @@ export function createNativeBrowserAdapter(
   element: HTMLElement, bridge: NativeBrowserBridge, initialUrl: string
 ): NativeBrowserAdapter {
   let id: string | null = null;
+  let nativeUiHandle = 0;
   let starting: Promise<void> | null = null;
   let destroyed = false;
   let visible = false;
@@ -95,8 +98,9 @@ export function createNativeBrowserAdapter(
     await bridge.nativeBrowserAction(id, action, url);
   };
   const view = Object.assign(element, {
-    // Return 0: never masquerade as an Electron guest webContentsId.
-    getWebContentsId: () => 0,
+    // Ephemeral React-only native tab handle, NOT an Electron guest ID nor
+    // an Agent Browser session/target ID.
+    getWebContentsId: () => nativeUiHandle,
     loadURL: (url: string) => invoke("navigate", url),
     getURL: () => currentUrl,
     getTitle: () => currentTitle,
@@ -114,13 +118,34 @@ export function createNativeBrowserAdapter(
       unlisten = await bridge.onNativeBrowserEvent(onEvent);
       if (destroyed) { unlisten(); return; }
       const requestedOnCreate = pendingUrl ?? currentUrl;
-      const created = await bridge.nativeBrowserCreate(requestedOnCreate, nativeBrowserBounds(element, visible));
+      // A newly created child is never briefly exposed above another selected
+      // native guest while its own UI handle is being registered.
+      const created = await bridge.nativeBrowserCreate(requestedOnCreate,
+        nativeBrowserBounds(element, visible && isNativeTabVisible(0)));
       if (destroyed) {
         await bridge.nativeBrowserDestroy(created);
         return;
       }
       id = created;
+      try {
+        nativeUiHandle = registerNativeTab(() => {
+        if (!destroyed && id) {
+          void bridge.nativeBrowserBounds(id, nativeBrowserBounds(element,
+            visible && isNativeTabVisible(nativeUiHandle)))
+            .catch(() => dispatch("did-fail-load"));
+        }
+        });
+      } catch (error) {
+        id = null;
+        await bridge.nativeBrowserDestroy(created).catch(() => undefined);
+        throw error;
+      }
       currentUrl = requestedOnCreate;
+      // Reconcile the actual Rust-owned WebView after handle registration.
+      if (visible) {
+        await bridge.nativeBrowserBounds(created, nativeBrowserBounds(element,
+          visible && isNativeTabVisible(nativeUiHandle)));
+      }
       const target = pendingUrl;
       pendingUrl = null;
       dispatch("dom-ready");
@@ -133,7 +158,8 @@ export function createNativeBrowserAdapter(
   const syncBounds = (show: boolean) => {
     visible = show;
     if (!id || destroyed) return;
-    void bridge.nativeBrowserBounds(id, nativeBrowserBounds(element, show))
+    void bridge.nativeBrowserBounds(id, nativeBrowserBounds(element,
+      show && isNativeTabVisible(nativeUiHandle)))
       .catch(() => dispatch("did-fail-load"));
   };
 
@@ -141,8 +167,20 @@ export function createNativeBrowserAdapter(
     destroyed = true;
     unlisten?.();
     unlisten = undefined;
-    if (id) void bridge.nativeBrowserDestroy(id).catch(() => undefined);
+    if (id) {
+      // Emit an actual close only after the Rust-owned WebView reports success.
+      // Never tell React the tab closed if the native destroy command rejected.
+      const closing = id;
+      const handle = nativeUiHandle;
+      void bridge.nativeBrowserDestroy(closing).then(() => {
+        if (handle) releaseNativeTab(handle);
+      }).catch(() => {
+        // Cleanup local registry on native close error without forging a close event.
+        if (handle) releaseNativeTab(handle, false);
+      });
+    }
     id = null;
+    nativeUiHandle = 0;
   };
   return { view, mount, syncBounds, destroy };
 }

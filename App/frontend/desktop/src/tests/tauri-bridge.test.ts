@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { installTauriBridge, TAURI_NATIVE_BRIDGE_METHODS, type TauriWindow } from "../tauri-bridge.js";
+import { registerNativeTab, releaseNativeTab } from "../native-browser-tab-state.js";
 
 function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
   const invoke = vi.fn(async (command: string, args?: Record<string, unknown>): Promise<unknown> => {
@@ -284,6 +285,26 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(unsubscribe).toHaveBeenCalledTimes(3);
   });
 
+  it("routes scoped native tab lifecycle without claiming an Agent browser session", () => {
+    const { host } = setup();
+    installTauriBridge(host);
+    const selected = vi.fn();
+    const handle = registerNativeTab(selected);
+    const closed = vi.fn();
+    const stop = host.memmy!.onEmbeddedBrowserClose!(closed);
+    host.memmy!.selectEmbeddedBrowserTab!(handle);
+    expect(selected).toHaveBeenCalledTimes(1);
+    host.memmy!.selectEmbeddedBrowserTab!(0);
+    host.memmy!.selectEmbeddedBrowserTab!(-1);
+    expect(selected).toHaveBeenCalledTimes(1);
+    releaseNativeTab(handle);
+    expect(closed).toHaveBeenCalledExactlyOnceWith(handle);
+    stop();
+    const next = registerNativeTab(selected);
+    releaseNativeTab(next);
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
   it("replays a validated Agent Gateway issue to listeners registered after bootstrap", async () => {
     const { host, invoke } = setup();
     invoke.mockImplementation(async (command: string) => {
@@ -317,7 +338,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(74);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(76);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

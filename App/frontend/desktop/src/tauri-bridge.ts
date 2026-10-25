@@ -1,3 +1,4 @@
+import { onNativeTabClosed, selectNativeTab } from "./native-browser-tab-state.js";
 /**
  * Tauri v2 native boundary for the existing React renderer.
  *
@@ -74,6 +75,8 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "sendBrowserSidebarAction",
   "onBrowserSidebarSurface",
   "onEmbeddedBrowserOpen",
+  "onEmbeddedBrowserClose",
+  "selectEmbeddedBrowserTab",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -310,6 +313,11 @@ export function installTauriBridge(host: TauriWindow): boolean {
     setPetWindow: (enabled: boolean, target?: { route?: string; hash?: string; agentChatId?: string; petIntent?: "user" }) =>
       invoke<void>("desktop_set_pet_window", { enabled, target }),
     hidePetWindow: () => invoke<void>("desktop_hide_pet_window"),
+    onEmbeddedBrowserClose: (callback: (tabId: number) => void) =>
+      onNativeTabClosed(callback),
+    selectEmbeddedBrowserTab: (tabId: number | null) => {
+      selectNativeTab(tabId);
+    },
     onEmbeddedBrowserOpen: (callback: (url: string, owner?: { scopeKey?: string; sourceGuestId?: number }) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) throw new Error("Tauri native Browser popup listener unavailable");
