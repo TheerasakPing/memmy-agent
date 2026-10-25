@@ -9,7 +9,7 @@
 - [x] **A5 Tauri parity scan** — 79/85 bridged original methods, 14 routes unchanged.
 - [x] **A5 React targeted** — `src/tests/tauri-bridge.test.ts` 8/8 PASS; native `openAgentTool` invokes named Rust method. TypeScript project check exit 0.
 - [x] **A5 renderer smoke / packaging** — original React smoke 3/3 PASS; bundle audit security regression 6/6 PASS. Original staged macOS ARM64 preview was built and audited on PR #61 (this code must be rebuilt into next installer).
-- [x] **A5 Rust automated** — Rust library suite 65/65 PASS including four Agent launch negative-security tests for source allowlist, malformed/oversized prompts, percent escaping, binary candidate paths and AppleScript argument quoting. The suite does not open installed external applications.
+- [x] **A5 Rust automated** — initial Rust library 65/65 PASS, then final Agent-specific 4/4 PASS after process cleanup change. Rust cargo check --locked and cargo fmt --check PASS. Covered source allowlist, malformed/oversized prompts, percent encoding, binary candidate paths and AppleScript quoting; external user applications were not launched.
 - [ ] **A5 real GUI/CLI E2E** — launching external applications with actual user permission/installed binaries and confirming the app received prompt; tests must not open user applications automatically without the user choosing to test that behavior.
 - [ ] **Windows 11 x64/Linux parity** — this port currently fails closed (`opened:false`) outside macOS; separate LaunchServices/registry/desktop-entry handoffs and installer tests still needed.
 - [ ] **A4 independent human review** — URL scheme ownership, Terminal Automation permissions, executable substitutions, unicode and shell argument handling.
