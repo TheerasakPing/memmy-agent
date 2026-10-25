@@ -59,6 +59,7 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "openComputerHistoryMarkdown",
   "getBrowserExtensionDirectory",
   "revealBrowserExtension",
+  "prepareBrowserExtension",
   "getMicrophoneAccessStatus",
   "requestMicrophoneAccess",
   "getBrowserSidebarSurface",
@@ -141,6 +142,9 @@ export function installTauriBridge(host: TauriWindow): boolean {
     getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
     getBrowserExtensionDirectory: () => invoke<string | null>("desktop_get_browser_extension_directory"),
     revealBrowserExtension: () => invoke<boolean>("desktop_reveal_browser_extension"),
+    prepareBrowserExtension: (browser: "chrome" | "edge", revealFolder = true) =>
+      invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["prepareBrowserExtension"]>>>>(
+        "desktop_prepare_browser_extension", { browser, revealFolder }),
     getMicrophoneAccessStatus: () => getNativeMicrophoneAccessStatus(host.navigator),
     requestMicrophoneAccess: () => requestNativeMicrophoneAccess(host.navigator),
     openComputerHistoryMarkdown: (filePath: string) =>

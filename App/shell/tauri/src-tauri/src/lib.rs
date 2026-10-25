@@ -333,6 +333,7 @@ pub fn run() {
             native_permissions::desktop_open_computer_history_markdown,
             native_browser_extension::desktop_get_browser_extension_directory,
             native_browser_extension::desktop_reveal_browser_extension,
+            native_browser_extension::desktop_prepare_browser_extension,
             native_browser::desktop_native_browser_create,
             native_browser::desktop_native_browser_bounds,
             native_browser::desktop_native_browser_action,
