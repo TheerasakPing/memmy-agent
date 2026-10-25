@@ -1,6 +1,7 @@
 //! Memmy Turbo Tauri 2 shell. All sensitive native operations are explicitly
 //! routed through typed, auditable Rust commands; no generic shell invoke.
 use std::sync::{Arc, Mutex};
+mod native_analytics;
 mod native_approvals;
 mod native_browser;
 mod native_browser_extension;
@@ -318,6 +319,7 @@ pub fn run() {
             native_os::desktop_get_launch_at_login,
             native_os::desktop_set_launch_at_login,
             native_os::desktop_get_installation_id,
+            native_analytics::desktop_send_analytics_client_id,
             native_os::desktop_select_project_directory,
             native_os::desktop_select_empty_project_directory,
             native_workspace::desktop_read_workspace_directory,

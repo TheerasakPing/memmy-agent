@@ -12,8 +12,8 @@
   "fullFeatureParity": false,
   "counts": {
     "legacyMethods": 85,
-    "nativeMethods": 70,
-    "remainingMethods": 15,
+    "nativeMethods": 71,
+    "remainingMethods": 14,
     "routes": 14
   },
   "routes": [
@@ -497,8 +497,8 @@
     },
     {
       "name": "sendAnalyticsClientId",
-      "status": "NOT_MIGRATED",
-      "acceptance": "must port and run original behavior E2E"
+      "status": "native-tauri-command-or-local-noop",
+      "acceptance": "requires native E2E proof"
     }
   ]
 }
