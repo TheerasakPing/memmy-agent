@@ -96,6 +96,9 @@ export function auditBundle(bundle, platform = process.platform) {
     ['Memory/dist/src/cli/index.js', 'bundled Memory CLI entrypoint'],
     ['App/backend/dist/src/index.js', 'compiled Local API'],
     ['App/memmy-agent/dist/main.js', 'compiled Agent Gateway'],
+    ['App/memmy-agent/node_modules/@anthropic-ai/sdk/package.json', 'Agent-private Anthropic SDK'],
+    ['App/memmy-agent/node_modules/openai/package.json', 'Agent-private OpenAI SDK'],
+    ['App/memmy-agent/node_modules/@aws-sdk/client-bedrock-runtime/package.json', 'Agent Bedrock Runtime SDK'],
     ['node_modules/better-sqlite3/build/Release/better_sqlite3.node', 'SQLite native addon']
   ]) requireFile(join(resources, part), label);
   // Release fail-closed: a relocated app cannot reference the build host.

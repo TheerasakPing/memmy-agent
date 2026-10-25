@@ -18,6 +18,7 @@
     "bundle:audit": "node packaging/audit-bundle.mjs",
     "bundle:audit:test": "node --test packaging/audit-bundle.test.mjs",
     "bundle:smoke:mac": "node packaging/smoke-macos-app.mjs",
+    "bundle:smoke:services:mac": "node packaging/smoke-macos-services.mjs",
     "preview:app:mac": "bash packaging/package-app-macos.sh",
     "preview:dmg:mac": "bash packaging/create-dmg-macos.sh",
     "test:renderer:smoke": "node ../../../scripts/engineering/tauri-renderer-smoke.mjs"
