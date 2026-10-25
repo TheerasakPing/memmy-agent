@@ -2,6 +2,7 @@
  * separately initialized Tauri directory; no renderer command execution. */
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { createInterface } from 'node:readline';
 import { lstat, mkdir } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -51,6 +52,8 @@ await mutateRuntimeConfig(configPath, (config) => {
 }, { createIfMissing: false });
 
 const agentScript = fileURLToPath(new URL('../../../../App/memmy-agent/dist/main.js', import.meta.url));
+// Surface transport stays opt-in until Rust event/action host is verified.
+const surfaceRelayEnabled = process.env.MEMMY_TAURI_BROWSER_SURFACE_RELAY === '1';
 const child = spawn(process.execPath, [agentScript, 'gateway', '--config', configPath,
   '--workspace', workspace, '--host', '127.0.0.1', '--port', String(healthPort)], {
   env: {
@@ -67,8 +70,23 @@ const child = spawn(process.execPath, [agentScript, 'gateway', '--config', confi
     MEMORY_SERVICE_TOKEN: memoryToken,
     MEMMY_DESKTOP_MANAGED_GATEWAY: '1',
   },
-  stdio: ['ignore', 'pipe', 'pipe'],
+  stdio: surfaceRelayEnabled ? ['ignore', 'pipe', 'pipe', 'ipc'] : ['ignore', 'pipe', 'pipe'],
 });
+if (surfaceRelayEnabled) {
+  const { createNativeBrowserSurfaceRelay } = await import('./surface-relay.mjs');
+  const relay = createNativeBrowserSurfaceRelay({
+    sendAction: (action) => {
+      if (!child.connected || child.exitCode !== null) return false;
+      try { child.send(action, () => undefined); return true; }
+      catch { return false; }
+    },
+    publish: (line) => { process.stdout.write(line + '\n'); },
+  });
+  child.on('message', (message) => { relay.update(message); });
+  createInterface({ input: process.stdin, crlfDelay: Infinity })
+    .on('line', (line) => { relay.action(line); });
+  child.once('exit', () => relay.clear());
+}
 let tail = '';
 let settled = false;
 child.stdout.on('data', (chunk) => { tail = (tail + String(chunk)).slice(-4096); });
