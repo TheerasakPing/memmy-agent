@@ -60,6 +60,9 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "getBrowserExtensionDirectory",
   "revealBrowserExtension",
   "prepareBrowserExtension",
+  "getBrowserExtensionInstallation",
+  "listInstalledBrowserExtensions",
+  "listRunningExternalBrowsers",
   "getMicrophoneAccessStatus",
   "requestMicrophoneAccess",
   "getBrowserSidebarSurface",
@@ -142,6 +145,13 @@ export function installTauriBridge(host: TauriWindow): boolean {
     getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
     getBrowserExtensionDirectory: () => invoke<string | null>("desktop_get_browser_extension_directory"),
     revealBrowserExtension: () => invoke<boolean>("desktop_reveal_browser_extension"),
+    getBrowserExtensionInstallation: () =>
+      invoke<Record<"chrome" | "edge", { installed: boolean | null; enabled: boolean | null }>>(
+        "desktop_get_browser_extension_installation"),
+    listInstalledBrowserExtensions: () =>
+      invoke<Array<"chrome" | "edge">>("desktop_list_installed_browser_extensions"),
+    listRunningExternalBrowsers: () =>
+      invoke<Array<"chrome" | "edge"> | null>("desktop_list_running_external_browsers"),
     prepareBrowserExtension: (browser: "chrome" | "edge", revealFolder = true) =>
       invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["prepareBrowserExtension"]>>>>(
         "desktop_prepare_browser_extension", { browser, revealFolder }),
