@@ -196,6 +196,20 @@ async fn desktop_send_browser_sidebar_action(
     .map_err(|_| "Agent Browser dispatcher unavailable".to_string())?
 }
 
+#[tauri::command]
+async fn desktop_restart_memory_service(
+    window: WebviewWindow,
+    supervisor: tauri::State<'_, Arc<native_runtime::NativeRuntime>>,
+) -> Result<serde_json::Value, String> {
+    if window.label() != "main" {
+        return Err("Memory restart requires first-party main app window".into());
+    }
+    let runtime = supervisor.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || runtime.restart_memory())
+        .await
+        .map_err(|_| "native Memory restart worker unavailable".to_string())?
+}
+
 /// Validate an installed macOS preview without the GUI or production user data.
 /// This intentionally requires a real bundle and launches all three services.
 pub fn smoke_installed_runtime() -> i32 {
@@ -322,6 +336,7 @@ pub fn run() {
             native_os::desktop_get_installation_id,
             native_analytics::desktop_send_analytics_client_id,
             native_memory_export::desktop_export_memory_database,
+            desktop_restart_memory_service,
             native_os::desktop_select_project_directory,
             native_os::desktop_select_empty_project_directory,
             native_workspace::desktop_read_workspace_directory,

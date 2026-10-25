@@ -14,6 +14,9 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_get_browser_sidebar_surface") return null;
     if (command === "desktop_send_browser_sidebar_action") return true;
     if (command === "desktop_get_browser_history" || command === "desktop_get_browser_access_rules") return [];
+    if (command === "desktop_restart_memory_service") return {
+      ok: true, baseUrl: "http://127.0.0.1:13333"
+    };
     if (command === "desktop_export_memory_database") return {
       canceled: false, exportPath: "/tmp/memmy-memory.json", bytes: 61
     };
@@ -136,6 +139,10 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     expect(invoke).toHaveBeenCalledWith("desktop_send_analytics_client_id", {
       payload: { clientId: "123.456", appEnv: "prod", appEdition: "intl" }
     });
+    expect(await api.restartMemoryService()).toEqual({
+      ok: true, baseUrl: "http://127.0.0.1:13333"
+    });
+    expect(invoke).toHaveBeenCalledWith("desktop_restart_memory_service", undefined);
     expect(await api.exportMemoryDatabase()).toEqual({
       canceled: false, exportPath: "/tmp/memmy-memory.json", bytes: 61
     });
@@ -300,7 +307,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(72);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(73);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeTypeOf("function");
     expect(host.memmy?.exportMemoryDatabase).toBeTypeOf("function");

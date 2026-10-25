@@ -174,6 +174,14 @@ mod tests {
         let check = (|| -> Result<(), String> {
             supervisor.config(&root, None)?;
             let (base, token) = supervisor.memory_export_auth()?;
+            let restarted = supervisor.restart_memory()?;
+            if restarted["baseUrl"] != base {
+                return Err("Memory restart changed original loopback URL".into());
+            }
+            let (after_url, after_token) = supervisor.memory_export_auth()?;
+            if (after_url, after_token) != (base.clone(), token.clone()) {
+                return Err("Memory restart invalidated active managed Agent bearer token".into());
+            }
             let data = download_export(&base, &token)?;
             let json: Value =
                 serde_json::from_slice(&data).map_err(|_| "invalid real Memory export JSON")?;
