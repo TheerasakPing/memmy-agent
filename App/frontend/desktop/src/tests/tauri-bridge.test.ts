@@ -24,6 +24,8 @@ function setup(userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X)") {
     if (command === "desktop_set_browser_allow_all") return { enabled: args?.enabled === true, inherited: false, effective: args?.enabled === true };
     if (command === "desktop_get_computer_history_permission_session_id") return "11111111-1111-4111-8111-111111111111";
     if (command === "desktop_get_full_disk_access_status") return true;
+    if (command === "desktop_get_browser_extension_directory") return "/tmp/browser-extension";
+    if (command === "desktop_reveal_browser_extension") return true;
     if (command === "desktop_fullscreen") return { isFullScreen: false };
     if (command === "desktop_get_installation_id") return "00000000-0000-4000-8000-000000000001";
     if (command === "desktop_get_launch_at_login" || command === "desktop_set_launch_at_login") return true;
@@ -91,6 +93,10 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
     await api.openMailto("mailto:team@example.com");
     expect(await api.getComputerHistoryPermissionSessionId?.()).toBe("11111111-1111-4111-8111-111111111111");
     expect(await api.getFullDiskAccessStatus?.()).toBe(true);
+    expect(await api.getBrowserExtensionDirectory()).toBe("/tmp/browser-extension");
+    expect(await api.revealBrowserExtension()).toBe(true);
+    expect(await api.getMicrophoneAccessStatus()).toBe("unsupported");
+    expect(await api.requestMicrophoneAccess()).toBe("unsupported");
     await api.openComputerHistoryMarkdown("/private/data/computer-history/histories/summary.md");
     expect(invoke).toHaveBeenCalledWith("desktop_open_computer_history_markdown", {
       filePath: "/private/data/computer-history/histories/summary.md"
@@ -229,7 +235,7 @@ describe("Tauri 2 bridge - existing React renderer and feature parity gate", () 
   it("does not pretend unsupported native features work", () => {
     const { host } = setup();
     installTauriBridge(host);
-    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(57);
+    expect(TAURI_NATIVE_BRIDGE_METHODS.length).toBe(61);
     expect(host.memmy?.installCliTools).toBeUndefined();
     expect(host.memmy?.guideMemmyPermission).toBeUndefined();
     expect(host.memmy?.exportMemoryDatabase).toBeUndefined();

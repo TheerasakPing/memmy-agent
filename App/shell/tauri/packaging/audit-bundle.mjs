@@ -18,6 +18,19 @@ export function auditBundle(bundle, platform = process.platform) {
   } else {
     if (!existsSync(root)) errors.push('Linux package root missing');
   }
+  // Browser Computer Use must ship the genuine MV3 extension, never a GUI-only stub.
+  const extensionDir = platform === 'darwin' ? 'Contents/Resources/browser-extension' : 'browser-extension';
+  for (const name of ['manifest.json', 'background.js', 'history-content.js', 'history-sensor.js']) {
+    requireFile(join(extensionDir, name), 'bundled Browser Extension');
+  }
+  if (existsSync(join(root, extensionDir, 'manifest.json'))) {
+    try {
+      const manifest = JSON.parse(readFileSync(join(root, extensionDir, 'manifest.json'), 'utf8'));
+      if (manifest.manifest_version !== 3 || manifest.background?.service_worker !== 'background.js') {
+        errors.push('bundled Browser Extension is not an expected MV3 service-worker extension');
+      }
+    } catch { errors.push('bundled Browser Extension manifest is invalid'); }
+  }
   // Runtime must live INSIDE the actual app/bundle, not in the developer checkout.
   const resources = platform === 'darwin' ? 'Contents/Resources/runtime' : 'runtime';
   for (const [part, label] of [

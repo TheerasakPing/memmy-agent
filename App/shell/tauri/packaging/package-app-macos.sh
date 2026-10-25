@@ -25,5 +25,13 @@ mkdir -p "$out/Memmy Turbo Preview.app/Contents/Resources"
 plist="$out/Memmy Turbo Preview.app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.2.5-alpha.3' "$plist"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 1.2.5' "$plist"
+/usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$plist" >/dev/null || {
+  echo 'macOS microphone usage declaration missing from packaged Tauri app' >&2; exit 1;
+}
+node "$root/scripts/internal/shared/verify-browser-extension.mjs" \
+  "$root/App/shell/desktop/extensions/memmy-browser" \
+  "$out/Memmy Turbo Preview.app/Contents/Resources/browser-extension" >/dev/null || {
+  echo 'Bundled Browser Extension differs from original frozen source' >&2; exit 1;
+}
 echo "Prepared isolated candidate: $out/Memmy Turbo Preview.app"
 du -sh "$out/Memmy Turbo Preview.app"
