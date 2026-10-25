@@ -30,6 +30,8 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
       ...['node', 'App/shell/tauri/sidecar/memory.mjs', 'App/shell/tauri/sidecar/backend.mjs', 'App/shell/tauri/sidecar/gateway.mjs',
          'Memory/dist/src/server/index.js','Memory/dist/src/cli/index.js','App/backend/dist/src/index.js',
          'App/memmy-agent/dist/main.js','node_modules/better-sqlite3/build/Release/better_sqlite3.node',
+         ...['agent-source-core','knowledge','migrations','local-api-contracts',
+             'desktop-interface','memory','backend'].map(name => 'node_modules/@memmy/'+name+'/package.json'),
          'App/memmy-agent/node_modules/@anthropic-ai/sdk/package.json',
          'App/memmy-agent/node_modules/openai/package.json',
          'App/memmy-agent/node_modules/@aws-sdk/client-bedrock-runtime/package.json']
@@ -49,6 +51,10 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
     assert.ok(auditBundle(dir,'darwin').errors.some(error => error.includes('bundle symlink escapes app')));
     rmSync(injected);
     assert.deepEqual(auditBundle(dir, 'darwin').errors, []);
+    const workspace=join(dir,'Contents/Resources/runtime/node_modules/@memmy/agent-source-core/package.json');
+    rmSync(workspace);
+    assert.ok(auditBundle(dir,'darwin').errors.some(e=>e.includes('Compiled Agent Source workspace')));
+    writeFileSync(workspace,'fixture');
     const sdk=join(dir,'Contents/Resources/runtime/App/memmy-agent/node_modules/@anthropic-ai/sdk/package.json');
     rmSync(sdk);
     assert.ok(auditBundle(dir,'darwin').errors.some(e => e.includes('Agent-private Anthropic SDK')));
