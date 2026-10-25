@@ -2,7 +2,7 @@
 //! Remote pages have no native IPC capability and cannot choose commands or file paths.
 use serde::Deserialize;
 use serde_json::json;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc, Mutex,
@@ -15,7 +15,12 @@ use url::Url;
 use uuid::Uuid;
 
 #[derive(Default)]
-pub struct NativeBrowsers(Mutex<HashSet<String>>);
+struct NativeTabVisit {
+    title: String,
+    last_user_navigation: Option<std::time::Instant>,
+}
+#[derive(Default)]
+pub struct NativeBrowsers(Mutex<HashMap<String, NativeTabVisit>>);
 
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -103,7 +108,7 @@ fn owned_label(state: &NativeBrowsers, id: &str) -> Result<String, String> {
         return Err("invalid native browser identifier".into());
     }
     let guard = state.0.lock().map_err(|_| "browser registry unavailable")?;
-    if !guard.contains(id) {
+    if !guard.contains_key(id) {
         return Err("unregistered native browser tab".into());
     }
     Ok(format!("memmy-browser-{id}"))
@@ -140,11 +145,13 @@ pub async fn desktop_native_browser_create(
         if registry.len() >= 10 {
             return Err("maximum native browser tabs reached".into());
         }
-        registry.insert(id.clone());
+        registry.insert(id.clone(), NativeTabVisit::default());
     }
     let event_id = id.clone();
     let app_for_load = app.clone();
     let app_for_title = app.clone();
+    let history_id = id.clone();
+    let title_registry_id = id.clone();
     let app_for_popup = app.clone();
     // Cap page-authored window.open requests so an untrusted page cannot flood
     // the trusted React Browser tab queue.
@@ -165,6 +172,44 @@ pub async fn desktop_native_browser_create(
             NewWindowResponse::Deny
         })
         .on_page_load(move |_view, payload| {
+            // The native WebKit tab has not been granted Agent Playwright/CDP access.
+            // Record its actual page loads as "other", never fabricated Agent visits.
+            if matches!(payload.event(), PageLoadEvent::Finished) {
+                let url = payload.url().as_str().to_string();
+                let title = app_for_load
+                    .state::<NativeBrowsers>()
+                    .0
+                    .lock()
+                    .ok()
+                    .and_then(|mut registry| {
+                        registry.get_mut(&history_id).map(|entry| {
+                            // Consume explicit user-origin navigation. This child is not
+                            // an Agent Playwright context, so provenance remains "other".
+                            let _user_marked_recently =
+                                entry.last_user_navigation.take().is_some_and(|at| {
+                                    at.elapsed() <= std::time::Duration::from_secs(10)
+                                });
+                            entry.title.clone()
+                        })
+                    });
+                if let Some(title) = title {
+                    if browser_url(&url)
+                        .is_ok_and(|candidate| matches!(candidate.scheme(), "http" | "https"))
+                    {
+                        let app = app_for_load.clone();
+                        tauri::async_runtime::spawn_blocking(move || {
+                            if let Ok(folder) = crate::native_browser_store::browser_folder(&app) {
+                                let _ = crate::native_browser_store::record_native_visit(
+                                    &folder.join("history.json"),
+                                    &url,
+                                    &title,
+                                    "other",
+                                );
+                            }
+                        });
+                    }
+                }
+            }
             let kind = match payload.event() {
                 PageLoadEvent::Started => "started",
                 PageLoadEvent::Finished => "finished",
@@ -176,6 +221,11 @@ pub async fn desktop_native_browser_create(
             );
         })
         .on_document_title_changed(move |_view, title| {
+            if let Ok(mut registry) = app_for_title.state::<NativeBrowsers>().0.lock() {
+                if let Some(tab) = registry.get_mut(&title_registry_id) {
+                    tab.title = title.chars().take(256).collect();
+                }
+            }
             let _ = app_for_title.emit_to(
                 "main",
                 "memmy:native-browser:event",
@@ -262,6 +312,25 @@ pub fn desktop_native_browser_action(
             .map_err(|_| "browser forward failed".into()),
         _ => Err("unsupported native browser action".into()),
     }
+}
+
+#[tauri::command]
+pub fn desktop_native_browser_mark_user_navigation(
+    window: WebviewWindow,
+    browsers: tauri::State<'_, NativeBrowsers>,
+    id: String,
+) -> Result<(), String> {
+    main_guard(&window)?;
+    let _ = owned_label(&browsers, &id)?;
+    let mut registry = browsers
+        .0
+        .lock()
+        .map_err(|_| "native browser registry unavailable")?;
+    let tab = registry
+        .get_mut(&id)
+        .ok_or("native browser tab no longer exists")?;
+    tab.last_user_navigation = Some(std::time::Instant::now());
+    Ok(())
 }
 
 #[tauri::command]

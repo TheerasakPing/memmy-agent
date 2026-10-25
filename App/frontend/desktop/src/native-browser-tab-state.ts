@@ -1,17 +1,28 @@
 /** Native UI tab IDs are process-local handles, NEVER Electron webContents IDs
  * and NEVER identities for the independent Agent Playwright/browser executor.
  */
-type NativeTab = { onSelection: () => void };
+type NativeTab = {
+  onSelection: () => void;
+  markNavigation?: () => Promise<void>;
+};
 const tabs = new Map<number, NativeTab>();
 const listeners = new Set<(handle: number) => void>();
 let nextId = 1;
 let selected: number | null | undefined = undefined;
 
-export function registerNativeTab(onSelection: () => void): number {
+export function registerNativeTab(
+  onSelection: () => void, markNavigation?: () => Promise<void>
+): number {
   if (tabs.size >= 10 || !Number.isSafeInteger(nextId)) throw Error("native tab budget exhausted");
   const id = nextId++;
-  tabs.set(id, { onSelection });
+  tabs.set(id, { onSelection, markNavigation });
   return id;
+}
+export async function markNativeTabUserNavigation(handle: number): Promise<void> {
+  if (!Number.isSafeInteger(handle) || handle <= 0) throw Error("native browser tab invalid");
+  const tab = tabs.get(handle);
+  if (!tab?.markNavigation) throw Error("native browser tab no longer available");
+  await tab.markNavigation();
 }
 export function isNativeTabVisible(id: number): boolean {
   return selected === undefined || selected === id;
