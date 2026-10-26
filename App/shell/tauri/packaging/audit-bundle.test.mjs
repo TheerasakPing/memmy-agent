@@ -28,7 +28,8 @@ test('gate accepts a structurally complete isolated runtime fixture', () => {
       ...['manifest.json','background.js','history-content.js','history-sensor.js']
         .map(x => join('Contents/Resources/browser-extension', x)),
       ...['node', 'App/shell/tauri/sidecar/memory.mjs', 'App/shell/tauri/sidecar/backend.mjs', 'App/shell/tauri/sidecar/gateway.mjs',
-         'Memory/dist/src/server/index.js','Memory/dist/src/cli/index.js','App/backend/dist/src/index.js',
+         'Memory/dist/src/server/index.js','Memory/dist/src/server/tauri-startup-policy.js',
+         'Memory/dist/src/cli/index.js','App/backend/dist/src/index.js',
          'App/memmy-agent/dist/main.js','node_modules/better-sqlite3/build/Release/better_sqlite3.node',
          ...['agent-source-core','knowledge','migrations','local-api-contracts',
              'desktop-interface','memory','backend'].map(name => 'node_modules/@memmy/'+name+'/package.json'),

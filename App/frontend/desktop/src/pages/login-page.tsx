@@ -11,7 +11,7 @@ import { setAnalyticsUserId } from "../analytics/analytics-context.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
 import { AuthCodeForm, type AuthCodeFormValues } from "../components/auth-code-form.js";
 import { SocialLoginButtons } from "../components/social-login-buttons.js";
-import { LanguageToggleButton } from "../components/language-toggle-button.js";
+import { LanguageToggleButton, nextDisplayLanguage } from "../components/language-toggle-button.js";
 import { Memmy } from "../components/mascot/memmy.js";
 import { useVerificationCodeAuth } from "../components/use-verification-code-auth.js";
 import { useSocialLogin } from "../components/use-social-login.js";
@@ -49,7 +49,7 @@ export function LoginPage() {
   }, [channel, verificationCodeAuth.resetInteractionState, socialLogin.reset]);
 
   function toggleLanguage() {
-    const nextLanguage = language === "en-US" ? "zh-CN" : "en-US";
+    const nextLanguage = nextDisplayLanguage(language);
     verificationCodeAuth.clearFeedback();
     socialLogin.clearFeedback();
     setModePersistenceFeedback(null);

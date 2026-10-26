@@ -4,7 +4,7 @@
  * user data. Production requires a signed, bundled runtime replacement.
  */
 import { createLocalBackend } from "../../../backend/dist/src/index.js";
-import { chmod, lstat, mkdir, rm } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, rm } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 
 const dataDir = process.env.MEMMY_TAURI_DATA_DIR;
@@ -42,13 +42,34 @@ if (parsedMemoryUrl.protocol !== "http:" ||
     parsedMemoryUrl.search || parsedMemoryUrl.hash || parsedMemoryUrl.username || parsedMemoryUrl.password) {
   throw new Error("Memory endpoint must be an explicit loopback HTTP origin");
 }
-const memoryHealth = await fetch(`${parsedMemoryUrl.origin}/api/v1/health`, {
-  headers: process.env.MEMMY_MEMORY_LAYER_TOKEN
-    ? { authorization: `Bearer ${process.env.MEMMY_MEMORY_LAYER_TOKEN}` }
-    : {},
-  signal: AbortSignal.timeout(3000)
-}).catch(() => null);
-if (!memoryHealth?.ok) throw new Error("configured Memory service is not healthy");
+// Large native profiles can briefly starve the Memory HTTP event loop after
+// Rust's first successful readiness probe. A single 3-second fetch made the
+// Backend exit and caused the supervisor to take down all three services.
+// Retry within a bounded deadline; never bypass authenticated Memory health.
+const memoryHealthDeadline = Date.now() + 15_000;
+let memoryHealthStatus = "unreachable";
+let memoryHealthy = false;
+while (Date.now() < memoryHealthDeadline) {
+  try {
+    const response = await fetch(`${parsedMemoryUrl.origin}/api/v1/health`, {
+      headers: process.env.MEMMY_MEMORY_LAYER_TOKEN
+        ? { authorization: `Bearer ${process.env.MEMMY_MEMORY_LAYER_TOKEN}` }
+        : {},
+      signal: AbortSignal.timeout(2500)
+    });
+    memoryHealthStatus = `HTTP ${response.status}`;
+    if (response.ok) {
+      memoryHealthy = true;
+      break;
+    }
+  } catch (error) {
+    memoryHealthStatus = error?.name === "TimeoutError" ? "timeout" : "connection unavailable";
+  }
+  await new Promise((resolve) => setTimeout(resolve, 350));
+}
+if (!memoryHealthy) {
+  throw new Error(`configured Memory service is not healthy (${memoryHealthStatus})`);
+}
 
 let backend;
 let shuttingDown = false;
@@ -58,7 +79,18 @@ async function shutdown() {
   try {
     await backend?.close();
   } finally {
-    await rm(runtimeConfigPath, { force: true });
+    // A previous instance must not delete a newer instance's credential.
+    // Its shutdown may finish after Finder has already launched the new app.
+    try {
+      const current = JSON.parse(await readFile(runtimeConfigPath, "utf8"));
+      if (backend?.runtimeConfig?.localToken &&
+          current.localToken === backend.runtimeConfig.localToken &&
+          current.baseUrl === backend.runtimeConfig.baseUrl) {
+        await rm(runtimeConfigPath, { force: true });
+      }
+    } catch {
+      // Missing/invalid file is not ours to remove; a new launch will rotate it.
+    }
     process.exit(0);
   }
 }

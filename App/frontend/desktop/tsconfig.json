@@ -7,6 +7,7 @@
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "types": ["vite/client", "vitest/globals"],
     "allowSyntheticDefaultImports": true,
+    "paths": {"@memmy/local-api-contracts": ["../../backend/local-api-contracts/dist/index.d.ts"]},
     "noEmit": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],

@@ -93,6 +93,7 @@ export function auditBundle(bundle, platform = process.platform) {
     ['App/shell/tauri/sidecar/backend.mjs', 'Local API startup shim'],
     ['App/shell/tauri/sidecar/gateway.mjs', 'Agent startup shim'],
     ['Memory/dist/src/server/index.js', 'compiled Memory Service'],
+    ['Memory/dist/src/server/tauri-startup-policy.js', 'large-profile native Memory startup policy'],
     ['Memory/dist/src/cli/index.js', 'bundled Memory CLI entrypoint'],
     ['App/backend/dist/src/index.js', 'compiled Local API'],
     ['App/memmy-agent/dist/main.js', 'compiled Agent Gateway'],

@@ -6,7 +6,21 @@
     <title>Memmy</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><main id="memmy-startup-fallback" style="min-height:100vh;display:grid;place-content:center;text-align:center;background:#101820;color:#e6f4f0;font:16px system-ui,sans-serif;padding:24px"><h2>กำลังเปิด Memmy Turbo…</h2><p>Starting local services…</p></main></div>
+    <script>
+      (() => {
+        let failure = false;
+        const showFailure = () => {
+          const root = document.getElementById("root");
+          if (!root || (root.firstElementChild && root.firstElementChild.id !== "memmy-startup-fallback")) return;
+          failure = true;
+          root.innerHTML = '<main style="min-height:100vh;display:grid;place-content:center;text-align:center;background:#101820;color:#e6f4f0;font:16px system-ui,sans-serif;padding:24px"><h2>Memmy ไม่สามารถเปิดหน้าจอได้</h2><p>Unable to initialize the interface. Check the application diagnostics.</p><button onclick="location.reload()" style="padding:12px;cursor:pointer">ลองใหม่ / Retry</button></main>';
+        };
+        window.addEventListener("error", () => { if (!failure) setTimeout(showFailure, 0); });
+        window.addEventListener("unhandledrejection", () => { if (!failure) setTimeout(showFailure, 0); });
+        setTimeout(showFailure, 18000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

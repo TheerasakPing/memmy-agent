@@ -47,5 +47,11 @@
     "macOS": {
       "infoPlist": "Info.plist"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "",
+      "endpoints": []
+    }
   }
 }

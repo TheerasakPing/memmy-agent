@@ -129,6 +129,10 @@
 - [ ] **R7-05 [QA]** Compare all visible tabs/buttons/features to Original, including Thai, themes, Agent, MCP, exports.
 - [ ] **R7-06 [REVIEW/LEAD]** Review accessibility, security, regression logs, resource graphs and any deviations.
 
+**R7 reliability addendum (2026-10-26):** eight isolated installed Rust supervisor start/stop cycles passed (5/5 then 3/3 with process-leak and leftover-profile checks); isolated Local API SIGKILL/restart and credential-rotation smoke passed (Backend tests 4/4). Installed Preview read-only health endpoints returned HTTP 200, Bootstrap `th-TH` and `byok`, Preview SQLite quick-check `ok`. This is **not** a crash/kill/soak or true GUI interaction signoff. QA artifact: `docs/qa/memmy-turbo-r7-restart-smoke-2026-10-26.md`.
+
+**R7 QA progress (2026-10-26):** added a regression test for upgrading a legacy app-state DB to Thai while preserving fields, idempotence and SQLite integrity; app-state suite passed 38/38. Extended the existing renderer smoke to Chromium **and browser WebKit**, both passing three original React preview screens and Tauri JS IPC mapping. Combined focused unit tests passed 141/141, Backend sidecar smoke 3/3. The browser WebKit result is **not** native macOS WKWebView interaction; Accessibility permission, full functional parity, cross-platform E2E, long-running soak and independent review remain open. Details in `docs/qa/memmy-turbo-r7-db-upgrade-and-webkit-smoke-2026-10-26.md`.
+
 ## R8 — Release Gate (P0)
 
 - [ ] **R8-01 [REVIEW]** Independent code, security, dependency/license and performance evidence review.

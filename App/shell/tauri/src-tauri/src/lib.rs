@@ -317,6 +317,31 @@ pub fn smoke_installed_runtime() -> i32 {
     }
 }
 
+#[tauri::command]
+fn desktop_debug_renderer_status(
+    window: WebviewWindow,
+    tauri_available: bool,
+    bridge_available: bool,
+    react_root_rendered: bool,
+    dom_text_length: usize,
+) -> Result<(), String> {
+    if window.label() != "main" {
+        return Err("GUI diagnostics require first-party main window".into());
+    }
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[memmy-preview-gui] js probe: tauri={tauri_available}, bridge={bridge_available}, react_root={react_root_rendered}, text_bytes={dom_text_length}"
+    );
+    #[cfg(not(debug_assertions))]
+    let _ = (
+        tauri_available,
+        bridge_available,
+        react_root_rendered,
+        dom_text_length,
+    );
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -348,6 +373,28 @@ pub fn run() {
             app.state::<Arc<native_runtime::NativeRuntime>>()
                 .attach_app(app.handle().clone());
             Ok(())
+        })
+        .on_page_load(|webview, payload| {
+            #[cfg(debug_assertions)]
+            if webview.label() == "main" {
+                eprintln!("[memmy-preview-gui] page load: {:?}", payload.event());
+                if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                    let _ = webview.eval(r##"
+                      // Send counts only, never renderer text or private account data.
+                      const probe = () => {
+                        const bridge = window.__TAURI__?.core?.invoke
+                          || window.__TAURI_INTERNALS__?.invoke;
+                        if (bridge) Promise.resolve(bridge("desktop_debug_renderer_status", {
+                          tauriAvailable: Boolean(window.__TAURI__?.core),
+                          bridgeAvailable: Boolean(window.memmy?.getRuntimeConfig),
+                          reactRootRendered: Boolean(document.querySelector("#root")?.firstElementChild),
+                          domTextLength: document.querySelector("#root")?.textContent?.length || 0
+                        })).catch(() => {});
+                      };
+                      [3500, 30000, 70000].forEach(delay => setTimeout(probe, delay));
+                    "##);
+                }
+            }
         })
         .on_window_event(|window, event| {
             if window.label() == "main" {
@@ -392,6 +439,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            desktop_debug_renderer_status,
             desktop_runtime_config,
             desktop_record_startup_mark,
             desktop_app_info,

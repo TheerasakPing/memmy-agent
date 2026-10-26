@@ -1,6 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { INSTALLATION_SCAN_SCOPE_UUID } from "../../installation-scan-scope.js";
@@ -131,8 +132,43 @@ describe("app state store migrations", () => {
     expect(settings.menuBarIconEnabled).toBe(true);
     expect(settings.stopMemoryServiceOnExit).toBe(false);
     expect(agentSources).toEqual([]);
-    expect(firstMigrationCount).toBe(35);
-    expect(secondMigrationCount).toBe(35);
+    expect(firstMigrationCount).toBeGreaterThanOrEqual(36);
+    expect(secondMigrationCount).toBe(firstMigrationCount);
+  });
+
+  it("upgrades pre-Thai settings without losing profile columns, constraints or saved values", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "memmy-pre-thai-migration-"));
+    const oldMigrations = join(tempDir, "old-migrations");
+    mkdirSync(oldMigrations);
+    const sourceDir = fileURLToPath(new URL("../migrations/", import.meta.url));
+    for (const name of readdirSync(sourceDir).filter(name => name.endsWith(".sql") && name !== "0031-thai-app-language.sql")) {
+      cpSync(join(sourceDir, name), join(oldMigrations, name));
+    }
+    const db = new DatabaseSync(join(tempDir, "old-app.sqlite"));
+    const secondaryMigrations = [
+      fileURLToPath(new URL("../../agent-source-store/migrations/", import.meta.url)),
+      fileURLToPath(new URL("../../idempotency-store/migrations/", import.meta.url))
+    ];
+    try {
+      runMigrations(db, [oldMigrations, ...secondaryMigrations]);
+      db.prepare("UPDATE app_settings SET language = 'en-US', theme = 'dark', user_mode = 'byok', memory_byok_total_limit_m = 321 WHERE id = 'default'").run();
+      const before = db.prepare("SELECT * FROM app_settings WHERE id = 'default'").get();
+      const migrationCount = getMigrationCount(db);
+      expect((db.prepare("SELECT sql FROM sqlite_master WHERE name = 'app_settings'").get() as {sql: string}).sql).not.toContain("'th-TH'");
+      const migrated = runMigrations(db);
+      expect(migrated.applied).toContain("0031-thai-app-language.sql");
+      expect(db.prepare("SELECT * FROM app_settings WHERE id = 'default'").get()).toEqual(before);
+      expect(getMigrationCount(db)).toBe(migrationCount + 1);
+      expect(runMigrations(db).applied).toEqual([]);
+      db.prepare("UPDATE app_settings SET language = 'th-TH' WHERE id = 'default'").run();
+      expect((db.prepare("SELECT language, theme, memory_byok_total_limit_m FROM app_settings WHERE id = 'default'").get() as Record<string, unknown>)).toEqual({
+        language: "th-TH", theme: "dark", memory_byok_total_limit_m: 321
+      });
+      expect((db.prepare("PRAGMA integrity_check").get() as { integrity_check: string }).integrity_check).toBe("ok");
+      expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    } finally {
+      db.close();
+    }
   });
 
   it("preserves the authenticated account when upgrading the legacy 0007 database", () => {

@@ -16,6 +16,25 @@ if [[ ! -x "$runtime/node" || ! -x "$binary" || ! -d "$source_app" ]]; then
   echo 'Missing staged Node runtime, compiled Rust release binary or Tauri app template' >&2
   exit 1
 fi
+# Prevent bundling a pre-fix Memory service that blocks the HTTP event loop
+# when launching with a large existing preview database.
+if [[ ! -f "$runtime/Memory/dist/src/server/tauri-startup-policy.js" ]] || \
+   ! grep -q 'tauriManagedMemoryWorkerPolicy' "$runtime/Memory/dist/src/server/index.js"; then
+  echo 'Staged Memory runtime is stale: rebuild/stage the large-profile startup policy' >&2
+  exit 1
+fi
+# Fail before packaging if either compiled contract is from a pre-Thai build.
+for contract in "$runtime/node_modules/@memmy/local-api-contracts/dist/index.js" \
+                "$runtime/App/backend/local-api-contracts/dist/index.js"; do
+  if [[ ! -f "$contract" ]] || ! grep -q '"th-TH"' "$contract"; then
+    echo "Stale language schema: $contract (rebuild/stage contracts first)" >&2
+    exit 1
+  fi
+done
+if [[ ! -f "$runtime/App/backend/dist/src/infrastructure/app-state-store/migrations/0031-thai-app-language.sql" ]]; then
+  echo "Thai app-settings database migration missing from staged backend" >&2
+  exit 1
+fi
 rm -rf "$out"
 mkdir -p "$out"
 /bin/cp -cR "$source_app" "$out/Memmy Turbo Preview.app"

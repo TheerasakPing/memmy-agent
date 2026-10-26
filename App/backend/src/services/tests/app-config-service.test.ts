@@ -59,6 +59,30 @@ describe("AppConfigService", () => {
     }
   });
 
+  it("keeps Thai UI language saved when Memory reload temporarily fails", async () => {
+    const root = mkdtempSync(join(tmpdir(), "memmy-thai-language-save-"));
+    const configPath = join(root, "config.yaml");
+    const store = createAppStateStore({ databasePath: join(root, "app.sqlite") });
+    const reloadConfig = vi.fn(async () => { throw new Error("Memory is busy"); });
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const service = createAppConfigService({
+        bootstrapRepository: store.repositories.bootstrap,
+        memmyConfigWriter: createMemmyConfigWriter({ configPath }),
+        memoryClient: { reloadConfig }
+      });
+      await expect(service.updateSettings({ language: "th-TH" })).resolves.toMatchObject({ language: "th-TH" });
+      expect(store.repositories.bootstrap.getAppSettings().language).toBe("th-TH");
+      expect(YAML.parse(readFileSync(configPath, "utf8")).memmyMemory.language).toBe("th-TH");
+      expect(reloadConfig).toHaveBeenCalledWith({ reason: "app_language_saved" });
+      expect(warning).toHaveBeenCalledWith("Memory config reload failed after app language was saved");
+    } finally {
+      warning.mockRestore();
+      store.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("does not reload Memory when only appearance settings change", async () => {
     const reloadConfig = vi.fn();
     const service = createAppConfigService({

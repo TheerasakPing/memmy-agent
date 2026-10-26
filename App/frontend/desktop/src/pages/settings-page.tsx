@@ -1026,7 +1026,17 @@ export function SettingsPageView(props: SettingsPageViewProps) {
    * @param nextLanguage The interface language.
    */
   function handleLanguageChange(nextLanguage: string) {
-    persistSettings({ language: nextLanguage as Language });
+    const selectedLanguage = nextLanguage as Language;
+    const previousLanguage = language as Language;
+    if (selectedLanguage === previousLanguage) return;
+    // Switch the interface immediately; persist the choice for subsequent launches.
+    dispatch(appActions.settingsUpdated({ language: selectedLanguage }));
+    void (configClient?.updateSettings({ language: selectedLanguage }) ?? Promise.resolve({ language: selectedLanguage }))
+      .then((savedSettings) => dispatch(appActions.settingsUpdated(savedSettings)))
+      .catch((error) => {
+        dispatch(appActions.settingsUpdated({ language: previousLanguage }));
+        console.error("Unable to save display language", error);
+      });
   }
 
   /**

@@ -298,6 +298,14 @@ describe("shouldFocusMemoryBudgetFromHash", () => {
 });
 
 describe("SettingsPageView", () => {
+  it("renders the Settings language selector in Thai when Thai is selected", () => {
+    const state = appReducer(createReadyState(), appActions.settingsUpdated({ language: "th-TH" as never }));
+    const html = normalizeSsrHtml(renderSettingsPageView(state, "th-TH"));
+    expect(html).toContain("ตั้งค่า");
+    expect(html).toContain("เลือกภาษาที่ใช้แสดงผลในโปรแกรม");
+    expect(html).toContain("ไทย");
+    expect(html).toMatch(/select-control__value[^>]*>ไทย<\/span>/);
+  });
   it("国际版首次安装时将未配置的 system 语言显示为 English", () => {
     const state = appReducer(
       createInitialAppState(),
@@ -1203,7 +1211,7 @@ function createLowTokenState(applyMore: boolean): AppState {
  */
 function renderSettingsPageView(
   state: AppState,
-  language: "zh-CN" | "en-US" = "zh-CN",
+  language: "zh-CN" | "en-US" | "th-TH" = "zh-CN",
   update = createUpdateViewModel(),
   platform?: string
 ): string {

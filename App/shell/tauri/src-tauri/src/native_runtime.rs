@@ -288,30 +288,25 @@ impl NativeRuntime {
             None
         };
         if profile_startup { eprintln!("[memmy-perf] phase=memory_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
-        // Memory is authoritative; once healthy, Backend and Gateway are independent
-        // consumers of its loopback endpoint. Start both in parallel to avoid
-        // serial Node startup latency. Join before publishing either handle, so
-        // a failed startup still shuts down every managed child.
-        let (backend_result, gateway_result) = std::thread::scope(|scope| {
-            let gateway_job = if manage_gateway {
-                let (_, url, token) = memory.as_ref().expect("managed gateway requires Memory");
-                let surfaces = self.browser_surfaces.clone();
-                let gateway_paths = paths.clone();
-                let event_app = self.event_app.lock().ok().and_then(|app| app.clone());
-                Some(scope.spawn(move || {
-                    launch_development_gateway(data_dir, url, token, &gateway_paths, surfaces, event_app)
-                }))
-            } else {
-                None
-            };
-            let backend = launch_development_backend(
-                data_dir,
-                memory.as_ref().map(|(_, url, token)| (url.as_str(), token.as_str())),
-                &paths,
-            );
-            let gateway = gateway_job.map(|job| job.join().unwrap_or_else(|_| Err("Agent Gateway startup thread panicked".into())));
-            (backend, gateway)
-        });
+        // Backend and Gateway both migrate the shared config.yaml under a file
+        // lock during startup. Concurrent launches can make Gateway hit its
+        // 5-second lock timeout and force-kill the Backend lock holder, leaving
+        // a crash orphan that blocks the next launch. Finish Backend bootstrap
+        // and release its config lock before starting Gateway.
+        let backend_result = launch_development_backend(
+            data_dir,
+            memory.as_ref().map(|(_, url, token)| (url.as_str(), token.as_str())),
+            &paths,
+        );
+        if profile_startup { eprintln!("[memmy-perf] phase=backend_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
+        let gateway_result = if manage_gateway && backend_result.is_ok() {
+            let (_, url, token) = memory.as_ref().expect("managed gateway requires Memory");
+            let surfaces = self.browser_surfaces.clone();
+            let event_app = self.event_app.lock().ok().and_then(|app| app.clone());
+            Some(launch_development_gateway(data_dir, url, token, &paths, surfaces, event_app))
+        } else {
+            None
+        };
         if profile_startup { eprintln!("[memmy-perf] phase=backend_gateway_joined elapsed_ms={}", startup_clock.elapsed().as_millis()); }
         if let Some(Err(error)) = gateway_result.as_ref() {
             if let Ok((mut child, _)) = backend_result {
@@ -548,6 +543,23 @@ fn launch_development_memory(
 /// Preview-only startup diagnostics. Log privately into this Tauri profile,
 /// never into the Original app or the global system log. A fresh attempt
 /// starts a fresh bounded-startup file; failures must not block launching.
+fn startup_stderr(data_dir: &Path, log_name: &str) -> Stdio {
+    let path = data_dir.join(log_name);
+    if let Ok(meta) = fs::symlink_metadata(&path) {
+        if meta.file_type().is_symlink() {
+            return Stdio::null();
+        }
+    }
+    let mut builder = OpenOptions::new();
+    builder.create(true).write(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        builder.mode(0o600);
+    }
+    builder.open(path).map(Stdio::from).unwrap_or_else(|_| Stdio::null())
+}
+
 fn memory_startup_stderr(data_dir: &Path) -> Stdio {
     let path = data_dir.join("memory-startup.log");
     if let Ok(meta) = fs::symlink_metadata(&path) {
@@ -704,7 +716,7 @@ fn launch_development_backend(
         .env("MEMMY_TAURI_LOCAL_ONLY", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(startup_stderr(data_dir, "backend-startup.log"))
         .spawn()
         .map_err(|_| {
             "Node development runtime missing from PATH; do not use this mode for release"
@@ -808,7 +820,10 @@ fn launch_development_gateway(
         .env("MEMMY_MEMORY_TOKEN", token)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        // Keep Gateway child diagnostics in the isolated preview profile.
+        // Without this, early exit errors are swallowed and the UI only says
+        // "exited before readiness" with no actionable cause.
+        .stderr(startup_stderr(data_dir, "gateway-startup.log"))
         .spawn()
         .map_err(|_| "cannot start Agent development helper")?;
     let stdout = child
