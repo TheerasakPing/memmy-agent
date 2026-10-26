@@ -1,0 +1,133 @@
+name: R8 acceptance gates (Agent, sessions, MCP, skills, macOS soak)
+
+on:
+  pull_request:
+    paths:
+      - 'App/shell/tauri/packaging/r8-*.mjs'
+      - '.github/workflows/r8-acceptance.yml'
+      - 'docs/qa/MEMMY_R8_ACCEPTANCE.md'
+  workflow_dispatch:
+    inputs:
+      run_24h:
+        description: 'Run genuine 24-hour native supervisor soak on isolated self-hosted macOS ARM64 runner'
+        type: boolean
+        required: true
+        default: false
+      run_models:
+        description: 'Run real, billable model-matrix E2E against local Gateway on self-hosted Mac'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  session-mcp-skills-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+          cache: npm
+      - name: Install and compile private native dependencies in clean runner
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm rebuild better-sqlite3 sqlite-vec --foreground-scripts
+          npm --prefix App/memmy-agent ci --ignore-scripts --no-audit --no-fund
+          npm --prefix App/memmy-agent rebuild --foreground-scripts
+      - name: Compile Agent dependencies
+        run: |
+          npm --prefix Knowledge run build
+          npm --prefix Migrations run build
+          npm --prefix App/backend/local-api-contracts run build
+      - name: Verify session persistence, MCP connection, skills discovery and MCP presets
+        working-directory: App/memmy-agent
+        run: |
+          ./node_modules/.bin/vitest run \
+            tests/core/session/webui-session-binding.test.ts \
+            tests/core/session/webui-turns.test.ts \
+            tests/core/session/session-fsync.test.ts \
+            tests/core/agent-runtime/session-manager-history.test.ts \
+            tests/core/agent-runtime/mcp-connection.test.ts \
+            tests/core/agent-runtime/tools/mcp-tool.test.ts \
+            tests/core/agent-runtime/skills-loader.test.ts \
+            tests/entrypoints/frontend-bridge/mcp-presets-runtime.test.ts \
+            tests/skills/office-skills.test.ts
+      - name: Validate R8 scripts syntax
+        run: |
+          node --check App/shell/tauri/packaging/r8-macos-soak.mjs
+          node --check App/shell/tauri/packaging/r8-live-model-matrix.mjs
+      - name: Validate soak failure/pass contract against disposable fake executable on macOS
+        if: runner.os == 'macOS'
+        run: echo 'macOS contract tested by separate job'
+
+  macos-soak-harness-contract:
+    runs-on: macos-15
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+      - name: Exercise report and full-duration exit gate with harmless fixture
+        run: |
+          mkdir -p "$RUNNER_TEMP/memmy-r8-fixture"
+          printf '#!/bin/sh\nprintf "PASS: packaged Memory + Local API + Agent Gateway start/stop\\n" >&2\n' > "$RUNNER_TEMP/memmy-r8-fixture/mock-native"
+          chmod +x "$RUNNER_TEMP/memmy-r8-fixture/mock-native"
+          MEMMY_R8_REPORT_DIR="$RUNNER_TEMP/memmy-r8-report" \
+          MEMMY_R8_SOAK_INTERVAL_SECONDS=5 \
+          node App/shell/tauri/packaging/r8-macos-soak.mjs "$RUNNER_TEMP/memmy-r8-fixture/mock-native" 0.001
+          node -e 'const x=require(process.argv[1]);if(!x.pass||!x.completed||x.cycles<1)process.exit(1)' "$RUNNER_TEMP/memmy-r8-report/native-soak.json"
+      - name: Archive only sanitized harness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-macos-soak-harness-contract
+          path: ${{ runner.temp }}/memmy-r8-report/native-soak.json
+          retention-days: 7
+          if-no-files-found: warn
+
+  native-24h-soak:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_24h
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 1500
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+      - name: Verify isolated test executable exists (never use Original Electron)
+        run: test -x "/Applications/Memmy Turbo Preview.app/Contents/MacOS/memmy-turbo-tauri"
+      - name: Soak 24 hours with hourly progress and hard failure gate
+        env:
+          MEMMY_R8_REPORT_DIR: ${{ runner.temp }}/memmy-r8-native-soak
+          MEMMY_R8_SOAK_INTERVAL_SECONDS: '60'
+        run: node App/shell/tauri/packaging/r8-macos-soak.mjs "/Applications/Memmy Turbo Preview.app/Contents/MacOS/memmy-turbo-tauri" 24
+      - name: Upload summary only, never database or credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-24h-isolated-native-soak
+          path: ${{ runner.temp }}/memmy-r8-native-soak/native-soak.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  live-model-matrix:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_models
+    runs-on: [self-hosted, macOS, ARM64]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.8.2'
+      - name: Verify all configured real model presets and session persistence
+        env:
+          MEMMY_R8_REAL_MODELS: 'YES'
+          MEMMY_R8_GATEWAY_URL: ${{ vars.MEMMY_R8_GATEWAY_URL }}
+          MEMMY_R8_GATEWAY_SECRET: ${{ secrets.MEMMY_R8_GATEWAY_SECRET }}
+          MEMMY_R8_PRESETS: ${{ vars.MEMMY_R8_PRESETS }}
+        run: node App/shell/tauri/packaging/r8-live-model-matrix.mjs
