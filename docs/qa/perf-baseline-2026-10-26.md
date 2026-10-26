@@ -54,3 +54,6 @@ Status: R1 PARTIAL. QA benchmark executed; Rust instrumentation built/tested but
 - Finder-launched Preview remained running and returned successful Memory Health (`storage.ready=true`), `/api/app/bootstrap` (`userMode=byok`), and `/api/agent-sources` responses.
 - Original SQLite database sizes/mtime unchanged: memory SQLite 1778192384 bytes, mtime 1792810805; app.sqlite 8007680 bytes, mtime 1792806288.
 - **Limitation:** instrumentation is now installed, but WebKit marks have not yet been exported as a durable real-GUI time-to-interactive report; R1-02 and R1-03 remain open. Neither a faster production startup nor a performance regression is claimed from this instrumentation-only change.
+
+## Live installed macOS GUI instrumentation trial
+See `docs/qa/perf-r1-live-startup-2026-10-26.md`: real Native Runtime 1029ms Memory ready, 6510ms Backend+Gateway joined, with healthy existing Preview local DB. Renderer telemetry still unavailable; no FCP/TTI claim.

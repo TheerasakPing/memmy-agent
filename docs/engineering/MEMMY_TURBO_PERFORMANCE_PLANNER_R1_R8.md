@@ -64,6 +64,8 @@
 
 **Gate:** `docs/qa/perf-baseline-<date>.md` + machine-readable results, scripts, run-to-run variance, reviewer approval.
 
+**R1-02 live diagnostic (2026-10-26):** installed native profiler captured Memory ready at 1029 ms and Backend/Gateway joined at 6510 ms. React telemetry file absent, so R1-02 remains partially complete; see `docs/qa/perf-r1-live-startup-2026-10-26.md`.
+
 ## R2 — Startup Acceleration (P0)
 
 - [ ] **R2-01 [RUST]** Profile Memory initialization (database open, schema migrations, synchronous index creation, worker initialization).
