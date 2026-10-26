@@ -1,0 +1,72 @@
+{
+  "roundsRequested": 10,
+  "roundsCompleted": 10,
+  "passed": true,
+  "medianMs": 4817,
+  "p95Ms": 6162,
+  "minMs": 4635,
+  "maxMs": 6162,
+  "measurements": [
+    {
+      "iteration": 1,
+      "durationMs": 4892,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 2,
+      "durationMs": 5067,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 3,
+      "durationMs": 4726,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 4,
+      "durationMs": 4698,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 5,
+      "durationMs": 4641,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 6,
+      "durationMs": 4635,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 7,
+      "durationMs": 4817,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 8,
+      "durationMs": 4939,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 9,
+      "durationMs": 5097,
+      "passed": true,
+      "reason": null
+    },
+    {
+      "iteration": 10,
+      "durationMs": 6162,
+      "passed": true,
+      "reason": null
+    }
+  ],
+  "scope": "isolated native supervisor with temporary HOME; excludes Finder/React TTI"
+}
