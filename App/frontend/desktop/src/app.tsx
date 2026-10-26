@@ -169,6 +169,14 @@ function RuntimeApp() {
   useEffect(() => {
     let events: EventSource | undefined;
     let isActive = true;
+    // A hung native IPC or local HTTP request must never leave an invisible
+    // loading screen indefinitely. A later successful boot may still recover.
+    let bootstrapFinished = false;
+    const startupWatchdog = window.setTimeout(() => {
+      if (isActive && !bootstrapFinished) {
+        dispatch(appActions.startupFailed("Local services did not finish loading. Try again or open the diagnostics."));
+      }
+    }, 30_000);
     const scanCompletionTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
     function scheduleScanCompletionExpiry(jobId: string) {
@@ -346,6 +354,9 @@ function RuntimeApp() {
         }
 
         dispatch(appActions.startupFailed(error instanceof Error ? error.message : String(error)));
+      } finally {
+        bootstrapFinished = true;
+        window.clearTimeout(startupWatchdog);
       }
     }
 
@@ -353,6 +364,7 @@ function RuntimeApp() {
 
     return () => {
       isActive = false;
+      window.clearTimeout(startupWatchdog);
       events?.close();
       for (const timeout of scanCompletionTimeouts.values()) {
         clearTimeout(timeout);

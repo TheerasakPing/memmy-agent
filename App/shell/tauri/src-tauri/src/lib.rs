@@ -328,17 +328,11 @@ fn desktop_debug_renderer_status(
     if window.label() != "main" {
         return Err("GUI diagnostics require first-party main window".into());
     }
-    #[cfg(debug_assertions)]
-    eprintln!(
-        "[memmy-preview-gui] js probe: tauri={tauri_available}, bridge={bridge_available}, react_root={react_root_rendered}, text_bytes={dom_text_length}"
-    );
-    #[cfg(not(debug_assertions))]
-    let _ = (
-        tauri_available,
-        bridge_available,
-        react_root_rendered,
-        dom_text_length,
-    );
+    if cfg!(debug_assertions) || std::env::var_os("MEMMY_TAURI_DIAG_RENDERER").is_some() {
+        eprintln!(
+            "[memmy-preview-gui] js probe: tauri={tauri_available}, bridge={bridge_available}, react_root={react_root_rendered}, text_bytes={dom_text_length}"
+        );
+    }
     Ok(())
 }
 
@@ -375,8 +369,9 @@ pub fn run() {
             Ok(())
         })
         .on_page_load(|webview, payload| {
-            #[cfg(debug_assertions)]
-            if webview.label() == "main" {
+            if webview.label() == "main"
+                && (cfg!(debug_assertions) || std::env::var_os("MEMMY_TAURI_DIAG_RENDERER").is_some())
+            {
                 eprintln!("[memmy-preview-gui] page load: {:?}", payload.event());
                 if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
                     let _ = webview.eval(r##"

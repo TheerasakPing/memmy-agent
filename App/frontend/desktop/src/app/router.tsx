@@ -268,7 +268,7 @@ export function AppRouter(props: { onRetry: () => void }) {
     if (isPetWindowContext) return <PetStartupScreen />;
     return (
       <>
-        <StartupScreen quiet={hasReloadRestoreRoute()} />
+        <StartupScreen quiet={hasReloadRestoreRoute() && !(typeof window !== "undefined" && Boolean((window as Window & { __TAURI__?: unknown }).__TAURI__))} />
         {windowDragRegion}
       </>
     );
