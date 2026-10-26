@@ -274,6 +274,9 @@ impl NativeRuntime {
         {
             return Err("Tauri development runtime disabled; set MEMMY_TAURI_DEV_BACKEND=1".into());
         }
+        let startup_clock = Instant::now();
+        let profile_startup = std::env::var("MEMMY_TAURI_PROFILE_STARTUP").as_deref() == Ok("1");
+        if profile_startup { eprintln!("[memmy-perf] phase=runtime_paths_start elapsed_ms=0"); }
         let paths = runtime_paths(bundled_root)?;
         let manage_memory =
             bundled_root.is_some() || std::env::var("MEMMY_TAURI_DEV_MEMORY").as_deref() == Ok("1");
@@ -284,6 +287,7 @@ impl NativeRuntime {
         } else {
             None
         };
+        if profile_startup { eprintln!("[memmy-perf] phase=memory_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
         // Memory is authoritative; once healthy, Backend and Gateway are independent
         // consumers of its loopback endpoint. Start both in parallel to avoid
         // serial Node startup latency. Join before publishing either handle, so
@@ -308,6 +312,7 @@ impl NativeRuntime {
             let gateway = gateway_job.map(|job| job.join().unwrap_or_else(|_| Err("Agent Gateway startup thread panicked".into())));
             (backend, gateway)
         });
+        if profile_startup { eprintln!("[memmy-perf] phase=backend_gateway_joined elapsed_ms={}", startup_clock.elapsed().as_millis()); }
         if let Some(Err(error)) = gateway_result.as_ref() {
             if let Ok((mut child, _)) = backend_result {
                 stop_child(&mut child);
@@ -334,6 +339,7 @@ impl NativeRuntime {
                 state.memory = memory.take().map(|(process, _, _)| process);
                 state.gateway = gateway;
                 state.config = Some(config.clone());
+                if profile_startup { eprintln!("[memmy-perf] phase=runtime_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
                 Ok(config)
             }
             Err(err) => {

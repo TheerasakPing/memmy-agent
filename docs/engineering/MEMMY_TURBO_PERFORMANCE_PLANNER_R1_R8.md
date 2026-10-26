@@ -50,6 +50,9 @@
 
 ## R1 — Source Audit, Measurement, Baseline (P0)
 
+**Progress note (2026-10-26):** partial R1-01 hardware inventory, partial R1-02 opt-in Rust lifecycle instrumentation and first 5-run isolated native-supervisor benchmark complete. Median 5387 ms, P95 9644 ms (details: `docs/qa/perf-baseline-2026-10-26.md`). These are **not marked complete** because Original pairing, GUI TTI, large DB and independent review remain open. Implementer: RUST/QA; reviewer: pending.
+
+
 - [ ] **R1-01 [QA]** Capture environment: macOS model/RAM/OS, CPU load, power mode, exact git SHA, Preview version and copied SQLite size/hash.
 - [ ] **R1-02 [RUST]** Add timestamped stages (launch → WebView first paint → Memory ready → Backend ready → Agent ready → UI interactive), without exposing secrets.
 - [ ] **R1-03 [QA]** Repeat ≥5 controlled cold and ≥10 warm starts; record median/P95/min/max and failures for both Original and Turbo where comparable.
