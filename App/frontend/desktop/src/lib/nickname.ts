@@ -1,4 +1,4 @@
-export type NicknameLanguage = "zh-CN" | "en-US" | "zh" | "en";
+export type NicknameLanguage = "zh-CN" | "en-US" | "th-TH" | "zh" | "en";
 
 export const ZH_NICKNAME_PREFIXES = [
   "快乐", "幸运", "元气", "如意", "顺心", "知足",
@@ -25,7 +25,7 @@ export const EN_NICKNAME_CORES = [
 ] as const;
 
 export function randomNickname(language: NicknameLanguage = "zh-CN", random: () => number = Math.random): string {
-  if (language === "en-US" || language === "en") {
+  if (language === "en-US" || language === "en" || language === "th-TH") {
     return `${pick(EN_NICKNAME_PREFIXES, random)} ${pick(EN_NICKNAME_CORES, random)}`;
   }
   return `${pick(ZH_NICKNAME_PREFIXES, random)}${pick(ZH_NICKNAME_CORES, random)}`;

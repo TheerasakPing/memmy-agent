@@ -1666,6 +1666,7 @@ export function ChatImageLightbox(props: {
   onIndexChange: (index: number) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const imageMenu = useChatImageContextMenu();
   const current = props.images[props.index] ?? props.images[0] ?? null;
 
@@ -1699,7 +1700,7 @@ export function ChatImageLightbox(props: {
     >
       <button
         type="button"
-        aria-label="Close"
+        aria-label={t("common.close")}
         onClick={(event) => {
           event.stopPropagation();
           props.onClose();
@@ -1712,7 +1713,7 @@ export function ChatImageLightbox(props: {
       {props.images.length > 1 ? (
         <button
           type="button"
-          aria-label="Previous image"
+          aria-label={t("common.previousImage")}
           onClick={(event) => {
             event.stopPropagation();
             props.onIndexChange((props.index - 1 + props.images.length) % props.images.length);
@@ -1745,7 +1746,7 @@ export function ChatImageLightbox(props: {
       {props.images.length > 1 ? (
         <button
           type="button"
-          aria-label="Next image"
+          aria-label={t("common.nextImage")}
           onClick={(event) => {
             event.stopPropagation();
             props.onIndexChange((props.index + 1) % props.images.length);

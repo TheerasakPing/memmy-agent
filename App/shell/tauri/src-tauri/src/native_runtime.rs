@@ -1,6 +1,7 @@
 //! Rust-managed local API child for Tauri. No arbitrary command from the webview.
 //! Development starts a known repository entry; packaged builds fail closed
 //! until signed cross-platform sidecars and the Memory/Agent stack are ready.
+use crate::native_browser_surface::{BrowserSurfaceStore, EVENT_PREFIX};
 use serde_json::Value;
 use std::fs::{self, OpenOptions};
 use std::io::{BufRead, BufReader, Read, Write};
@@ -9,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{mpsc, Mutex};
 use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter};
 
 use crate::is_loopback_runtime_config;
 
@@ -16,6 +18,7 @@ const READY_PREFIX: &str = "MEMMY_TAURI_READY ";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Native runtime entrypoints are chosen by the application, not by webview IPC.
+#[derive(Clone)]
 struct RuntimePaths {
     node: PathBuf,
     sidecar: PathBuf,
@@ -24,7 +27,7 @@ struct RuntimePaths {
 
 fn runtime_paths(bundled_root: Option<&Path>) -> Result<RuntimePaths, String> {
     if let Some(root) = bundled_root {
-        let node = root.join("node");
+        let node = root.join(if cfg!(windows) { "node.exe" } else { "node" });
         let sidecar = root.join("App/shell/tauri/sidecar");
         for path in [
             &node,
@@ -50,7 +53,7 @@ fn runtime_paths(bundled_root: Option<&Path>) -> Result<RuntimePaths, String> {
     #[cfg(debug_assertions)]
     {
         Ok(RuntimePaths {
-            node: PathBuf::from("node"),
+            node: PathBuf::from(if cfg!(windows) { "node.exe" } else { "node" }),
             sidecar: Path::new(env!("CARGO_MANIFEST_DIR")).join("../sidecar"),
             bundled: false,
         })
@@ -67,15 +70,146 @@ struct BackendState {
     memory: Option<Child>,
     gateway: Option<Child>,
     config: Option<Value>,
+    memory_export_auth: Option<(String, String)>,
+    memory_launch: Option<(PathBuf, RuntimePaths)>,
     stopped_unexpectedly: bool,
 }
 
 #[derive(Default)]
 pub struct NativeRuntime {
     state: Mutex<BackendState>,
+    browser_surfaces: BrowserSurfaceStore,
+    event_app: Mutex<Option<AppHandle>>,
 }
 
 impl NativeRuntime {
+    pub fn attach_app(&self, app: AppHandle) {
+        if let Ok(mut current) = self.event_app.lock() {
+            *current = Some(app);
+        }
+    }
+
+    // Never serializes the bearer token to React: the authenticated export request
+    // is issued exclusively by trusted Rust after validating a live managed child.
+    pub fn memory_export_auth(&self) -> Result<(String, String), String> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "Memory service lock unavailable")?;
+        if state.stopped_unexpectedly {
+            return Err("managed Memory runtime requires restart".into());
+        }
+        let Some(child) = state.memory.as_mut() else {
+            return Err("managed Memory service not ready".into());
+        };
+        if !matches!(child.try_wait(), Ok(None)) {
+            return Err("managed Memory service no longer running".into());
+        }
+        state
+            .memory_export_auth
+            .clone()
+            .ok_or("managed Memory session not ready".into())
+    }
+
+    /// Restart only the managed Memory sidecar at the SAME address and bearer token.
+    /// Existing React Local API and Agent Gateway connections therefore remain valid.
+    pub fn restart_memory(&self) -> Result<Value, String> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "managed Memory lock unavailable")?;
+        if state.stopped_unexpectedly {
+            return Err("native runtime needs app restart".into());
+        }
+        let (base, token) = state
+            .memory_export_auth
+            .clone()
+            .ok_or("managed Memory service unavailable")?;
+        let (data_dir, paths) = state
+            .memory_launch
+            .clone()
+            .ok_or("managed Memory launch parameters unavailable")?;
+        let port = url::Url::parse(&base)
+            .map_err(|_| "Memory endpoint corrupted")?
+            .port()
+            .ok_or("Memory endpoint port unavailable")?;
+        let Some(mut old) = state.memory.take() else {
+            return Err("managed Memory process unavailable".into());
+        };
+        stop_child(&mut old);
+        match launch_development_memory_fixed(&data_dir, &paths, port, &token) {
+            Ok((new_child, new_base, new_token)) if new_base == base && new_token == token => {
+                state.memory = Some(new_child);
+                Ok(serde_json::json!({"ok":true,"baseUrl":base}))
+            }
+            Ok((mut unexpected, _, _)) => {
+                stop_child(&mut unexpected);
+                if let Some(mut backend) = state.process.take() {
+                    stop_child(&mut backend);
+                }
+                if let Some(mut gateway) = state.gateway.take() {
+                    stop_child(&mut gateway);
+                }
+                state.memory_export_auth = None;
+                state.memory_launch = None;
+                state.config = None;
+                state.stopped_unexpectedly = true;
+                Err("Memory service restart session mismatch; app restart required".into())
+            }
+            Err(error) => {
+                // Never leave the UI believing it has a healthy managed Memory child.
+                if let Some(mut backend) = state.process.take() {
+                    stop_child(&mut backend);
+                }
+                if let Some(mut gateway) = state.gateway.take() {
+                    stop_child(&mut gateway);
+                }
+                state.memory_export_auth = None;
+                state.memory_launch = None;
+                state.config = None;
+                state.stopped_unexpectedly = true;
+                Err(format!(
+                    "managed Memory restart failed; app restart required: {error}"
+                ))
+            }
+        }
+    }
+
+    pub fn browser_surface(&self, session_key: &str) -> Option<Value> {
+        self.browser_surfaces.get(session_key)
+    }
+
+    pub fn send_browser_surface_action(
+        &self,
+        session_key: &str,
+        action: &Value,
+    ) -> Result<bool, String> {
+        let Some(line) = self.browser_surfaces.action_line(session_key, action) else {
+            return Ok(false);
+        };
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| "native Gateway unavailable")?;
+        let Some(gateway) = state.gateway.as_mut() else {
+            return Ok(false);
+        };
+        if !matches!(gateway.try_wait(), Ok(None)) {
+            self.browser_surfaces.clear();
+            return Ok(false);
+        }
+        let Some(stdin) = gateway.stdin.as_mut() else {
+            return Ok(false);
+        };
+        stdin
+            .write_all(line.as_bytes())
+            .map_err(|_| "native Gateway action pipe disconnected")?;
+        stdin
+            .flush()
+            .map_err(|_| "native Gateway action pipe unresponsive")?;
+        Ok(true)
+    }
+
     pub fn config(&self, data_dir: &Path, bundled_root: Option<&Path>) -> Result<Value, String> {
         let mut state = self
             .state
@@ -90,6 +224,7 @@ impl NativeRuntime {
                     stop_child(&mut memory);
                 }
                 state.gateway.take();
+                self.browser_surfaces.clear();
                 state.config = None;
                 state.stopped_unexpectedly = true;
                 return Err("Tauri Agent Gateway stopped unexpectedly; restart the app".into());
@@ -139,6 +274,9 @@ impl NativeRuntime {
         {
             return Err("Tauri development runtime disabled; set MEMMY_TAURI_DEV_BACKEND=1".into());
         }
+        let startup_clock = Instant::now();
+        let profile_startup = std::env::var("MEMMY_TAURI_PROFILE_STARTUP").as_deref() == Ok("1");
+        if profile_startup { eprintln!("[memmy-perf] phase=runtime_paths_start elapsed_ms=0"); }
         let paths = runtime_paths(bundled_root)?;
         let manage_memory =
             bundled_root.is_some() || std::env::var("MEMMY_TAURI_DEV_MEMORY").as_deref() == Ok("1");
@@ -149,48 +287,79 @@ impl NativeRuntime {
         } else {
             None
         };
+        if profile_startup { eprintln!("[memmy-perf] phase=memory_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
+        // Backend and Gateway both migrate the shared config.yaml under a file
+        // lock during startup. Concurrent launches can make Gateway hit its
+        // 5-second lock timeout and force-kill the Backend lock holder, leaving
+        // a crash orphan that blocks the next launch. Finish Backend bootstrap
+        // and release its config lock before starting Gateway.
         let backend_result = launch_development_backend(
             data_dir,
-            memory
-                .as_ref()
-                .map(|(_, url, token)| (url.as_str(), token.as_str())),
+            memory.as_ref().map(|(_, url, token)| (url.as_str(), token.as_str())),
             &paths,
         );
+        if profile_startup { eprintln!("[memmy-perf] phase=backend_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
+        let gateway_result = if manage_gateway && backend_result.is_ok() {
+            let (_, url, token) = memory.as_ref().expect("managed gateway requires Memory");
+            let surfaces = self.browser_surfaces.clone();
+            let event_app = self.event_app.lock().ok().and_then(|app| app.clone());
+            Some(launch_development_gateway(data_dir, url, token, &paths, surfaces, event_app))
+        } else {
+            None
+        };
+        if profile_startup { eprintln!("[memmy-perf] phase=backend_gateway_joined elapsed_ms={}", startup_clock.elapsed().as_millis()); }
+        if let Some(Err(error)) = gateway_result.as_ref() {
+            if let Ok((mut child, _)) = backend_result {
+                stop_child(&mut child);
+            }
+            if let Some((mut process, _, _)) = memory.take() {
+                stop_child(&mut process);
+            }
+            return Err(error.clone());
+        }
         match backend_result {
-            Ok((mut child, mut config)) => {
+            Ok((child, mut config)) => {
                 let mut gateway = None;
-                if manage_gateway {
-                    let Some((_, url, token)) = memory.as_ref() else {
-                        stop_child(&mut child);
-                        return Err("Tauri Agent requires managed Memory".into());
-                    };
-                    match launch_development_gateway(data_dir, url, token, &paths) {
-                        Ok((process, metadata)) => {
-                            config["agentGateway"] = metadata;
-                            gateway = Some(process);
-                        }
-                        Err(err) => {
-                            stop_child(&mut child);
-                            if let Some((mut process, _, _)) = memory.take() {
-                                stop_child(&mut process);
-                            }
-                            return Err(err);
-                        }
-                    }
+                if let Some(Ok((process, metadata))) = gateway_result {
+                    config["agentGateway"] = metadata;
+                    gateway = Some(process);
                 }
                 state.process = Some(child);
+                state.memory_export_auth = memory
+                    .as_ref()
+                    .map(|(_, url, token)| (url.clone(), token.clone()));
+                state.memory_launch = memory
+                    .as_ref()
+                    .map(|_| (data_dir.to_path_buf(), paths.clone()));
                 state.memory = memory.take().map(|(process, _, _)| process);
                 state.gateway = gateway;
                 state.config = Some(config.clone());
+                if profile_startup { eprintln!("[memmy-perf] phase=runtime_ready elapsed_ms={}", startup_clock.elapsed().as_millis()); }
                 Ok(config)
             }
             Err(err) => {
+                if let Some(Ok((mut process, _))) = gateway_result {
+                    stop_child(&mut process);
+                }
                 if let Some((mut process, _, _)) = memory.take() {
                     stop_child(&mut process);
                 }
                 Err(err)
             }
         }
+    }
+
+    /// Observability allowlist: child registration only, not service health or credentials.
+    pub fn diagnostic_child_registrations(&self) -> Result<[bool; 3], String> {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| "runtime diagnostics unavailable")?;
+        Ok([
+            state.process.is_some(),
+            state.memory.is_some(),
+            state.gateway.is_some(),
+        ])
     }
 
     pub fn stop(&self) {
@@ -205,7 +374,10 @@ impl NativeRuntime {
                 stop_child(&mut memory);
             }
             state.config = None;
+            state.memory_export_auth = None;
+            state.memory_launch = None;
             state.stopped_unexpectedly = true;
+            self.browser_surfaces.clear();
         }
     }
 }
@@ -276,34 +448,72 @@ fn ensure_managed_data_dir(path: &Path) -> Result<(), String> {
 }
 
 fn memory_is_ready(port: u16, token: &str) -> bool {
+    // Memory writes an explicit Content-Length. Read only the complete HTTP
+    // body; waiting for TCP EOF incorrectly times out on keep-alive sockets.
+    // Never trust an open port alone: validate the real Memory JSON contract.
+    const MAX_HEALTH_BODY: usize = 128 * 1024;
+    const MAX_HTTP_HEADERS: usize = 16 * 1024;
     let address = SocketAddr::from(([127, 0, 0, 1], port));
-    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(350)) else {
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(750)) else {
         return false;
     };
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(3)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(3)));
     let request = format!("GET /api/v1/health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAuthorization: Bearer {token}\r\nConnection: close\r\n\r\n");
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }
-    let mut output = String::new();
-    if stream.take(128 * 1024).read_to_string(&mut output).is_err() {
-        return false;
+    let mut output = Vec::with_capacity(8192);
+    let mut chunk = [0u8; 8192];
+    loop {
+        let Ok(n) = stream.read(&mut chunk) else {
+            return false;
+        };
+        if n == 0 {
+            return false; // Explicit Content-Length is required by this local contract.
+        }
+        output.extend_from_slice(&chunk[..n]);
+        if output.len() > MAX_HTTP_HEADERS + MAX_HEALTH_BODY {
+            return false;
+        }
+        let Some(header_end) = output.windows(4).position(|bytes| bytes == b"\r\n\r\n") else {
+            continue;
+        };
+        if header_end > MAX_HTTP_HEADERS {
+            return false;
+        }
+        let Ok(headers) = std::str::from_utf8(&output[..header_end]) else {
+            return false;
+        };
+        if !headers.starts_with("HTTP/1.1 200 ") {
+            return false;
+        }
+        let length = headers.lines().find_map(|header| {
+            let (key, value) = header.split_once(':')?;
+            key.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().ok())
+                .flatten()
+        });
+        let Some(length) = length.filter(|length| *length <= MAX_HEALTH_BODY) else {
+            return false;
+        };
+        let Some(end) = header_end
+            .checked_add(4)
+            .and_then(|start| start.checked_add(length))
+        else {
+            return false;
+        };
+        if output.len() < end {
+            continue;
+        }
+        let Ok(health) = serde_json::from_slice::<Value>(&output[header_end + 4..end]) else {
+            return false;
+        };
+        return health["ok"] == true
+            && health["storage"]["ready"] == true
+            && health["protocolVersion"].is_number()
+            && health["serviceVersion"].is_string();
     }
-    let Some((headers, body)) = output.split_once("\r\n\r\n") else {
-        return false;
-    };
-    if !headers.starts_with("HTTP/1.1 200") {
-        return false;
-    }
-    // Health payload is explicitly from the actual Memory service. We do not
-    // accept a mere open TCP listener as 'healthy'.
-    let Ok(health) = serde_json::from_str::<Value>(body) else {
-        return false;
-    };
-    health["ok"] == true
-        && health["storage"]["ready"] == true
-        && health["protocolVersion"].is_number()
-        && health["serviceVersion"].is_string()
 }
 
 fn launch_development_memory(
@@ -327,9 +537,69 @@ fn launch_development_memory(
         uuid::Uuid::new_v4().simple(),
         uuid::Uuid::new_v4().simple()
     );
+    launch_development_memory_fixed(data_dir, paths, port, &token)
+}
+
+/// Preview-only startup diagnostics. Log privately into this Tauri profile,
+/// never into the Original app or the global system log. A fresh attempt
+/// starts a fresh bounded-startup file; failures must not block launching.
+fn startup_stderr(data_dir: &Path, log_name: &str) -> Stdio {
+    let path = data_dir.join(log_name);
+    if let Ok(meta) = fs::symlink_metadata(&path) {
+        if meta.file_type().is_symlink() {
+            return Stdio::null();
+        }
+    }
+    let mut builder = OpenOptions::new();
+    builder.create(true).write(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        builder.mode(0o600);
+    }
+    builder.open(path).map(Stdio::from).unwrap_or_else(|_| Stdio::null())
+}
+
+fn memory_startup_stderr(data_dir: &Path) -> Stdio {
+    let path = data_dir.join("memory-startup.log");
+    if let Ok(meta) = fs::symlink_metadata(&path) {
+        if meta.file_type().is_symlink() {
+            return Stdio::null();
+        }
+    }
+    let mut builder = OpenOptions::new();
+    builder.create(true).write(true).truncate(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        builder.mode(0o600);
+    }
+    match builder.open(&path) {
+        Ok(file) => Stdio::from(file),
+        Err(_) => Stdio::null(),
+    }
+}
+
+fn launch_development_memory_fixed(
+    data_dir: &Path,
+    paths: &RuntimePaths,
+    port: u16,
+    token: &str,
+) -> Result<(Child, String, String), String> {
+    ensure_managed_data_dir(data_dir)?;
+    let script = paths.sidecar.join("memory.mjs");
+    if !script.is_file() {
+        return Err("managed Memory sidecar entrypoint missing".into());
+    }
     let url = format!("http://127.0.0.1:{port}");
     let mut command = Command::new(&paths.node);
     command.arg(script);
+    // Finder starts at "/" while a developer shell inherits the repository.
+    // Never let Memory scan or resolve relative paths from the filesystem root.
+    command.current_dir(data_dir);
+    if paths.bundled && cfg!(debug_assertions) {
+        command.env("MEMMY_TAURI_DEBUG_STARTUP", "1");
+    }
     // In a Finder-launched packaged preview there is no inherited shell cloud env.
     // This only selects the same historical default as the existing edition config;
     // it does not imply external cloud login has been verified.
@@ -343,6 +613,7 @@ fn launch_development_memory(
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
         .env("MEMMY_TAURI_MEMORY_PORT", port.to_string())
         .env("MEMMY_TAURI_DEV_BACKEND", "1")
+        .env("MEMMY_TAURI_LOCAL_ONLY", "1")
         .env("MEMMY_MEMORY_TOKEN", &token)
         .env("MEMMY_MEMORY_LAYER_TOKEN", &token)
         .env("MEMMY_MEMORY_MODE", "local")
@@ -350,15 +621,23 @@ fn launch_development_memory(
         .env("MEMMY_MEMORY_DB", data_dir.join("memory.sqlite"))
         .env("MEMMY_MEMORY_URL", &url)
         .env("MEMMY_CONFIG", data_dir.join("config.yaml"))
+        // Never consult the Original Electron ~/.memmy/runtime.json when
+        // bootstrapping the native Preview's token-budget / BYOK integration.
+        .env(
+            "MEMMY_RUNTIME_CONFIG_PATH",
+            data_dir.join("runtime-config.json"),
+        )
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stderr(memory_startup_stderr(data_dir))
         .spawn()
         .map_err(|_| "cannot launch managed Memory service")?;
-    let deadline = Instant::now() + Duration::from_secs(45);
+    // Large pre-existing SQLite profiles can need more time to initialize,
+    // but readiness remains authenticated and strictly time bounded.
+    let deadline = Instant::now() + Duration::from_secs(120);
     loop {
         if memory_is_ready(port, &token) {
-            return Ok((child, url, token));
+            return Ok((child, url, token.to_owned()));
         }
         if !matches!(child.try_wait(), Ok(None)) {
             stop_child(&mut child);
@@ -410,6 +689,7 @@ fn launch_development_backend(
     }
     let mut command = Command::new(&paths.node);
     command.arg(script);
+    command.current_dir(data_dir);
     // Finder-launched applications have no terminal environment. Match the
     // existing default cloud service for the configured international edition;
     // the app must still authenticate before cloud operations can succeed.
@@ -428,10 +708,15 @@ fn launch_development_backend(
     }
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
+        .env(
+            "MEMMY_RUNTIME_CONFIG_PATH",
+            data_dir.join("runtime-config.json"),
+        )
         .env("MEMMY_TAURI_DEV_BACKEND", "1")
+        .env("MEMMY_TAURI_LOCAL_ONLY", "1")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(startup_stderr(data_dir, "backend-startup.log"))
         .spawn()
         .map_err(|_| {
             "Node development runtime missing from PATH; do not use this mode for release"
@@ -483,6 +768,8 @@ fn launch_development_gateway(
     memory_url: &str,
     token: &str,
     paths: &RuntimePaths,
+    surfaces: BrowserSurfaceStore,
+    event_app: Option<AppHandle>,
 ) -> Result<(Child, Value), String> {
     let script = paths.sidecar.join("gateway.mjs");
     if !script.is_file() {
@@ -503,6 +790,7 @@ fn launch_development_gateway(
     }
     let mut command = Command::new(&paths.node);
     command.arg(script);
+    command.current_dir(data_dir);
     // The real Agent child inherits this env from its managed shim. A Finder
     // process does not inherit shell environment variables, so the bundled
     // preview must configure its service origin at the Gateway boundary too.
@@ -514,7 +802,14 @@ fn launch_development_gateway(
     }
     let mut child = command
         .env("MEMMY_TAURI_DATA_DIR", data_dir)
+        .env(
+            "MEMMY_RUNTIME_CONFIG_PATH",
+            data_dir.join("runtime-config.json"),
+        )
         .env("MEMMY_TAURI_DEV_GATEWAY", "1")
+        // Enabled only for this trusted, Rust-owned native Gateway process.
+        // Unknown Agent approvals fail closed in the wrapper; no renderer-set flag.
+        .env("MEMMY_TAURI_BROWSER_SURFACE_RELAY", "1")
         .env(
             "MEMMY_NATIVE_APP_ALLOW_ALL_FILE",
             data_dir.join("computer-use/allow-all-apps.json"),
@@ -525,7 +820,10 @@ fn launch_development_gateway(
         .env("MEMMY_MEMORY_TOKEN", token)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        // Keep Gateway child diagnostics in the isolated preview profile.
+        // Without this, early exit errors are swallowed and the UI only says
+        // "exited before readiness" with no actionable cause.
+        .stderr(startup_stderr(data_dir, "gateway-startup.log"))
         .spawn()
         .map_err(|_| "cannot start Agent development helper")?;
     let stdout = child
@@ -540,6 +838,16 @@ fn launch_development_gateway(
         while let Ok(size) = reader.read_line(&mut line) {
             if size == 0 {
                 break;
+            }
+            if notified && line.starts_with(EVENT_PREFIX) {
+                if let Some(message) = surfaces.update(
+                    line.trim_end_matches(['\r', '\n'])
+                        .trim_start_matches(EVENT_PREFIX),
+                ) {
+                    if let Some(app) = event_app.as_ref() {
+                        let _ = app.emit_to("main", "memmy:browser-sidebar:surface", message);
+                    }
+                }
             }
             if !notified && line.starts_with("MEMMY_TAURI_GATEWAY_READY ") {
                 notified = true;
@@ -562,6 +870,12 @@ fn launch_development_gateway(
                 let _ = tx.send(result.map_err(|error| error.to_string()));
             }
             line.clear();
+        }
+        // Prevent stale screenshot/action sessions when the managed Agent exits.
+        for closed in surfaces.clear() {
+            if let Some(app) = event_app.as_ref() {
+                let _ = app.emit_to("main", "memmy:browser-sidebar:surface", closed);
+            }
         }
         if !notified {
             let _ = tx.send(Err("Agent Gateway exited before readiness".into()));
@@ -590,6 +904,42 @@ mod tests {
     use serde_json::json;
     #[cfg(debug_assertions)]
     use std::fs;
+    #[test]
+    fn memory_restart_rejects_absent_or_stopped_native_runtime() {
+        let runtime = NativeRuntime::default();
+        assert!(runtime.restart_memory().is_err());
+        assert!(runtime.memory_export_auth().is_err());
+        runtime.stop();
+        assert!(runtime.restart_memory().is_err());
+    }
+
+    #[test]
+    fn native_memory_health_accepts_valid_content_length_without_socket_eof() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let serve = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0u8; 1024];
+            let bytes = stream.read(&mut request).unwrap();
+            let text = String::from_utf8_lossy(&request[..bytes]);
+            assert!(text.contains("GET /api/v1/health"));
+            let body = r#"{"ok":true,"storage":{"ready":true},"protocolVersion":1,"serviceVersion":"2.1.7"}"#;
+            let headers = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: keep-alive\r\n\r\n{body}",
+                body.len()
+            );
+            stream.write_all(headers.as_bytes()).unwrap();
+            // Simulates a healthy Node server retaining the TCP socket. The
+            // Rust probe must not wait for connection close to accept JSON.
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        });
+        let start = std::time::Instant::now();
+        assert!(super::memory_is_ready(port, "a-valid-local-token"));
+        assert!(start.elapsed() < std::time::Duration::from_millis(1600));
+        serve.join().unwrap();
+    }
+
     #[test]
     #[cfg(debug_assertions)]
     fn real_backend_and_memory_rust_owner_smoke_when_opted_in() {

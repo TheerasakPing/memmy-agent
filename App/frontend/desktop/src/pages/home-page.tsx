@@ -3088,6 +3088,7 @@ export function HomePage() {
                   <div className="agent-composer-popover absolute left-0 right-0 bottom-full mb-3 z-30 w-full">
                     <HistoryDagPanel
                       state={historyDagPanel}
+                      ariaLabel={t("home.command.historyDagTitle")}
                       closeLabel={t("common.close")}
                       loadingLabel={t("home.agent.connecting")}
                       labels={{

@@ -16,6 +16,7 @@ import { randomNickname } from "./lib/nickname.js";
 import { MemoryPluginConflictModal } from "./pages/memory-plugin-conflict-modal.js";
 import { StartupScreen } from "./pages/startup-screen.js";
 import { applyWindowPlatformClass } from "./utils/window-fullscreen.js";
+import { markRendererModuleLoaded, observeFirstDomFrame } from "./app/startup-performance.js";
 import rendererLog from "electron-log/renderer";
 import "./styles.css";
 
@@ -100,6 +101,10 @@ const root = document.getElementById("root");
 if (!root) {
   throw new Error("Missing root element");
 }
+
+markRendererModuleLoaded();
+const removeFirstFrameObserver = observeFirstDomFrame(root);
+import.meta.hot?.dispose(removeFirstFrameObserver);
 
 const previewMode = readDevPreviewMode();
 const rendererWindow = window as Window & { __memmyReactRoot?: Root };

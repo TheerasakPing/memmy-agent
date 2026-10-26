@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Real Chromium smoke for original React preview screens + installed Tauri
-// JS IPC surface. Does not claim to replace native WebKit GUI E2E.
+// Chromium/WebKit smoke for original React preview screens and the Tauri
+// JS IPC adapter. Browser WebKit is NOT embedded macOS WKWebView GUI E2E.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -10,10 +10,15 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const agentRequire = createRequire(join(root, 'App/memmy-agent/package.json'));
-const { chromium } = agentRequire('playwright');
+const { chromium, webkit } = agentRequire('playwright');
+const browserName = process.env.MEMMY_RENDERER_BROWSER ?? 'chromium';
+if (!['chromium', 'webkit'].includes(browserName)) throw Error('MEMMY_RENDERER_BROWSER must be chromium or webkit');
 const chrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-if (process.platform !== 'darwin' || !existsSync(chrome)) {
-  console.error('This GUI smoke is macOS Chrome-specific, not a cross-platform E2E certification');
+const executablePath = browserName === 'webkit'
+  ? (process.env.MEMMY_WEBKIT_EXECUTABLE || webkit.executablePath())
+  : chrome;
+if (process.platform !== 'darwin' || !existsSync(executablePath)) {
+  console.error(`This renderer smoke needs the macOS ${browserName} executable; it does not certify native WKWebView`);
   process.exit(2);
 }
 const port = 19173;
@@ -36,7 +41,7 @@ try {
     await delay(200);
   }
   if (!ready) throw Error(`Vite did not start: ${stderr}`);
-  browser = await chromium.launch({ headless: true, executablePath: chrome, args: ['--no-first-run'] });
+  browser = await (browserName === 'webkit' ? webkit : chromium).launch({ headless: true, executablePath, ...(browserName === 'chromium' ? { args: ['--no-first-run'] } : {}) });
   const page = await browser.newPage({ viewport: { width: 1200, height: 780 }, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -60,10 +65,10 @@ try {
   for (const screen of screens) {
     await page.goto(`${url}/?preview=${screen}`, { waitUntil:'domcontentloaded', timeout:45000 });
     await page.locator('#root > *').first().waitFor({ state:'visible', timeout:30000 });
-    await page.screenshot({path:join(artifacts, `tauri-react-${screen}.png`), fullPage:false});
+    await page.screenshot({path:join(artifacts, `tauri-${browserName}-react-${screen}.png`), fullPage:false});
     const view = await page.locator('body').innerText();
     if (view.trim().length < 12) throw Error(`${screen}: React page was blank`);
-    console.log(`PASS original React ${screen} (${view.trim().length} text chars)`);
+    console.log(`PASS ${browserName} original React ${screen} (${view.trim().length} text chars)`);
   }
   const calls = await page.evaluate(async () => {
     if (!window.memmy || typeof window.memmy.setPetWindow !== 'function') throw Error('Tauri bridge did not install');
@@ -80,7 +85,7 @@ try {
     if (!calls.some((value) => value.command === command)) throw Error(`missing frontend/native IPC mapping: ${command}`);
   }
   if (errors.length) throw Error(`React page errors: ${errors.join(' | ')}`);
-  console.log(`PASS Tauri JS IPC mapping + 3 React preview screens; screenshots at ${artifacts}`);
+  console.log(`PASS ${browserName} Tauri JS IPC mapping + 3 React preview screens; screenshots at ${artifacts}`);
 } finally {
   await browser?.close();
   vite.kill('SIGTERM');

@@ -34,7 +34,7 @@ export const MANAGED_AGENT_DISCOVERY_PENDING_DATA_PATH = "memmy-agent://history-
 export const UserModeSchema = z.enum(["unset", "byok", "account"]);
 export type UserMode = z.infer<typeof UserModeSchema>;
 
-export const LanguageSchema = z.enum(["system", "zh-CN", "en-US"]);
+export const LanguageSchema = z.enum(["system", "zh-CN", "en-US", "th-TH"]);
 export type Language = z.infer<typeof LanguageSchema>;
 
 export const ThemeSchema = z.enum(["system", "light", "dark"]);

@@ -1,8 +1,9 @@
 /** Messages module. */
 import type { Language } from "@memmy/local-api-contracts";
+import { thMessages } from "./th-messages.js";
 import { enUSErrorNoticeMessages, zhCNErrorNoticeMessages } from "./error-notice-messages.js";
 
-export type ResolvedLanguage = "zh-CN" | "en-US";
+export type ResolvedLanguage = "zh-CN" | "en-US" | "th-TH";
 
 export const MEMORY_ADD_STATUS_SUMMARIES = [
   "摘要排队中",
@@ -12,12 +13,16 @@ export const MEMORY_ADD_STATUS_SUMMARIES = [
 ] as const;
 
 export const zhCNMessages = {
+  "common.previousImage": "上一张图片",
+  "common.nextImage": "下一张图片",
   "browser.title": "浏览器",
   "browser.newTab": "新建标签页",
   "browser.blankTab": "新标签页",
   "browser.closeTab": "关闭 {name}",
   "browser.copyTabMention": "复制标签页引用",
   "browser.copiedTabMention": "已复制标签页引用",
+  "browser.copyNativePageUrl": "复制当前网页链接（不包含 Agent 标签页控制权）",
+  "browser.copiedNativePageUrl": "已复制网页链接",
   "browser.back": "后退",
   "browser.forward": "前进",
   "browser.reload": "刷新",
@@ -2241,12 +2246,16 @@ export const zhCNMessages = {
 } as const;
 
 export const enUSMessages: Record<keyof typeof zhCNMessages, string> = {
+  "common.previousImage": "Previous image",
+  "common.nextImage": "Next image",
   "browser.title": "Browser",
   "browser.newTab": "New tab",
   "browser.blankTab": "New Tab",
   "browser.closeTab": "Close {name}",
   "browser.copyTabMention": "Copy tab reference",
   "browser.copiedTabMention": "Tab reference copied",
+  "browser.copyNativePageUrl": "Copy current page URL (not an Agent-controlled tab)",
+  "browser.copiedNativePageUrl": "Page URL copied",
   "browser.back": "Back",
   "browser.forward": "Forward",
   "browser.reload": "Reload",
@@ -4475,11 +4484,12 @@ export type MessageValues = Record<string, string | number>;
 
 export const messageCatalogs: Record<ResolvedLanguage, Record<MessageKey, string>> = {
   "zh-CN": zhCNMessages,
-  "en-US": enUSMessages
+  "en-US": enUSMessages,
+  "th-TH": { ...enUSMessages, ...thMessages }
 };
 
 export function resolveLanguage(language: Language | string | undefined): ResolvedLanguage {
-  return language === "en-US" ? "en-US" : "zh-CN";
+  return language === "th-TH" ? "th-TH" : language === "en-US" ? "en-US" : "zh-CN";
 }
 
 export function formatMessage(template: string, values: MessageValues = {}): string {

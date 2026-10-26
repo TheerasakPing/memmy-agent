@@ -215,16 +215,19 @@ function RuntimeApp() {
         const launchRouteOverride = readLaunchRouteOverride(typeof window === "undefined" ? undefined : window.location.search);
         const [sources, accountSession, modelConfig, scanStatus] = await Promise.all([
           clients.agentSources.listSources(),
-          readAccountSession(clients.account),
+          Boolean((window as Window & { __TAURI__?: unknown }).__TAURI__) ? Promise.resolve({ authenticated: false } as AccountSessionView) : readAccountSession(clients.account),
           clients.config.getModelConfig(),
           clients.agentSources.getScanStatus()
         ]);
-        const effectiveBootstrap = reconcileInitialOnboarding({ bootstrap, accountSession });
+        const localOnly = Boolean((window as Window & { __TAURI__?: unknown }).__TAURI__);
+        const effectiveBootstrap = localOnly
+          ? { ...bootstrap, app: { ...bootstrap.app, userMode: "byok" as const }, onboarding: { ...bootstrap.onboarding, completed: true, currentStep: "completed" as const } }
+          : reconcileInitialOnboarding({ bootstrap, accountSession });
         const persistedPreferredMode = resolvePreferredLaunchMode({
           defaultLaunchMode: effectiveBootstrap.app.defaultLaunchMode,
           lastLaunchMode: effectiveBootstrap.app.lastLaunchMode
         });
-        const defaultInitialPath = resolveInitialView({
+        const defaultInitialPath = localOnly ? "/memory" as const : resolveInitialView({
           bootstrap: effectiveBootstrap,
           preferredMode: launchModeOverride ?? persistedPreferredMode,
           accountSession,

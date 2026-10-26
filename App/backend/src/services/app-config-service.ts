@@ -105,7 +105,13 @@ export function createAppConfigService(options: CreateAppConfigServiceOptions): 
       }
       if (input.language) {
         await options.memmyConfigWriter?.writeMemoryLanguage?.(input.language);
-        await options.memoryClient?.reloadConfig({ reason: "app_language_saved" });
+        try {
+          await options.memoryClient?.reloadConfig({ reason: "app_language_saved" });
+        } catch {
+          // Display language is an app preference. Memory reload is best-effort;
+          // do not roll back an otherwise valid locale when Memory is busy.
+          console.warn("Memory config reload failed after app language was saved");
+        }
       }
       const settings = options.bootstrapRepository.updateAppSettings(input);
       if (input.memoryByokDailyLimitM !== undefined || input.memoryByokTotalLimitM !== undefined) {

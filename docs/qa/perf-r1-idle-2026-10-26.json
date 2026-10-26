@@ -1,0 +1,66 @@
+{
+  "note": "sum RSS double-counts shared memory; NOT resident unique or allocated heap. Idle point-in-time sample only.",
+  "appProcessCount": 5,
+  "aggregatedRssMiB": 239,
+  "aggregatedCpuPercent": 1.2,
+  "processRoles": [
+    {
+      "role": "tauri-ui",
+      "rssMiB": 66.6
+    },
+    {
+      "role": "node-sidecar",
+      "rssMiB": 26.7
+    },
+    {
+      "role": "node-sidecar",
+      "rssMiB": 45.6
+    },
+    {
+      "role": "node-sidecar",
+      "rssMiB": 14.6
+    },
+    {
+      "role": "node-sidecar",
+      "rssMiB": 85.5
+    }
+  ],
+  "bundles": {
+    "count": 110,
+    "jsTotalMiB": 16.77,
+    "top": [
+      {
+        "file": "ts.worker-DYT1pWOP.js",
+        "bytes": 6918415
+      },
+      {
+        "file": "index-B5yJBVym.js",
+        "bytes": 3111169
+      },
+      {
+        "file": "editor.api-BSS-ss9H.js",
+        "bytes": 2738758
+      },
+      {
+        "file": "toggleHighContrast-B_HAwOUg.js",
+        "bytes": 1195221
+      },
+      {
+        "file": "css.worker-DqYDAPuG.js",
+        "bytes": 1077925
+      },
+      {
+        "file": "html.worker-JNiuiQAt.js",
+        "bytes": 742864
+      },
+      {
+        "file": "json.worker-C6N1YJ4H.js",
+        "bytes": 432505
+      },
+      {
+        "file": "index-DGQQxZjt.css",
+        "bytes": 424459
+      }
+    ]
+  }
+}

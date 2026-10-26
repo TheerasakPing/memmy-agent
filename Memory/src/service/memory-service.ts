@@ -322,16 +322,27 @@ export class MemoryService {
   private viewerEndpoint?: string;
 
   constructor(private readonly options: MemoryServiceOptions) {
+    // Preview-only checkpoint markers. Never print tokens, prompts, memory,
+    // account records, paths or other user data to the diagnostic file.
+    const mark = (phase: string) => {
+      if (process.env.MEMMY_TAURI_DEBUG_STARTUP === "1") {
+        process.stderr.write(`[memmy-constructor] ${phase}\n`);
+      }
+    };
+    mark("begin");
     this.viewerEndpoint = options.viewerEndpoint;
     this.repos = options.backend?.repositories() ?? new Repositories(requireMemoryDb(options).db);
+    mark("repositories_ready");
     this.l3WorldModelContextReadModel = new L3WorldModelContextReadModel(this.repos);
     this.mode = options.mode ?? "local";
     this.config = cloneMemmyConfig(options.config ?? DEFAULT_MEMMY_CONFIG);
+    mark("config_cloned");
     this.tokenBudgetLedger = new MemoryTokenBudgetLedger(
       this.repos.runtime,
       () => new Date(),
       this.config.tokenBudget
     );
+    mark("token_budget_ledger_ready");
     this.tokenUsageRecorder = new HttpByokTokenUsageRecorder({
       ...options.tokenUsage,
       outbox: new TokenUsageOutbox(this.repos.db),
@@ -340,13 +351,16 @@ export class MemoryService {
       touchBudget: () => this.tokenBudgetLedger.touch(),
       onPersistRecovered: () => this.persistRecoveredListener?.()
     });
+    mark("token_recorder_ready");
     this.fetchAppMemoryBudgetFn = options.fetchAppMemoryBudget
       ?? ((signal) => fetchAppMemoryBudget({ signal }));
     this.startAppBudgetReconcile();
+    mark("budget_reconcile_started");
     this.modelTasks = new MemoryModelTaskRouter(() => this.resolveModelTaskContext());
     this.llm = this.modelTasks.client("summary");
     this.skillLlm = this.modelTasks.client("evolution");
     this.embedder = this.modelTasks.embedder();
+    mark("model_router_ready");
     const serviceOwner = this;
     this.workMemory = new WorkMemoryPipeline({
       repos: this.repos,
@@ -356,6 +370,7 @@ export class MemoryService {
       nowIso
     });
     const projectEnvironmentOwner = this;
+    mark("work_memory_ready");
     this.projectEnvironment = new ProjectEnvironmentService({
       repos: this.repos,
       get llm() { return projectEnvironmentOwner.skillLlm; },
@@ -421,6 +436,7 @@ export class MemoryService {
       }
     });
     const evolutionOwner = this;
+    mark("worker_handlers_ready");
     this.evolutionJobs = new EvolutionJobProcessor({
       repos: this.repos,
       get config() { return evolutionOwner.config; },
@@ -454,6 +470,7 @@ export class MemoryService {
       feedbackTargetFromRawTurn: (rawTurn) => this.feedbackExperience.feedbackTargetFromRawTurn(rawTurn)
     });
     const feedbackOwner = this;
+    mark("skill_trials_ready");
     this.feedbackExperience = new FeedbackExperienceService({
       repos: this.repos,
       get config() { return feedbackOwner.config; },
@@ -479,6 +496,7 @@ export class MemoryService {
       shouldDeferBudgetedEvolutionLlm: () => this.shouldDeferBudgetedEvolutionLlm()
     });
     const importJobOwner = this;
+    mark("feedback_ready");
     this.importJobs = new ImportJobProcessor({
       get config() { return importJobOwner.config; },
       nowIso,
@@ -529,6 +547,7 @@ export class MemoryService {
       finalizeClosedEpisode: (episode, at) => this.workerHandlers.finalizeClosedEpisode(episode, at, "capture_decided")
     });
     const observationOwner = this;
+    mark("embedding_ready");
     this.observationMemory = new ObservationMemoryPipeline({
       repos: this.repos,
       get llm() { return observationOwner.llm; },
@@ -577,6 +596,7 @@ export class MemoryService {
       },
       embeddingJobs: this.embeddingJobs
     });
+    mark("worker_runner_ready");
     this.episodeReadModel = new EpisodeReadModel({
       repos: this.repos,
       assertMemorySearchEnabled: this.assertMemorySearchEnabled.bind(this),
@@ -622,6 +642,7 @@ export class MemoryService {
       createError: (code, message) => new MemoryServiceError(code, message)
     });
     const panelReadOwner = this;
+    mark("skill_read_model_ready");
     this.panelReadModel = new PanelReadModel({
       repos: this.repos,
       config: () => panelReadOwner.config,
@@ -650,6 +671,7 @@ export class MemoryService {
       now: nowIso
     });
     const retrievalOwner = this;
+    mark("panel_read_model_ready");
     this.retrieval = new RetrievalService({
       repos: this.repos,
       get config() { return retrievalOwner.config; },
@@ -669,6 +691,7 @@ export class MemoryService {
       withTimeout
     });
     const sessionTurnOwner = this;
+    mark("retrieval_ready");
     this.sessionTurns = new SessionTurnService({
       repos: this.repos,
       get config() { return sessionTurnOwner.config; },
@@ -727,7 +750,9 @@ export class MemoryService {
       withDuplicateFlag
     });
     serviceLogger.info("initialized", memoryConfigLogFields(this.config));
+    mark("all_services_ready");
     this.tokenUsageRecorder.start();
+    mark("token_delivery_started");
   }
 
   stopTokenUsageDelivery(): void {

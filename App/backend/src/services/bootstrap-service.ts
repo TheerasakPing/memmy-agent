@@ -34,18 +34,19 @@ export function createBootstrapService(options: CreateBootstrapServiceOptions): 
     async getBootstrap() {
       const bootstrap = options.appStateStore.repositories.bootstrap;
       const appSettings = bootstrap.getAppSettings();
-      const onboarding = await reconcileImprovementProgram(options, appSettings, bootstrap.getOnboardingState());
+      const localOnly = process.env.MEMMY_TAURI_LOCAL_ONLY === "1";
+      const onboarding = localOnly ? bootstrap.getOnboardingState() : await reconcileImprovementProgram(options, appSettings, bootstrap.getOnboardingState());
       const [memoryHealth, cloudHealth, tokenUsage, legal, promotions, lotteryStatus] = await Promise.all([
         getMemoryHealth(options.memoryClient),
-        getCloudHealth(options.cloudClient),
-        refreshTokenUsage(options),
-        getLegalUrls(options.cloudClient),
-        getPromotions(options.cloudClient),
-        getLotteryStatus(options.cloudClient)
+        localOnly ? Promise.resolve({ status: "unavailable" as const, checkedAt: new Date().toISOString() }) : getCloudHealth(options.cloudClient),
+        localOnly ? Promise.resolve(undefined) : refreshTokenUsage(options),
+        localOnly ? Promise.resolve(undefined) : getLegalUrls(options.cloudClient),
+        localOnly ? Promise.resolve({ ...PROMOTIONS_FALLBACK, loginBanner: false, applyMore: false }) : getPromotions(options.cloudClient),
+        localOnly ? Promise.resolve(undefined) : getLotteryStatus(options.cloudClient)
       ]);
 
       return AppBootstrapResponseSchema.parse({
-        app: appSettings,
+        app: localOnly ? { ...appSettings, userMode: "byok" } : appSettings,
         onboarding:
           options.bootstrapScenario === "completed"
             ? {
@@ -177,12 +178,21 @@ async function getLotteryStatus(cloudClient: CloudClient): Promise<LotteryStatus
   }
 }
 
-async function getMemoryHealth(memoryClient: MemoryClient): Promise<HealthStatus> {
+/** Bootstrap must render even if Memory is busy reconciling a legacy profile.
+ * The background worker can recover later; it must not hold the entire UI hostage.
+ */
+export async function getMemoryHealth(memoryClient: MemoryClient): Promise<HealthStatus> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const health = await memoryClient.health();
-    return health.ok ? "ok" : "unavailable";
-  } catch (error) {
-    return "unavailable";
+    return await Promise.race([
+      memoryClient.health().then((health): HealthStatus => health.ok ? "ok" : "unavailable")
+        .catch((): HealthStatus => "unavailable"),
+      new Promise<HealthStatus>((resolveTimeout) => {
+        timer = setTimeout(() => resolveTimeout("unavailable"), 3_500);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

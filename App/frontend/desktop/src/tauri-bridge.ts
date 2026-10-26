@@ -1,3 +1,4 @@
+import { copyNativeTabPageUrl, markNativeTabUserNavigation, onNativeTabClosed, selectNativeTab } from "./native-browser-tab-state.js";
 /**
  * Tauri v2 native boundary for the existing React renderer.
  *
@@ -6,6 +7,8 @@
  * native capabilities are intentionally absent, not silently "successful".
  * Every missing contract is tracked in tauri-parity-manifest.json.
  */
+import { getNativeMicrophoneAccessStatus, requestNativeMicrophoneAccess } from "./native-microphone-permissions.js";
+
 interface TauriCore {
   invoke<T = unknown>(command: string, args?: Record<string, unknown>): Promise<T>;
 }
@@ -28,7 +31,15 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "setLogLevel",
   "openLogsDirectory",
   "checkForUpdates",
+  "downloadUpdate",
+  "onUpdateDownloadProgress",
+  "openUpdateInstaller",
   "getInstallationId",
+  "sendAnalyticsClientId",
+  "exportMemoryDatabase",
+  "restartMemoryService",
+  "installCliTools",
+  "openAgentTool",
   "getLaunchAtLogin",
   "setLaunchAtLogin",
   "notifyTaskDone",
@@ -50,6 +61,30 @@ export const TAURI_NATIVE_BRIDGE_METHODS = [
   "openMailto",
   "saveFile",
   "saveImage",
+  "copyImageToClipboard",
+  "exportDiagnosticsReport",
+  "getComputerHistoryPermissionSessionId",
+  "getFullDiskAccessStatus",
+  "guideMemmyPermission",
+  "restartForComputerHistoryPermissions",
+  "openComputerHistoryMarkdown",
+  "getBrowserExtensionDirectory",
+  "revealBrowserExtension",
+  "prepareBrowserExtension",
+  "getBrowserExtensionInstallation",
+  "listInstalledBrowserExtensions",
+  "listRunningExternalBrowsers",
+  "getMicrophoneAccessStatus",
+  "requestMicrophoneAccess",
+  "getBrowserSidebarSurface",
+  "sendBrowserSidebarAction",
+  "onBrowserSidebarSurface",
+  "onEmbeddedBrowserOpen",
+  "onEmbeddedBrowserClose",
+  "selectEmbeddedBrowserTab",
+  "markEmbeddedBrowserUserNavigation",
+  "copyEmbeddedBrowserTabMention",
+  "clearBrowserData",
   "getBrowserHistory",
   "importLegacyBrowserHistory",
   "removeBrowserHistory",
@@ -119,11 +154,79 @@ export function installTauriBridge(host: TauriWindow): boolean {
       if (lastStartupIssue) callback(lastStartupIssue);
       return () => { startupIssues.delete(callback); };
     },
+    exportDiagnosticsReport: () =>
+      invoke<{ canceled: true } | { canceled: false; exportPath: string; bytes: number }>(
+        "desktop_export_diagnostics_report"),
+    getComputerHistoryPermissionSessionId: () =>
+      invoke<string>("desktop_get_computer_history_permission_session_id"),
+    restartMemoryService: () =>
+      invoke<{ ok: true; baseUrl: string }>("desktop_restart_memory_service"),
+    installCliTools: () => invoke<NonNullable<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["installCliTools"]>>>>>(
+      "desktop_install_cli_tools"),
+    openAgentTool: (sourceId: string, prompt: string) =>
+      invoke<{ opened: boolean }>("desktop_open_agent_tool", { sourceId, prompt }),
+    exportMemoryDatabase: () => invoke<
+      { canceled: true } | { canceled: false; exportPath: string; bytes: number }
+    >("desktop_export_memory_database"),
+    sendAnalyticsClientId: (payload: {
+      clientId: string; appEnv: "dev" | "prod"; appEdition: "cn" | "intl";
+    }) => {
+      // Original Electron contract is fire-and-forget: report Rust persistence failures
+      // rather than wrongly claiming the analytics cache has been saved.
+      void invoke<void>("desktop_send_analytics_client_id", { payload }).catch(error =>
+        console.warn("Tauri managed analytics client ID cache unavailable", error));
+    },
+    getFullDiskAccessStatus: () => invoke<boolean>("desktop_get_full_disk_access_status"),
+    guideMemmyPermission: (permission: "accessibility" | "inputMonitoring" | "screenRecording") =>
+      invoke<boolean>("desktop_guide_memmy_permission", { permission }),
+    restartForComputerHistoryPermissions: () =>
+      invoke<void>("desktop_restart_for_computer_history_permissions"),
+    getBrowserExtensionDirectory: () => invoke<string | null>("desktop_get_browser_extension_directory"),
+    revealBrowserExtension: () => invoke<boolean>("desktop_reveal_browser_extension"),
+    getBrowserExtensionInstallation: () =>
+      invoke<Record<"chrome" | "edge", { installed: boolean | null; enabled: boolean | null }>>(
+        "desktop_get_browser_extension_installation"),
+    listInstalledBrowserExtensions: () =>
+      invoke<Array<"chrome" | "edge">>("desktop_list_installed_browser_extensions"),
+    listRunningExternalBrowsers: () =>
+      invoke<Array<"chrome" | "edge"> | null>("desktop_list_running_external_browsers"),
+    prepareBrowserExtension: (browser: "chrome" | "edge", revealFolder = true) =>
+      invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["prepareBrowserExtension"]>>>>(
+        "desktop_prepare_browser_extension", { browser, revealFolder }),
+    getMicrophoneAccessStatus: () => getNativeMicrophoneAccessStatus(host.navigator),
+    requestMicrophoneAccess: () => requestNativeMicrophoneAccess(host.navigator),
+    openComputerHistoryMarkdown: (filePath: string) =>
+      invoke<void>("desktop_open_computer_history_markdown", { filePath }),
     getLogLevel: () => invoke<"error" | "warn" | "info" | "debug">("desktop_get_log_level"),
     setLogLevel: (level: "error" | "warn" | "info" | "debug") => invoke<void>("desktop_set_log_level", { level }),
     openLogsDirectory: () => invoke<void>("desktop_open_logs_directory"),
     getAppInfo: () => invoke<Awaited<ReturnType<NonNullable<Window["memmy"]>["getAppInfo"]>>>("desktop_app_info"),
-    checkForUpdates: () => invoke("desktop_check_for_updates"),
+    checkForUpdates: () => invoke("desktop_signed_check_for_updates"),
+    downloadUpdate: (
+      update: import("@memmy/desktop-interface").DesktopUpdateCheckResult,
+      options?: import("@memmy/desktop-interface").DesktopUpdateDownloadOptions
+    ) => invoke<import("@memmy/desktop-interface").DesktopUpdateInstallResult>(
+      "desktop_signed_download_update", { update, options }),
+    openUpdateInstaller: (filePath: string) =>
+      invoke<import("@memmy/desktop-interface").DesktopUpdateInstallResult>(
+        "desktop_signed_open_update_installer", { filePath }),
+    onUpdateDownloadProgress: (
+      callback: (progress: import("@memmy/desktop-interface").DesktopUpdateDownloadProgress) => void
+    ) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Native signed updater progress unavailable");
+      let active = true;
+      let dispose: (() => void) | undefined;
+      void listen<import("@memmy/desktop-interface").DesktopUpdateDownloadProgress>(
+        "memmy:update-download-progress", ({ payload }) => {
+          if (active && typeof payload?.downloadUrl === "string"
+              && typeof payload?.filePath === "string"
+              && Number.isSafeInteger(payload?.transferredBytes)
+              && payload.transferredBytes >= 0) callback(payload);
+        }
+      ).then(stop => { if (active) dispose = stop; else stop(); }).catch(() => undefined);
+      return () => { active = false; dispose?.(); };
+    },
     getInstallationId: () => invoke<string>("desktop_get_installation_id"),
     getLaunchAtLogin: () => invoke<boolean>("desktop_get_launch_at_login"),
     setLaunchAtLogin: (enabled: boolean) => invoke<boolean>("desktop_set_launch_at_login", { enabled }),
@@ -138,6 +241,49 @@ export function installTauriBridge(host: TauriWindow): boolean {
         "desktop_read_workspace_directory", { rootPath, relativePath }),
     writeWorkspaceFile: (rootPath: string, filePath: string, contents: string) =>
       invoke<void>("desktop_write_workspace_file", { rootPath, filePath, contents }),
+    // Child WebViews live in the original main window; remote origins do not receive native ACL grants.
+    nativeBrowserCreate: (initialUrl: string, bounds: import("./native-browser-adapter.js").NativeBrowserBounds) =>
+      invoke<string>("desktop_native_browser_create", { initialUrl, bounds }),
+    nativeBrowserBounds: (id: string, bounds: import("./native-browser-adapter.js").NativeBrowserBounds) =>
+      invoke<void>("desktop_native_browser_bounds", { id, bounds }),
+    nativeBrowserAction: (id: string, action: "navigate" | "reload" | "back" | "forward", url?: string) =>
+      invoke<void>("desktop_native_browser_action", { id, action, url }),
+    nativeBrowserDestroy: (id: string) => invoke<void>("desktop_native_browser_destroy", { id }),
+    nativeBrowserMarkUserNavigation: (id: string) =>
+      invoke<void>("desktop_native_browser_mark_user_navigation", { id }),
+    nativeBrowserCopyTabUrl: (id: string) =>
+      invoke<void>("desktop_native_browser_copy_tab_url", { id }),
+    onNativeBrowserEvent: (callback: (value: import("./native-browser-adapter.js").NativeBrowserMessage) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) return Promise.reject(new Error("Tauri native browser event bridge unavailable"));
+      return listen<import("./native-browser-adapter.js").NativeBrowserMessage>(
+        "memmy:native-browser:event", event => callback(event.payload));
+    },
+    getBrowserSidebarSurface: (sessionKey: string) =>
+      invoke<import("@memmy/local-api-contracts").ComputerUseSurfaceMessage | null>(
+        "desktop_get_browser_sidebar_surface", { sessionKey }),
+    sendBrowserSidebarAction: (sessionKey: string, action:
+      Pick<import("@memmy/local-api-contracts").ComputerUseSurfaceAction,
+        "action" | "x" | "y" | "deltaY" | "key" | "url">) =>
+      invoke<boolean>("desktop_send_browser_sidebar_action", { sessionKey, action }),
+    onBrowserSidebarSurface: (
+      callback: (message: import("@memmy/local-api-contracts").ComputerUseSurfaceMessage) => void
+    ) => {
+      let active = true;
+      let stop: (() => void) | undefined;
+      if (tauri.event?.listen) void tauri.event.listen<
+        import("@memmy/local-api-contracts").ComputerUseSurfaceMessage
+      >("memmy:browser-sidebar:surface", ({ payload }) => {
+        if (active) callback(payload);
+      }).then(unsubscribe => {
+        if (active) stop = unsubscribe;
+        else unsubscribe();
+      }).catch(() => undefined);
+      return () => { active = false; stop?.(); };
+    },
+    clearBrowserData: (categories?: Array<"cookies" | "siteData" | "cache" |
+      "downloadHistory" | "browsingHistory">) =>
+      invoke<void>("desktop_clear_browser_data", { categories }),
     getBrowserHistory: () => invoke<Awaited<ReturnType<NonNullable<NonNullable<Window["memmy"]>["getBrowserHistory"]>>>>("desktop_get_browser_history"),
     importLegacyBrowserHistory: (entries: Parameters<NonNullable<NonNullable<Window["memmy"]>["importLegacyBrowserHistory"]>>[0]) =>
       invoke<boolean>("desktop_import_legacy_browser_history", { entries }),
@@ -179,6 +325,10 @@ export function installTauriBridge(host: TauriWindow): boolean {
     saveFile: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
       invoke<import("@memmy/desktop-interface").DesktopImageSaveResult>(
         "desktop_save_file", { request: { ...request, data: request.data ? Array.from(request.data) : undefined } }),
+    copyImageToClipboard: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
+      invoke<void>("desktop_copy_image_to_clipboard", {
+        request: { ...request, data: request.data ? Array.from(request.data) : undefined }
+      }),
     saveImage: (request: import("@memmy/desktop-interface").DesktopImageActionRequest) =>
       invoke<import("@memmy/desktop-interface").DesktopImageSaveResult>(
         "desktop_save_image", { request: { ...request, data: request.data ? Array.from(request.data) : undefined } }),
@@ -207,6 +357,35 @@ export function installTauriBridge(host: TauriWindow): boolean {
     setPetWindow: (enabled: boolean, target?: { route?: string; hash?: string; agentChatId?: string; petIntent?: "user" }) =>
       invoke<void>("desktop_set_pet_window", { enabled, target }),
     hidePetWindow: () => invoke<void>("desktop_hide_pet_window"),
+    onEmbeddedBrowserClose: (callback: (tabId: number) => void) =>
+      onNativeTabClosed(callback),
+    selectEmbeddedBrowserTab: (tabId: number | null) => {
+      selectNativeTab(tabId);
+    },
+    markEmbeddedBrowserUserNavigation: (tabId: number) =>
+      markNativeTabUserNavigation(tabId),
+    // Tauri WebKit is NOT the Agent's Playwright/CDP context. Instead of
+    // forging an actionable plugin:// mention, safely copy the real page URL.
+    copyEmbeddedBrowserTabMention: (tabId: number) =>
+      copyNativeTabPageUrl(tabId),
+    onEmbeddedBrowserOpen: (callback: (url: string, owner?: { scopeKey?: string; sourceGuestId?: number }) => void) => {
+      const listen = tauri.event?.listen;
+      if (!listen) throw new Error("Tauri native Browser popup listener unavailable");
+      let removed = false;
+      let unsubscribe: (() => void) | undefined;
+      void listen<{ url?: unknown }>("memmy:browser:open-url", (event) => {
+        if (removed || typeof event.payload?.url !== "string") return;
+        const raw = event.payload.url;
+        if (raw.length > 8192) return;
+        try {
+          const url = new URL(raw);
+          if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return;
+          callback(url.href);
+        } catch { /* Invalid popup navigation never enters first-party tab queue. */ }
+      }).then((stop) => { if (removed) stop(); else unsubscribe = stop; })
+        .catch(() => undefined);
+      return () => { removed = true; unsubscribe?.(); };
+    },
     onRouteTargetRequest: (callback: (target: { route?: string; hash?: string; agentChatId?: string }) => void) => {
       const listen = tauri.event?.listen;
       if (!listen) throw new Error("Tauri route event bridge unavailable");

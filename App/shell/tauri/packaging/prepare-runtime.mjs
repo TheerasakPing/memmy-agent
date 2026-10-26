@@ -8,6 +8,7 @@ import { chmod, copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { auditBundleSymlinks } from './audit-bundle.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const stage = join(root, 'App/shell/tauri/packaging/runtime');
 const nodeVersion = '26.8.2';
@@ -37,6 +38,9 @@ try {
 run(join(stage, 'node'), ['--version']);
 for (const relative of [
   'node_modules',
+  // Do not replace the Agent-local tree with a link to the root tree:
+  // it includes hundreds of unique packages (Anthropic, Bedrock, channels)
+  // and versions that differ from root. Node resolves local modules first.
   'App/memmy-agent/node_modules',
   'App/memmy-agent/dist',
   'Memory/dist',
@@ -60,5 +64,34 @@ for (const relative of [
 ]) {
   console.log(`Bundling ${relative}`);
   await copy(relative);
+}
+// Tauri resource bundling does not retain npm workspace symlinks. Even when
+// a source-tree .app passes smoke, Node can silently resolve a missing package
+// from checkout ancestor node_modules. Materialize real copies of the compiled
+// first-party runtime packages INSIDE bundled node_modules/@memmy.
+for (const [name, source] of Object.entries({
+  'agent-source-core': 'AgentSourceCore',
+  knowledge: 'Knowledge',
+  migrations: 'Migrations',
+  'local-api-contracts': 'App/backend/local-api-contracts',
+  'desktop-interface': 'App/shell/desktop/interface',
+  memory: 'Memory',
+  backend: 'App/backend',
+})) {
+  const base = join(stage, 'node_modules/@memmy', name);
+  const sourceRoot = join(stage, source);
+  await rm(base, {recursive:true, force:true});
+  await mkdir(join(base, 'dist'), {recursive:true});
+  await copyFile(join(sourceRoot,'package.json'), join(base,'package.json'));
+  run('rsync',['-a',join(sourceRoot,'dist')+'/',join(base,'dist')+'/']);
+}
+// npm workspaces may contain symlinks into the checkout. Copy the *contents*
+// of both the root and Agent-private dependency trees; stage auditor rejects
+// any link that would leave the relocatable app. Do not ship the host symlink
+// itself, and do not overwrite differing private dependency versions.
+const integrityErrors = auditBundleSymlinks(stage, ['node_modules','App/memmy-agent/node_modules']);
+if (integrityErrors.length) {
+  throw Error('Staged Tauri runtime has external or broken dependency links: ' +
+    integrityErrors.slice(0, 12).join('; '));
 }
 console.log('Completed Tauri local runtime stage: ' + stage);

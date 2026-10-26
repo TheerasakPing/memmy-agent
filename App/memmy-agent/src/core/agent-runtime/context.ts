@@ -9,7 +9,7 @@ import { Session } from "../session/manager.js";
 import { detectImageMime, truncateText } from "../../utils/helpers.js";
 import { renderTemplate } from "../../utils/prompt-templates.js";
 
-export type AgentResponseLanguage = "zh-CN" | "en-US";
+export type AgentResponseLanguage = "zh-CN" | "en-US" | "th-TH";
 
 function currentTimeStr(timezone?: string | null): string {
   const now = new Date();
@@ -43,10 +43,20 @@ function formatAttachmentBytes(bytes: number): string {
 }
 
 export function normalizeAgentResponseLanguage(value: unknown): AgentResponseLanguage | null {
-  return value === "zh-CN" || value === "en-US" ? value : null;
+  return value === "zh-CN" || value === "en-US" || value === "th-TH" ? value : null;
 }
 
-function responseLanguageSection(language: AgentResponseLanguage | null): SystemPromptSection | null {
+export function responseLanguageSection(language: AgentResponseLanguage | null): SystemPromptSection | null {
+  if (language === "th-TH") {
+    return {
+      id: "response-language",
+      content: [
+        "# ข้อกำหนดด้านภาษา",
+        "",
+        "ภาษาของโปรแกรมเดสก์ท็อปคือภาษาไทย (th-TH) โปรดตอบผู้ใช้เป็นภาษาไทยให้ชัดเจน เป็นธรรมชาติ และเหมาะสมกับบริบท ทั้งคำตอบสุดท้าย คำอธิบายขั้นตอนเครื่องมือ สถานะการทำงาน และข้อความการคิดที่แอปแสดงต่อผู้ใช้ ยกเว้นเมื่อผู้ใช้ขอภาษาอื่นโดยตรง ให้คงคำสั่ง โค้ด เส้นทางไฟล์ ชื่อผลิตภัณฑ์ และข้อความอ้างอิงเดิมตามความจำเป็น อย่าเปลี่ยนข้อมูลทางเทคนิคหรือผลลัพธ์จากเครื่องมือเพียงเพื่อการแปล"
+      ].join("\n"),
+    };
+  }
   if (language === "zh-CN") {
     return {
       id: "response-language",

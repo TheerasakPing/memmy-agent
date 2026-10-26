@@ -12,7 +12,7 @@ import { setAnalyticsUserId } from "../analytics/analytics-context.js";
 import { useAnalytics } from "../analytics/use-analytics.js";
 import { AuthCodeForm, type AuthCodeFormValues } from "../components/auth-code-form.js";
 import { SocialLoginButtons } from "../components/social-login-buttons.js";
-import { LanguageToggleButton, PAGE_CORNER_ACTION_CONTAINER_STYLE, PageCornerActionButton } from "../components/language-toggle-button.js";
+import { LanguageToggleButton, nextDisplayLanguage, PAGE_CORNER_ACTION_CONTAINER_STYLE, PageCornerActionButton } from "../components/language-toggle-button.js";
 import { useVerificationCodeAuth } from "../components/use-verification-code-auth.js";
 import { useSocialLogin } from "../components/use-social-login.js";
 import { getLegalLinkUrl } from "../legal/legal-links.js";
@@ -50,7 +50,7 @@ export function TokenDetailPage() {
   }, [channel, verificationCodeAuth.resetInteractionState, socialLogin.reset]);
 
   function toggleLanguage() {
-    const nextLanguage = language === "en-US" ? "zh-CN" : "en-US";
+    const nextLanguage = nextDisplayLanguage(language);
     verificationCodeAuth.clearFeedback();
     socialLogin.clearFeedback();
     setModePersistenceFeedback(null);

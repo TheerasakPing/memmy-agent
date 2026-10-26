@@ -98,6 +98,9 @@ describe("app config local api routes", () => {
 
     const modelConfigBeforeSave = await injectJson("GET", "/api/app/model-config");
     const settings = await injectJson("PATCH", "/api/app/settings", { language: "zh-CN" });
+    const thaiSettings = await injectJson("PATCH", "/api/app/settings", { language: "th-TH" });
+    expect(thaiSettings.statusCode).toBe(200);
+    expect(thaiSettings.json()).toMatchObject({ language: "th-TH" });
     const privacy = await injectJson("PATCH", "/api/app/privacy", { localOnlyMode: true });
     const onboardingResponse = await injectJson("PATCH", "/api/app/onboarding", { currentStep: "completed" });
     const improvement = await injectJson("PATCH", "/api/app/improvement-program", { improvementProgram: "declined" });
@@ -174,6 +177,7 @@ describe("app config local api routes", () => {
     expect(calls).toEqual([
       "model:get",
       "settings:zh-CN",
+      "settings:th-TH",
       "privacy:true",
       "onboarding:completed",
       "improvement:declined",

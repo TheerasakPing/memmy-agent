@@ -15224,3 +15224,8 @@ body.memmy-platform-windows :is(
 .memmy-browser-history-entry__main span { color: var(--color-text-secondary, #777); font-size: 12px; }
 .memmy-browser-history-entry__source { flex: none; color: var(--color-text-secondary, #777); font-size: 12px; line-height: 1.4; white-space: nowrap; }
 .memmy-browser-history-entry__delete { flex: none; }
+
+/* Prefer system fonts with correct Thai combining marks, tone placement and word breaking. */
+html[lang="th-TH"] {
+  --font-sans: "Thonburi", "Noto Sans Thai", "Leelawadee UI", "Tahoma", ui-sans-serif, system-ui, sans-serif;
+}

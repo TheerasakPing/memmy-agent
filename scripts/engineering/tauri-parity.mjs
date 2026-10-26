@@ -36,7 +36,7 @@ for (const name of native) if (!bridgedNames.includes(name)) {
   throw new Error("listed Tauri method not implemented in renderer bridge: " + name);
 }
 const rustHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/lib.rs"), "utf8");
-const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_diagnostics.rs", "native_file_export.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
+const nativeModule = ["native_os.rs", "native_workspace.rs", "native_pet.rs", "native_tray.rs", "native_browser_store.rs", "native_analytics.rs", "native_cli_install.rs", "native_agent_tool.rs", "native_signed_updater.rs", "native_memory_export.rs", "native_diagnostics.rs", "native_file_export.rs", "native_permissions.rs", "native_browser_extension.rs", "native_browser_inventory.rs", "native_browser.rs", "native_browser_surface.rs", "native_site_policy.rs", "native_approvals.rs"].map((name) =>
   readFileSync(resolve(root, `App/shell/tauri/src-tauri/src/${name}`), "utf8")
 ).join("\n");
 for (const [, command] of bridgeObject.matchAll(/"(desktop_[a-z0-9_]+)"/g)) {
@@ -63,6 +63,17 @@ const uiHashes = Object.fromEntries(uiFiles.map((path) => [
 const originalWindowSource = readFileSync(resolve(root, "App/shell/desktop/src/main/window-mode.ts"), "utf8");
 const originalWindow = originalWindowSource.match(/export const fullWindowOptions = \{([\s\S]*?)\} as const;/);
 if (!originalWindow) throw new Error("original window baseline missing");
+// Native child WebViews render untrusted remote pages in the same main OS Window.
+ // A window-scoped Tauri capability would grant those pages first-party IPC rights.
+const capability = JSON.parse(readFileSync(resolve(root, "App/shell/tauri/src-tauri/capabilities/default.json"), "utf8"));
+if (capability.windows?.includes("main") || !capability.webviews?.includes("main") || !capability.webviews?.includes("pet")) {
+  throw new Error("native Browser requires first-party-webview-only IPC capability; never grant by parent window");
+}
+const childHost = readFileSync(resolve(root, "App/shell/tauri/src-tauri/src/native_browser.rs"), "utf8");
+if (!childHost.includes("on_navigation") || !childHost.includes("NewWindowResponse::Deny")
+  || !childHost.includes("native browser commands require main application window")) {
+  throw new Error("native Browser navigation/popups/source guards missing");
+}
 const tauriConfig = JSON.parse(readFileSync(resolve(root, "App/shell/tauri/src-tauri/tauri.conf.json"), "utf8"));
 for (const name of ["width", "height", "minWidth", "minHeight"]) {
   const value = originalWindow[1].match(new RegExp(String.raw`\b${name}: (\d+)`));
@@ -70,19 +81,41 @@ for (const name of ["width", "height", "minWidth", "minHeight"]) {
     throw new Error(`native Tauri ${name} diverged from original Electron UI window`);
   }
 }
+// Real Rust IPC exists, but the original Electron method supports five data
+// categories. Tauri currently preserves safety by implementing only the
+// native browsingHistory subset; cookies/cache/siteData/downloadHistory reject.
+const PARTIAL_NATIVE_METHODS = new Map([
+  ["clearBrowserData", "Only browsingHistory is implemented; four remaining selective categories fail closed"],
+  ["downloadUpdate", "Signature-verified native downloader is wired; production signer public key and signed update feed are not yet provisioned"],
+  ["onUpdateDownloadProgress", "Live signed-download progress is wired but needs real production signed release E2E"],
+  ["openUpdateInstaller", "Installs only signature-verified in-process staged artifacts; cross-restart/cross-platform acceptance not yet verified"],
+  ["copyEmbeddedBrowserTabMention", "Tauri copies a genuine live WebKit page URL, not an Agent-actionable browser/CDP tab mention; shared-session integration pending"],
+]);
+for (const name of PARTIAL_NATIVE_METHODS.keys()) {
+  if (!native.includes(name)) throw new Error("Partial-method marker must have real native bridge: " + name);
+}
 const manifest = {
   schemaVersion: 1,
   source: "App/shell/desktop/src/preload/preload.cts:MemmyPreloadApi",
   frontend: "App/frontend/desktop/src/main.tsx",
   uiPolicy: "reuse original React entrypoint, CSS, pages, routes, tabs and components",
   immutableUiSha256: uiHashes,
-  fullFeatureParity: native.length === methods.length,
-  counts: { legacyMethods: methods.length, nativeMethods: native.length, remainingMethods: methods.length - native.length, routes: routes.length },
+  fullFeatureParity: native.length === methods.length && PARTIAL_NATIVE_METHODS.size === 0,
+  counts: {
+    legacyMethods: methods.length,
+    nativeMethods: native.length,
+    remainingMethods: methods.length - native.length,
+    partialNativeMethods: PARTIAL_NATIVE_METHODS.size,
+    remainingFullBehaviorMethods: methods.length - native.length + PARTIAL_NATIVE_METHODS.size,
+    routes: routes.length
+  },
   routes: routes.map((path) => ({ path, status: "original-react-reused" })),
   methods: methods.map((name) => ({
     name,
-    status: native.includes(name) ? "native-tauri-command-or-local-noop" : "NOT_MIGRATED",
-    acceptance: native.includes(name) ? "requires native E2E proof" : "must port and run original behavior E2E"
+    status: PARTIAL_NATIVE_METHODS.has(name) ? "PARTIAL_NATIVE_FUNCTIONALITY" :
+      native.includes(name) ? "native-tauri-command-or-local-noop" : "NOT_MIGRATED",
+    acceptance: PARTIAL_NATIVE_METHODS.get(name) ??
+      (native.includes(name) ? "requires native E2E proof" : "must port and run original behavior E2E")
   }))
 };
 const target = resolve(root, "docs/engineering/tauri/tauri-parity-manifest.json");

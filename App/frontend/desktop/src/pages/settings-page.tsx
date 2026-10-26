@@ -138,7 +138,7 @@ type DiagnosticsReportExportResult = { canceled: true } | DiagnosticsReportExpor
 /** Contract for renderer diagnostics report input. */
 interface RendererDiagnosticsReportInput {
   state: AppState;
-  language: Language;
+  language: Language | "th-TH";
   bridgeAvailable: boolean;
   exportBridgeAvailable: boolean;
 }
@@ -1026,7 +1026,17 @@ export function SettingsPageView(props: SettingsPageViewProps) {
    * @param nextLanguage The interface language.
    */
   function handleLanguageChange(nextLanguage: string) {
-    persistSettings({ language: nextLanguage as Language });
+    const selectedLanguage = nextLanguage as Language;
+    const previousLanguage = language as Language;
+    if (selectedLanguage === previousLanguage) return;
+    // Switch the interface immediately; persist the choice for subsequent launches.
+    dispatch(appActions.settingsUpdated({ language: selectedLanguage }));
+    void (configClient?.updateSettings({ language: selectedLanguage }) ?? Promise.resolve({ language: selectedLanguage }))
+      .then((savedSettings) => dispatch(appActions.settingsUpdated(savedSettings)))
+      .catch((error) => {
+        dispatch(appActions.settingsUpdated({ language: previousLanguage }));
+        console.error("Unable to save display language", error);
+      });
   }
 
   /**
@@ -1795,7 +1805,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
             onChange={handleLanguageChange}
             options={[
               { value: "zh-CN", label: t("settings.general.language.zh") },
-              { value: "en-US", label: "English" }
+              { value: "en-US", label: "English" },
+              { value: "th-TH", label: "ไทย" }
             ]}
           />
         </Section>
@@ -3650,7 +3661,7 @@ export function isPendingQuotaRequestError(error: unknown): boolean {
  */
 export function resolveQuotaEligibilityMessage(
   eligibility: TokenQuotaEligibility | null,
-  language: "zh-CN" | "en-US"
+  language: "zh-CN" | "en-US" | "th-TH"
 ): QuotaEligibilityMessage | null {
   if (!eligibility || eligibility.state === "available") {
     return null;
@@ -3704,7 +3715,7 @@ function normalizeQuotaReviewNote(value: string | null): string | null {
   return normalized || null;
 }
 
-function formatQuotaNextAllowedAt(epochMs: number, language: "zh-CN" | "en-US"): string {
+function formatQuotaNextAllowedAt(epochMs: number, language: "zh-CN" | "en-US" | "th-TH"): string {
   const date = new Date(epochMs);
   if (language === "zh-CN") {
     const pad = (value: number) => String(value).padStart(2, "0");

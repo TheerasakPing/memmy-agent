@@ -19,6 +19,11 @@ const metadata = await lstat(path);
 if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
   throw new Error("Memory data directory must be a real directory");
 }
+// In the isolated native Preview, log startup phase names only (no user data).
+// This helps diagnose event-loop starvation in large Memory databases.
+if (process.env.MEMMY_TAURI_LOCAL_ONLY === "1") {
+  process.env.MEMMY_TAURI_DEBUG_STARTUP = "1";
+}
 // Memory's SIGTERM handler gracefully stops its HTTP server and SQLite store.
 // Rust first closes stdin, waits for shutdown, and force-kills only as fallback.
 process.stdin.resume();

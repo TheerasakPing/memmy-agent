@@ -40,7 +40,11 @@ function ApiClientsProvider(props: { children: ReactNode }) {
 /** Handles visual providers. */
 function VisualProviders(props: { children: ReactNode }) {
   const { state } = useAppState();
-  const language = resolveDesktopDisplayLanguage(state.bootstrap?.app.language);
+  const configured = state.bootstrap?.app.language;
+  const tauriLocal = typeof window !== "undefined" && Boolean((window as Window & { __TAURI__?: unknown }).__TAURI__);
+  const language = tauriLocal && (!configured || configured === "system")
+    ? "th-TH"
+    : resolveDesktopDisplayLanguage(configured);
   const theme = state.bootstrap?.app.theme ?? "system";
   useWindowFullScreenSync();
 

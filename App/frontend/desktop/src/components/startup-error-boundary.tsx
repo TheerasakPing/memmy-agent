@@ -1,11 +1,13 @@
 import { Component, type ReactNode } from "react";
-import { messageCatalogs } from "../i18n/messages.js";
+import { messageCatalogs, type ResolvedLanguage } from "../i18n/messages.js";
 
-type StartupErrorLanguage = "zh-CN" | "en-US";
+type StartupErrorLanguage = ResolvedLanguage;
 type ErrorReporter = (error: unknown, source: string, componentStack?: string | null) => void;
 
 export function resolveStartupErrorLanguage(language: string | undefined): StartupErrorLanguage {
-  return language?.toLowerCase().startsWith("en") ? "en-US" : "zh-CN";
+  const normalized = language?.toLowerCase() ?? "";
+  if (normalized.startsWith("th")) return "th-TH";
+  return normalized.startsWith("en") ? "en-US" : "zh-CN";
 }
 
 /** Keep the recovery page independent of the providers that may have failed. */

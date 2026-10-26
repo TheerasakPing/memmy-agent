@@ -6,6 +6,11 @@ import { PAGE_CORNER_ACTION_CONTAINER_STYLE } from "../theme/window-controls-ove
 
 export { PAGE_CORNER_ACTION_CONTAINER_STYLE } from "../theme/window-controls-overlay.js";
 
+/** The compact language button cycles through every supported UI locale. */
+export function nextDisplayLanguage(language: ResolvedLanguage): ResolvedLanguage {
+  return language === "zh-CN" ? "en-US" : language === "en-US" ? "th-TH" : "zh-CN";
+}
+
 const PAGE_CORNER_ACTION_CLASS =
   "flex items-center justify-center gap-1.5 px-2 py-1 text-sm font-normal text-text-ink/55 hover:text-text-ink/75 transition-colors cursor-pointer";
 
@@ -48,7 +53,9 @@ export interface LanguageToggleButtonProps {
 }
 
 export function LanguageToggleButton(props: LanguageToggleButtonProps) {
-  const label = props.language === "en-US" ? "ZH" : "EN";
+  const nextLanguage = nextDisplayLanguage(props.language);
+  const label = nextLanguage === "zh-CN" ? "中文" : nextLanguage === "th-TH" ? "ไทย" : "EN";
+  const ariaLabel = nextLanguage === "zh-CN" ? "Switch to Chinese" : nextLanguage === "th-TH" ? "เปลี่ยนเป็นภาษาไทย" : "Switch to English";
   const embeddedStyle = { minWidth: "4.5rem", minHeight: "2.75rem", WebkitAppRegion: "no-drag" } as CSSProperties;
   const cornerStyle = {
     ...PAGE_CORNER_ACTION_CONTAINER_STYLE,
@@ -59,7 +66,7 @@ export function LanguageToggleButton(props: LanguageToggleButtonProps) {
     return (
       <PageCornerActionButton
         label={label}
-        ariaLabel={props.language === "en-US" ? "Switch to Chinese" : "Switch to English"}
+        ariaLabel={ariaLabel}
         onClick={props.onClick}
         minWidth="4.5rem"
         icon={<Globe2 aria-hidden="true" size={16} className="shrink-0" />}
@@ -70,7 +77,7 @@ export function LanguageToggleButton(props: LanguageToggleButtonProps) {
   return (
     <button
       type="button"
-      aria-label={props.language === "en-US" ? "Switch to Chinese" : "Switch to English"}
+      aria-label={ariaLabel}
       onClick={props.onClick}
       className={PAGE_CORNER_ACTION_CLASS}
       style={cornerStyle}

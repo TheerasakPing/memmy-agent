@@ -108,6 +108,11 @@ export interface MemoryHttpServerOptions {
   auth?: MemoryHttpAuthOptions;
   workerStartupFallbackMs?: number;
   workerPostHealthDelayMs?: number;
+  /** Safe-mode for imported very large profiles: leave HTTP responsive while
+   * expensive automatic replay awaits a future isolated-worker implementation.
+   * Explicit /worker/run requests remain available.
+   */
+  pauseBackgroundWorkers?: boolean;
   onShutdownRequested?: () => void;
   pluginRuntimeAnalytics?: PluginRuntimeAnalytics;
   memoryAddAnalytics?: Pick<
@@ -155,7 +160,8 @@ const serverCleanup = new WeakMap<Server, () => Promise<void>>();
 export function createMemoryHttpServer(options: MemoryHttpServerOptions): Server {
   const autoWorker = createAutoWorkerDrain(options.service, {
     startupFallbackMs: options.workerStartupFallbackMs ?? DEFAULT_WORKER_STARTUP_FALLBACK_MS,
-    postHealthDelayMs: options.workerPostHealthDelayMs ?? DEFAULT_WORKER_POST_HEALTH_DELAY_MS
+    postHealthDelayMs: options.workerPostHealthDelayMs ?? DEFAULT_WORKER_POST_HEALTH_DELAY_MS,
+    paused: options.pauseBackgroundWorkers === true
   });
   const desktopIdentity = () => readDesktopAnalyticsIdentity(options.configPath);
   const pluginRuntimeAnalytics = options.pluginRuntimeAnalytics ?? createPluginRuntimeAnalytics({
@@ -285,7 +291,7 @@ export function createMemoryHttpServer(options: MemoryHttpServerOptions): Server
     }
   }
   server.once("listening", () => {
-    autoWorker.start();
+    if (!options.pauseBackgroundWorkers) autoWorker.start();
     if (options.startAgentSourceAutomation) agentSources.startAutomation();
   });
   let cleanup: Promise<void> | undefined;
@@ -343,6 +349,7 @@ function createAutoWorkerDrain(
   options: {
     startupFallbackMs: number;
     postHealthDelayMs: number;
+    paused: boolean;
   }
 ): AutoWorkerDrain {
   let running = false;
@@ -435,7 +442,7 @@ function createAutoWorkerDrain(
   }
 
   function schedule(): void {
-    if (disposed) {
+    if (disposed || options.paused) {
       return;
     }
     startupReleased = true;
@@ -479,7 +486,7 @@ function createAutoWorkerDrain(
 
   return {
     start(): void {
-      if (disposed || startupReleased || startupTimer) {
+      if (disposed || options.paused || startupReleased || startupTimer) {
         return;
       }
       startupTimer = setTimeout(() => {
@@ -488,7 +495,7 @@ function createAutoWorkerDrain(
       }, Math.max(0, options.startupFallbackMs));
     },
     afterHealthCheck(): void {
-      if (disposed || startupReleased) {
+      if (disposed || options.paused || startupReleased) {
         return;
       }
       startupReleased = true;
