@@ -1,6 +1,6 @@
 # Memmy Turbo R8 — Production Acceptance Gates (2026-10-26)
 
-**Status: OPEN. No production certification.** These gates are newly authored on a separate QA branch. macOS desktop tunnel was offline when authored, so **no live provider/model, full native GUI or 24-hour run has been completed** by this work.
+**Status: OPEN. No production certification.** The R8 acceptance harness was merged into `main` via PR #73 without recorded R8 Actions test runs. Hardening changes are tracked in draft PR #74. The macOS desktop tunnel remains disconnected; **no live provider/model, full native GUI or 24-hour run has been completed** by this work. No green CI outcome may be inferred from the merged PR.
 
 ## Task assignment / checklists
 
@@ -18,7 +18,7 @@
 
 The new workflow `.github/workflows/r8-acceptance.yml` runs focused session, MCP and Skills regression tests on Ubuntu; on macOS it executes a **short, simulated** contract test of the soak reporter using a harmless fake executable. Neither test proves real provider replies, the user's desktop GUI, or a 24-hour run.
 
-Run workflow by opening the QA PR. Require all its checks green before requesting full platform acceptance.
+The workflow is configured for PRs, manual dispatch and scoped branch pushes. At the last check, GitHub Actions exposed **zero** runs for the R8 branches even after pushing changes; investigate workflow enablement/CI availability. Require all actual checks green before requesting full platform acceptance.
 
 ## Live model-matrix E2E (may incur provider charges)
 
@@ -32,7 +32,7 @@ export MEMMY_R8_PRESETS='exact preset A,exact preset B'  # EVERY available confi
 node App/shell/tauri/packaging/r8-live-model-matrix.mjs
 ```
 
-The script explicitly fails when configured available presets are omitted, when the Gateway rejects the model, if no assistant reply is observed, or if a resulting chat is not persisted. **This does not by itself verify MCP/Skills.** Do not use service boot smoke as a model response PASS.
+The script explicitly fails when configured available presets are omitted or duplicated, when the Gateway rejects the model, if only progress/tool hints are observed rather than a substantive assistant reply, or if a resulting chat cannot be found in persisted sessions after a bounded retry. **This does not by itself verify MCP/Skills.** Do not use service boot smoke as a model response PASS.
 
 ## Native GUI 14-route validation
 

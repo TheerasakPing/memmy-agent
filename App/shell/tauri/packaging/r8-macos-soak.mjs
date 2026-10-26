@@ -42,10 +42,14 @@ const baselineDirs = await tempNames();
 let cycles = 0;
 let failures = 0;
 let interrupted = false;
+let activeChild = null;
 const durations = [];
 let lastFailure = null;
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.once(signal, () => { interrupted = true; });
+  process.once(signal, () => {
+    interrupted = true;
+    activeChild?.kill("SIGTERM");
+  });
 }
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
 const save = async (completed) => {
@@ -70,21 +74,24 @@ while (!interrupted && Date.now() < endAt) {
     const child = spawn(executable, ["--smoke-native-runtime"], {
       stdio: ["ignore", "ignore", "pipe"],
       env: {
+        // Allowlist environment; no model keys or active user profile.
         PATH: "/usr/bin:/bin", LANG: "en_US.UTF-8",
-        HOME: tmpdir(), TMPDIR: tmpdir(),
-        MEMMY_CLOUD_SERVICE: "https://api.memmy.cn"
+        HOME: tmpdir(), TMPDIR: tmpdir()
       }
     });
+    activeChild = child;
     let output = "";
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; child.kill("SIGKILL"); }, 90_000);
     child.stderr.on("data", chunk => { output = (output + String(chunk)).slice(-4000); });
     child.once("error", error => {
       clearTimeout(timer);
+      activeChild = null;
       resolveOutcome({ ok: false, reason: error.code ?? "spawn-error" });
     });
     child.once("close", code => {
       clearTimeout(timer);
+      activeChild = null;
       resolveOutcome({
         ok: !timedOut && code === 0 && output.includes("PASS: packaged Memory + Local API + Agent Gateway start/stop"),
         reason: timedOut ? "timeout" : code === 0 ? "readiness-marker-missing" : "nonzero-exit"
@@ -93,8 +100,16 @@ while (!interrupted && Date.now() < endAt) {
   });
   cycles += 1;
   durations.push(Date.now() - began);
-  const freshPids = [...ownPids()].filter(pid => !baselinePids.has(pid));
-  const freshDirs = [...await tempNames()].filter(name => !baselineDirs.has(name));
+  let freshPids = [];
+  let freshDirs = [];
+  // Children and directories can be reaped shortly *after* the parent closes.
+  // Settle for up to two seconds before calling it a leak.
+  for (let retry = 0; retry < 9; retry++) {
+    freshPids = [...ownPids()].filter(pid => !baselinePids.has(pid));
+    freshDirs = [...await tempNames()].filter(name => !baselineDirs.has(name));
+    if (!freshPids.length && !freshDirs.length) break;
+    await sleep(250);
+  }
   if (!outcome.ok || freshPids.length || freshDirs.length) {
     failures += 1;
     lastFailure = {

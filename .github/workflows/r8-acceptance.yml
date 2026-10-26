@@ -1,6 +1,15 @@
 name: R8 acceptance gates (Agent, sessions, MCP, skills, macOS soak)
 
 on:
+  push:
+    branches:
+      - main
+      - 'qa/r8-*'
+      - 'fix/r8-*'
+    paths:
+      - 'App/shell/tauri/packaging/r8-*.mjs'
+      - '.github/workflows/r8-acceptance.yml'
+      - 'docs/qa/MEMMY_R8_ACCEPTANCE.md'
   pull_request:
     paths:
       - 'App/shell/tauri/packaging/r8-*.mjs'

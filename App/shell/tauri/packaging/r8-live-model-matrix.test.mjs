@@ -12,8 +12,9 @@ const requireAgent = createRequire(fileURLToPath(new URL("../../../memmy-agent/p
 const { WebSocketServer } = requireAgent("ws");
 const script = fileURLToPath(new URL("./r8-live-model-matrix.mjs", import.meta.url));
 
-async function withMockGateway(fn) {
+async function withMockGateway(fn, options = {}) {
   const sessions = [];
+  let sessionReads = 0;
   const secret = "fixture-only-secret";
   const server = createServer((req, res) => {
     const send = (status, value) => {
@@ -32,7 +33,11 @@ async function withMockGateway(fn) {
         name, provider: "fixture", model: name, is_default: name === "alpha", available: true
       }))
     });
-    if (req.url === "/api/sessions") return send(200, { sessions: sessions.map(key => ({ key })) });
+    if (req.url === "/api/sessions") {
+      sessionReads += 1;
+      const current = sessionReads <= (options.hideSessionForReads ?? 0) ? [] : sessions;
+      return send(200, { sessions: current.map(key => ({ key })) });
+    }
     return send(404, {});
   });
   const wss = new WebSocketServer({ server, path: "/ws" });
@@ -51,8 +56,12 @@ async function withMockGateway(fn) {
           }
         }));
       } else if (frame.type === "message") {
-        socket.send(JSON.stringify({ event: "message", chat_id: frame.chat_id,
-          kind: "assistant", content: "Fixture response" }));
+        socket.send(JSON.stringify({
+          event: "message", chat_id: frame.chat_id,
+          kind: options.progressOnly ? "progress" : undefined,
+          content: options.progressOnly ? "Loading model..." : "Fixture response",
+          ...(options.progressOnly ? { metadata: { agentProgress: true } } : {})
+        }));
         socket.send(JSON.stringify({ event: "turn_end", chat_id: frame.chat_id }));
       }
     });
@@ -102,5 +111,29 @@ test("R8 model-matrix refuses to certify a skipped available model", { timeout: 
     const result = await runMatrix({ port, secret, presets: "alpha" });
     assert.notEqual(result.code, 0);
     assert.match(result.output, /model-matrix-incomplete/);
+  });
+});
+
+test("R8 model-matrix rejects progress-only turns without an assistant answer", { timeout: 25000 }, async () => {
+  await withMockGateway(async ({ port, secret }) => {
+    const result = await runMatrix({ port, secret, presets: "alpha,beta" });
+    assert.notEqual(result.code, 0);
+    assert.match(result.output, /model-no-valid-reply:alpha/);
+  }, { progressOnly: true });
+});
+
+test("R8 model-matrix retries eventually persisted sessions", { timeout: 25000 }, async () => {
+  await withMockGateway(async ({ port, secret }) => {
+    const result = await runMatrix({ port, secret, presets: "alpha,beta" });
+    assert.equal(result.code, 0, result.output.slice(-1000));
+    assert.match(result.output, /"completed":2/);
+  }, { hideSessionForReads: 2 });
+});
+
+test("R8 model-matrix rejects duplicate preset entries", { timeout: 25000 }, async () => {
+  await withMockGateway(async ({ port, secret }) => {
+    const result = await runMatrix({ port, secret, presets: "alpha,alpha" });
+    assert.notEqual(result.code, 0);
+    assert.match(result.output, /model-matrix-has-duplicate-preset/);
   });
 });
