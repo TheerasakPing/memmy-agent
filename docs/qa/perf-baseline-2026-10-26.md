@@ -37,3 +37,12 @@ Status: R1 PARTIAL. QA benchmark executed; Rust instrumentation built/tested but
 - SQLite preview read-only schema inspection: 51 application/FTS-related tables and 108 indices. Two schema-metadata queries had <0.01ms maximum of 12 measured runs; **does not measure user memory search latency**.
 - Source scripts: `App/shell/tauri/packaging/perf/benchmark-startup.mjs` and `capture-idle.mjs`; machine-readable evidence in `docs/qa/perf-r1-startup-10runs-2026-10-26.json` and `docs/qa/perf-r1-idle-2026-10-26.json`.
 - R1-03 and R1-07 still incomplete: controlled cold starts on cloned production-sized DB, Original comparison, OS-unique memory, independent verification pending.
+
+## Frontend instrumentation (source only, not yet installed)
+
+- Added startup mark `memmy:renderer-module-loaded` after renderer import initialization.
+- Added `memmy:renderer-first-dom-frame` after the first root DOM mutation plus two animation frames (approximate frame, **not WebKit FCP**).
+- Added `memmy:route-ready-first-frame` after startup route transitions to ready plus two animation frames (**not an actual input-response TTI**).
+- Marks exist in `performance.getEntriesByType('mark')`; no user text, tokens, storage paths or network requests are emitted.
+- Frontend TypeScript passes, Vite build passes, 15 selected existing tests pass and 2 new performance helper tests pass.
+- R1-02 remains open until calibrated against the installed macOS Preview and tied to real WebKit paint/navigation observations.

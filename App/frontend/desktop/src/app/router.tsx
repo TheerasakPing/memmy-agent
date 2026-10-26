@@ -36,6 +36,7 @@ import {
   type DeferredGuidanceStep
 } from "./routes.js";
 import { persistNickname } from "./nickname.js";
+import { markFirstReadyRoute } from "./startup-performance.js";
 import { isCampaignPromptSessionReady, isCampaignPromptSurfaceReady } from "./campaign-prompt-state.js";
 import { useGuidanceProgress } from "./use-guidance-progress.js";
 import { useOptionalApiClients } from "./providers.js";
@@ -168,6 +169,9 @@ export function AppRouter(props: { onRetry: () => void }) {
     writeCurrentRoute(typeof window === "undefined" ? undefined : window.sessionStorage, state.navigation.currentPath);
   }, [state.navigation.currentPath, state.startup.status]);
 
+  useEffect(() => {
+    if (state.startup.status === "ready") markFirstReadyRoute();
+  }, [state.startup.status]);
   const currentPath = state.navigation.currentPath;
   useEffect(() => {
     const preserve = () => setPreserveHomeBrowser(true);
