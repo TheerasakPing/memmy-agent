@@ -46,3 +46,11 @@ Status: R1 PARTIAL. QA benchmark executed; Rust instrumentation built/tested but
 - Marks exist in `performance.getEntriesByType('mark')`; no user text, tokens, storage paths or network requests are emitted.
 - Frontend TypeScript passes, Vite build passes, 15 selected existing tests pass and 2 new performance helper tests pass.
 - R1-02 remains open until calibrated against the installed macOS Preview and tied to real WebKit paint/navigation observations.
+
+## Installed R1 instrumentation validation
+
+- Rebuilt Tauri v2 debug .app with the existing React/Rust profiler changes, cloned current Preview bundle with copy-on-write, replaced only its executable, and passed relocated-bundle audit, real native-supervisor smoke and isolated full Memory/Backend/Gateway service E2E.
+- Strict ad-hoc codesign verification succeeded. Installed at `~/Applications/Memmy Turbo Preview.app`; rollback kept at `~/Applications/.memmy-preview-rollback-before-r1-profiler-20261026.app`.
+- Finder-launched Preview remained running and returned successful Memory Health (`storage.ready=true`), `/api/app/bootstrap` (`userMode=byok`), and `/api/agent-sources` responses.
+- Original SQLite database sizes/mtime unchanged: memory SQLite 1778192384 bytes, mtime 1792810805; app.sqlite 8007680 bytes, mtime 1792806288.
+- **Limitation:** instrumentation is now installed, but WebKit marks have not yet been exported as a durable real-GUI time-to-interactive report; R1-02 and R1-03 remain open. Neither a faster production startup nor a performance regression is claimed from this instrumentation-only change.
