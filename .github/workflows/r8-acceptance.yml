@@ -56,13 +56,13 @@ jobs:
             tests/core/agent-runtime/skills-loader.test.ts \
             tests/entrypoints/frontend-bridge/mcp-presets-runtime.test.ts \
             tests/skills/office-skills.test.ts
+      - name: Verify Agent WebUI live-matrix harness protocol with isolated fixtures
+        run: node --test App/shell/tauri/packaging/r8-live-model-matrix.test.mjs
       - name: Validate R8 scripts syntax
         run: |
           node --check App/shell/tauri/packaging/r8-macos-soak.mjs
           node --check App/shell/tauri/packaging/r8-live-model-matrix.mjs
-      - name: Validate soak failure/pass contract against disposable fake executable on macOS
-        if: runner.os == 'macOS'
-        run: echo 'macOS contract tested by separate job'
+          node --check App/shell/tauri/packaging/r8-macos-gui-acceptance.mjs
 
   macos-soak-harness-contract:
     runs-on: macos-15
