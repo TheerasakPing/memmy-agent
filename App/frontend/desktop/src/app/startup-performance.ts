@@ -5,9 +5,21 @@ export const STARTUP_PERF_MARKS = Object.freeze({
   routeReady: 'memmy:route-ready-first-frame'
 });
 
+function reportStartupMark(name: string): void {
+  if (typeof window === 'undefined' || typeof performance === 'undefined') return;
+  const host = window as Window & { __TAURI__?: { core?: { invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown> } } };
+  const invoke = host.__TAURI__?.core?.invoke;
+  if (!invoke) return;
+  const mark = performance.getEntriesByName?.(`memmy:${name}`, 'mark').at(-1);
+  if (!mark) return;
+  // Rust rejects non-allowlisted labels and invalid durations. Never send paths or secrets.
+  void invoke('desktop_record_startup_mark', { phase: name, elapsedMs: mark.startTime }).catch(() => undefined);
+}
+
 export function markRendererModuleLoaded() {
   if (typeof performance !== 'undefined' && typeof performance.mark === 'function') {
     performance.mark(STARTUP_PERF_MARKS.entry);
+    reportStartupMark('renderer-module-loaded');
   }
 }
 
@@ -22,6 +34,7 @@ export function observeFirstDomFrame(root: Element): () => void {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       if (!closed && typeof performance !== 'undefined' && typeof performance.mark === 'function') {
         performance.mark(STARTUP_PERF_MARKS.firstFrame);
+        reportStartupMark('renderer-first-dom-frame');
       }
     }));
   };
@@ -39,6 +52,7 @@ export function markFirstReadyRoute(): void {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (typeof performance !== 'undefined' && typeof performance.mark === 'function') {
       performance.mark(STARTUP_PERF_MARKS.routeReady);
+      reportStartupMark('route-ready-first-frame');
     }
   }));
 }

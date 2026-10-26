@@ -92,6 +92,24 @@ fn app_native_runtime_root(app: &AppHandle) -> Result<Option<PathBuf>, String> {
     select_native_runtime_root(&resources, cfg!(debug_assertions))
 }
 
+/// Opt-in and allowlisted renderer startup telemetry. No renderer-controlled paths or payloads.
+#[tauri::command]
+fn desktop_record_startup_mark(app: AppHandle, window: WebviewWindow, phase: String, elapsed_ms: f64) -> Result<(), String> {
+    if std::env::var("MEMMY_TAURI_PROFILE_STARTUP").as_deref() != Ok("1") { return Ok(()); }
+    if window.label() != "main" { return Err("main window only".into()); }
+    if !matches!(phase.as_str(), "renderer-module-loaded" | "renderer-first-dom-frame" | "route-ready-first-frame")
+        || !elapsed_ms.is_finite() || !(0.0..=300_000.0).contains(&elapsed_ms) {
+        return Err("invalid startup metric".into());
+    }
+    let directory = app.path().app_local_data_dir().map_err(|_| "app data unavailable")?;
+    std::fs::create_dir_all(&directory).map_err(|_| "cannot create profile directory")?;
+    use std::io::Write as _;
+    let mut file = std::fs::OpenOptions::new().create(true).append(true)
+        .open(directory.join("startup-performance.log"))
+        .map_err(|_| "cannot write performance log")?;
+    writeln!(file, "phase={phase} elapsed_ms={elapsed_ms:.1}").map_err(|_| "cannot record performance metric".into())
+}
+
 #[tauri::command]
 async fn desktop_runtime_config(
     app: AppHandle,
@@ -375,6 +393,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             desktop_runtime_config,
+            desktop_record_startup_mark,
             desktop_app_info,
             native_signed_updater::desktop_signed_check_for_updates,
             native_signed_updater::desktop_signed_download_update,
