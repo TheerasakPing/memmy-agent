@@ -14,6 +14,9 @@ import { randomUUID } from "node:crypto";
 const base = process.env.MEMMY_R8_GATEWAY_URL;
 const secret = process.env.MEMMY_R8_GATEWAY_SECRET;
 const expected = (process.env.MEMMY_R8_PRESETS ?? "").split(",").map(x => x.trim()).filter(Boolean);
+if (new Set(expected).size !== expected.length) {
+  throw Error("model-matrix-has-duplicate-preset");
+}
 if (process.env.MEMMY_R8_REAL_MODELS !== "YES" || !base || !secret || !expected.length) {
   console.error("NOT_RUN: explicit live-model opt-in, local gateway, secret and preset matrix required");
   process.exit(2);
@@ -86,20 +89,32 @@ try {
     const cursor = events.length;
     ws.send(JSON.stringify({ type: "message", chat_id: chatId, content: prompt, webui: true, client_request_id: requestId }));
     await waitFor(e => e.event === "turn_end" && e.chat_id === chatId, cursor, 180_000, "model-turn-" + preset);
-    const answerEvents = events.slice(cursor).filter(e => e.chat_id === chatId && e.event === "message" &&
-      e.kind !== "user" && (typeof e.content === "string" || typeof e.text === "string"));
-    const replyReceived = answerEvents.some(e => String(e.content ?? e.text).trim().length > 0 &&
-      String(e.content ?? e.text) !== prompt);
-    const errors = events.slice(cursor).filter(e => e.chat_id === chatId &&
-      (e.event === "error" || (e.event === "model_error")));
-    if (errors.length || !replyReceived) throw Error("model-no-valid-reply:" + preset);
-    const sessionsResponse = await fetch(new URL("/api/sessions", origin), {
-      headers: { Authorization: "Bearer " + boot.token }, signal: timeout(15_000)
+    const turnEvents = events.slice(cursor).filter(e => e.chat_id === chatId);
+    const answerEvents = turnEvents.filter(e => e.event === "message" &&
+      !["user", "tool_hint", "progress", "reasoning"].includes(e.kind) &&
+      !e.metadata?.toolHint && !e.metadata?.agentProgress &&
+      (typeof e.content === "string" || typeof e.text === "string"));
+    const replyReceived = answerEvents.some(e => {
+      const text = String(e.content ?? e.text).trim();
+      return text.length > 0 && text !== prompt && !e.model_error;
     });
-    if (!sessionsResponse.ok) throw Error("sessions-" + sessionsResponse.status);
-    const snapshot = await sessionsResponse.json();
-    const persisted = Array.isArray(snapshot.sessions) && snapshot.sessions.some(s =>
-      s.key === chatId || s.key === "websocket:" + chatId);
+    const errors = turnEvents.filter(e => e.event === "error" ||
+      e.event === "model_error" || e.model_error);
+    if (errors.length || !replyReceived) throw Error("model-no-valid-reply:" + preset);
+    // Session persistence may lag behind turn_end. Poll instead of racing
+    // asynchronous disk writes and falsely declaring the model broken.
+    let persisted = false;
+    const persistenceDeadline = Date.now() + 20_000;
+    while (!persisted && Date.now() < persistenceDeadline) {
+      const sessionsResponse = await fetch(new URL("/api/sessions", origin), {
+        headers: { Authorization: "Bearer " + boot.token }, signal: timeout(5_000)
+      });
+      if (!sessionsResponse.ok) throw Error("sessions-" + sessionsResponse.status);
+      const snapshot = await sessionsResponse.json();
+      persisted = Array.isArray(snapshot.sessions) && snapshot.sessions.some(s =>
+        s.key === chatId || s.key === "websocket:" + chatId);
+      if (!persisted) await sleep(250);
+    }
     if (!persisted) throw Error("session-not-persisted:" + preset);
     results.push({ preset, replied: true, sessionPersisted: true, latencyMs: Date.now() - sentAt });
     console.log(JSON.stringify({ preset, modelReply: "PASS", sessionPersistence: "PASS" }));
