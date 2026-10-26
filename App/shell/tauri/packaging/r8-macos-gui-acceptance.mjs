@@ -41,7 +41,7 @@ function windowId() {
     "let owner = w[kCGWindowOwnerName as String] as? String ?? \"\"",
     "if owner.contains(\"Memmy Turbo\") { print(w[kCGWindowNumber as String] ?? \"\") }",
     "}"
-  ].join("; ");
+  ].join("\n");
   const output = execFileSync("swift", ["-e", swift], { encoding: "utf8", timeout: 15_000 });
   const id = output.trim().split("\n")[0];
   if (!/^\d+$/.test(id ?? "")) throw Error("Memmy main window was not found");
