@@ -24,12 +24,42 @@ export function preferredUserTimeZone(): string {
   }
 }
 
-/** Persist a user-selected zone; undefined/system delegates to the OS. */
+/**
+ * Initialize the zone before the first routed frame is painted.
+ *
+ * A Thai-language local macOS installation defaults to Asia/Bangkok only on
+ * first run. Existing explicit user choices, including "system", always win.
+ * This is a display preference, NOT a rewrite of Agent cron configuration.
+ */
+export function initializeUserTimeZone(language: string | undefined, isTauri: boolean): string {
+  if (typeof window === "undefined") return userTimeZone();
+  try {
+    const stored = window.localStorage.getItem(USER_TIME_ZONE_STORAGE_KEY);
+    if (stored) {
+      try {
+        const normalized = stored === SYSTEM_TIME_ZONE ? SYSTEM_TIME_ZONE : normalizeUserTimeZone(stored);
+        if (normalized !== stored) window.localStorage.setItem(USER_TIME_ZONE_STORAGE_KEY, normalized);
+        return normalized === SYSTEM_TIME_ZONE ? detectedUserTimeZone() : normalized;
+      } catch {
+        // A malformed/obsolete setting must not block renderer startup.
+        window.localStorage.removeItem(USER_TIME_ZONE_STORAGE_KEY);
+      }
+    }
+    if (isTauri && language === "th-TH") {
+      window.localStorage.setItem(USER_TIME_ZONE_STORAGE_KEY, "Asia/Bangkok");
+      return "Asia/Bangkok";
+    }
+  } catch {
+    // Storage access may fail in private/embedded WebViews. Use host zone.
+  }
+  return detectedUserTimeZone();
+}
+
+/** Persist an explicit UI choice (including "system") across restarts. */
 export function savePreferredUserTimeZone(value: string): void {
   const normalized = value === SYSTEM_TIME_ZONE ? SYSTEM_TIME_ZONE : normalizeUserTimeZone(value);
   if (typeof window === "undefined") throw new Error("Time-zone settings require a renderer");
-  if (normalized === SYSTEM_TIME_ZONE) window.localStorage.removeItem(USER_TIME_ZONE_STORAGE_KEY);
-  else window.localStorage.setItem(USER_TIME_ZONE_STORAGE_KEY, normalized);
+  window.localStorage.setItem(USER_TIME_ZONE_STORAGE_KEY, normalized);
   configuredTimeZone = undefined;
 }
 
