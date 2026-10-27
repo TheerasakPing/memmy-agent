@@ -15,7 +15,9 @@
 - Preserve named IANA identifiers through front-end, Backend config and Agent schedule parsing. Keep fixed UTC offsets valid for existing profiles.
 - Centralize display formatting in `formatUserMinute` and reuse it for BYOK usage timestamps; use the same zone for quota and memory recall display.
 - Add `Settings → Preferences → Time zone` with `System (automatic)`, `Asia/Bangkok (UTC+07:00)`, `Asia/Shanghai`, `UTC`, `Europe/London`, and `America/New_York`.
-- Persist the explicit renderer display preference in Tauri's localStorage, reloading renderer labels on preference change. The preference is **display-only** and intentionally does not silently modify Agent scheduling config.
+- During App Startup, auto-initialize `Asia/Bangkok` for a Thai-language local Tauri installation **only if no display preference has been saved**; if the user explicitly chose another zone or `system`, that choice is preserved. The initializer runs after Bootstrap but before the routed content is rendered.
+- Persist the renderer display preference (including explicit `system`) in Tauri's localStorage; the timezone clock in Settings automatically refreshes every 30 seconds and on window focus. Changing the setting reloads only the renderer to recalculate timestamp labels.
+- The preference is **display-only** and intentionally does not silently modify Agent scheduling config.
 - Add system zone, selected display zone, effective zone and local-time preview to the renderer diagnostics report. No tokens/user messages are included.
 - Extend targeted tests for Bangkok conversion, midnight rollover, New York winter/summer DST, fixed offsets and invalid zones; test Agent/Backend config contract retention.
 
@@ -23,7 +25,7 @@
 
 - [x] Source audit and root-cause identification: UTC-offset snapshots; inconsistent rendering paths; missing UI override.
 - [x] Patch isolated on a timezone-specific Git branch.
-- [x] New targeted regression test cases authored.
+- [x] New targeted regression test cases authored, including automatic Thai/Tauri bootstrap, explicit zone preservation, and invalid preference recovery.
 - [ ] Run Frontend Vitest / TypeScript, Agent TypeScript+Vitest, Backend TypeScript+Vitest on connected Mac.
 - [ ] Independent code review (cross-platform Intl behavior and localStorage persistence).
 - [ ] Verify macOS host timezone with `date`, `systemsetup -gettimezone` (if permitted), `Intl.DateTimeFormat().resolvedOptions().timeZone`, and SQLite UTC persisted instants.
