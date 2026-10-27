@@ -226,7 +226,10 @@ function RuntimeApp() {
           : reconcileInitialOnboarding({ bootstrap, accountSession });
         // Always initialize the selected display zone on launch *before*
         // rendering the first chat/history timestamp. Existing choices win.
-        initializeUserTimeZone(effectiveBootstrap.app.language, localOnly);
+        const effectiveLanguage = localOnly && (
+          !effectiveBootstrap.app.language || effectiveBootstrap.app.language === "system"
+        ) ? "th-TH" : effectiveBootstrap.app.language;
+        initializeUserTimeZone(effectiveLanguage, localOnly);
         const persistedPreferredMode = resolvePreferredLaunchMode({
           defaultLaunchMode: effectiveBootstrap.app.defaultLaunchMode,
           lastLaunchMode: effectiveBootstrap.app.lastLaunchMode
