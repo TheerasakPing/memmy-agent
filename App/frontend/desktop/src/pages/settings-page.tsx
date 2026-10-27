@@ -1819,24 +1819,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
             ]}
           />
           <Divider />
-          <SelectRow
-            label={language === "th-TH" ? "เขตเวลา (Timezone)" : language === "zh-CN" ? "时区" : "Time zone"}
-            description={language === "th-TH"
-              ? `เวลาแชต ประวัติ และรายงาน · ขณะนี้ ${formatUserMinute(new Date())} (${userTimeZone()})`
-              : language === "zh-CN"
-                ? `聊天、历史与报告时区 · 当前 ${formatUserMinute(new Date())} (${userTimeZone()})`
-                : `Chats, history, and reports · Now ${formatUserMinute(new Date())} (${userTimeZone()})`}
-            value={displayTimeZone}
-            onChange={handleTimeZoneChange}
-            options={[
-              { value: "system", label: language === "th-TH" ? "ตามเวลาเครื่อง (อัตโนมัติ)" : language === "zh-CN" ? "跟随系统（自动）" : "System (automatic)" },
-              { value: "Asia/Bangkok", label: "Asia/Bangkok (UTC+07:00)" },
-              { value: "Asia/Shanghai", label: "Asia/Shanghai (UTC+08:00)" },
-              { value: "+00:00", label: "UTC (+00:00)" },
-              { value: "Europe/London", label: "Europe/London" },
-              { value: "America/New_York", label: "America/New_York" }
-            ]}
-          />
+          <TimeZoneSettingRow language={language} value={displayTimeZone} onChange={handleTimeZoneChange} />
         </Section>
 
         <Section icon={<Rocket size={16} className="text-text-ink/60" />} title={t("settings.window")} sectionId="pet-avatar">
@@ -3312,6 +3295,46 @@ function SelectRow(props: SelectRowProps) {
         className="select-control--compact select-control--subtle"
       />
     </div>
+  );
+}
+
+/** Live timezone clock: scoped update, no whole-app polling or native reload. */
+function TimeZoneSettingRow(props: {
+  language: "zh-CN" | "en-US" | "th-TH";
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const refresh = () => setNow(Date.now());
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  const { language } = props;
+  const currentTime = `${formatUserMinute(now)} (${userTimeZone()})`;
+  return (
+    <SelectRow
+      label={language === "th-TH" ? "เขตเวลา (Timezone)" : language === "zh-CN" ? "时区" : "Time zone"}
+      description={language === "th-TH"
+        ? `เวลาแชต ประวัติ และรายงาน · ขณะนี้ ${currentTime}`
+        : language === "zh-CN"
+          ? `聊天、历史与报告时区 · 当前 ${currentTime}`
+          : `Chats, history, and reports · Now ${currentTime}`}
+      value={props.value}
+      onChange={props.onChange}
+      options={[
+        { value: "system", label: language === "th-TH" ? "ตามเวลาเครื่อง (อัตโนมัติ)" : language === "zh-CN" ? "跟随系统（自动）" : "System (automatic)" },
+        { value: "Asia/Bangkok", label: "Asia/Bangkok (UTC+07:00)" },
+        { value: "Asia/Shanghai", label: "Asia/Shanghai (UTC+08:00)" },
+        { value: "+00:00", label: "UTC (+00:00)" },
+        { value: "Europe/London", label: "Europe/London" },
+        { value: "America/New_York", label: "America/New_York" }
+      ]}
+    />
   );
 }
 
