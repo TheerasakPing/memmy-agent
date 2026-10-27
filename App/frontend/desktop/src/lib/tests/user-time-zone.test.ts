@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   configureUserTimeZone,
   detectedUserTimeZone,
@@ -6,16 +6,40 @@ import {
   formatUserMinute,
   formatUserTime,
   normalizeUserTimeZone,
+  preferredUserTimeZone,
+  savePreferredUserTimeZone,
   userTimeZone
 } from "../user-time-zone.js";
 
-afterEach(() => configureUserTimeZone());
+afterEach(() => {
+  configureUserTimeZone();
+  vi.unstubAllGlobals();
+});
 
 describe("userTimeZone", () => {
   it("prefers config and detects the system timezone only when config is absent", () => {
     configureUserTimeZone("UTC");
     expect(userTimeZone()).toBe("+00:00");
     configureUserTimeZone();
+    expect(userTimeZone()).toBe(detectedUserTimeZone());
+  });
+
+  it("persists a user-selected zone and restores system mode", () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); }
+      }
+    });
+    savePreferredUserTimeZone("Asia/Bangkok");
+    expect(preferredUserTimeZone()).toBe("Asia/Bangkok");
+    expect(userTimeZone()).toBe("Asia/Bangkok");
+    savePreferredUserTimeZone("+00:00");
+    expect(preferredUserTimeZone()).toBe("+00:00");
+    savePreferredUserTimeZone("system");
+    expect(preferredUserTimeZone()).toBe("system");
     expect(userTimeZone()).toBe(detectedUserTimeZone());
   });
 
