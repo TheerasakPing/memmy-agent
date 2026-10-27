@@ -42,6 +42,10 @@ describe("memmy runtime config current contract", () => {
     });
     await expect(readConfiguredAgentTimeZone(target)).resolves.toBe("+08:00");
     await expect(readAgentGatewayBootstrapSecret(target)).resolves.toBe("gateway-secret");
+    const namedZone = file({ agents: { defaults: { timezone: "Asia/Bangkok" } } });
+    await expect(readConfiguredAgentTimeZone(namedZone)).resolves.toBe("Asia/Bangkok");
+    const dstZone = file({ agents: { defaults: { timezone: "America/New_York" } } });
+    await expect(readConfiguredAgentTimeZone(dstZone)).resolves.toBe("America/New_York");
   });
 
   it("falls back to websocket token and returns null for absent config", async () => {

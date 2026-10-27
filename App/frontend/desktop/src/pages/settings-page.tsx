@@ -24,6 +24,7 @@ import { maskAccountIdentifier } from "../utils/mask-account-identifier.js";
 import { isComposingKeyboardEvent } from "../utils/keyboard.js";
 import { openExternalUrl } from "../utils/open-url.js";
 import { useTranslation } from "../i18n/use-translation.js";
+import { detectedUserTimeZone, formatUserMinute, preferredUserTimeZone, savePreferredUserTimeZone, userTimeZone } from "../lib/user-time-zone.js";
 import { appActions, type AppAction } from "../state/app-actions.js";
 import type { AppState } from "../state/app-reducer.js";
 import { useAppState } from "../state/app-state.js";
@@ -371,6 +372,7 @@ export function SettingsPageView(props: SettingsPageViewProps) {
     return readCloseMainWindowAction(typeof window === "undefined" ? undefined : window.localStorage);
   });
   const [menuBarIcon, setMenuBarIcon] = useState(true);
+  const [displayTimeZone, setDisplayTimeZone] = useState(() => preferredUserTimeZone());
   const [logLevel, setLogLevel] = useState<LogLevel>(() => {
     return readLogLevel(typeof window === "undefined" ? undefined : window.localStorage);
   });
@@ -1044,6 +1046,13 @@ export function SettingsPageView(props: SettingsPageViewProps) {
    *
    * @param nextMode The default startup mode.
    */
+  function handleTimeZoneChange(nextTimeZone: string) {
+    savePreferredUserTimeZone(nextTimeZone);
+    setDisplayTimeZone(nextTimeZone);
+    // Recompute every date label, including memoized chat messages, immediately.
+    window.location.reload();
+  }
+
   function handleStartupModeChange(nextMode: string) {
     const normalizedMode = nextMode as AppSettingsDto["defaultLaunchMode"];
     void (configClient?.updateSettings({ defaultLaunchMode: normalizedMode }) ?? Promise.resolve({ defaultLaunchMode: normalizedMode })).then((savedSettings) => {
@@ -1809,6 +1818,8 @@ export function SettingsPageView(props: SettingsPageViewProps) {
               { value: "th-TH", label: "ไทย" }
             ]}
           />
+          <Divider />
+          <TimeZoneSettingRow language={language} value={displayTimeZone} onChange={handleTimeZoneChange} />
         </Section>
 
         <Section icon={<Rocket size={16} className="text-text-ink/60" />} title={t("settings.window")} sectionId="pet-avatar">
@@ -3287,6 +3298,46 @@ function SelectRow(props: SelectRowProps) {
   );
 }
 
+/** Live timezone clock: scoped update, no whole-app polling or native reload. */
+function TimeZoneSettingRow(props: {
+  language: "zh-CN" | "en-US" | "th-TH";
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const refresh = () => setNow(Date.now());
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
+  const { language } = props;
+  const currentTime = `${formatUserMinute(now)} (${userTimeZone()})`;
+  return (
+    <SelectRow
+      label={language === "th-TH" ? "เขตเวลา (Timezone)" : language === "zh-CN" ? "时区" : "Time zone"}
+      description={language === "th-TH"
+        ? `เวลาแชต ประวัติ และรายงาน · ขณะนี้ ${currentTime}`
+        : language === "zh-CN"
+          ? `聊天、历史与报告时区 · 当前 ${currentTime}`
+          : `Chats, history, and reports · Now ${currentTime}`}
+      value={props.value}
+      onChange={props.onChange}
+      options={[
+        { value: "system", label: language === "th-TH" ? "ตามเวลาเครื่อง (อัตโนมัติ)" : language === "zh-CN" ? "跟随系统（自动）" : "System (automatic)" },
+        { value: "Asia/Bangkok", label: "Asia/Bangkok (UTC+07:00)" },
+        { value: "Asia/Shanghai", label: "Asia/Shanghai (UTC+08:00)" },
+        { value: "+00:00", label: "UTC (+00:00)" },
+        { value: "Europe/London", label: "Europe/London" },
+        { value: "America/New_York", label: "America/New_York" }
+      ]}
+    />
+  );
+}
+
 /**
  * Switch props.
  *
@@ -3451,6 +3502,10 @@ function buildRendererDiagnosticsReport(input: RendererDiagnosticsReportInput): 
     "",
     "Generated At",
     `- ISO Time: ${new Date().toISOString()}`,
+    `- System Time Zone: ${detectedUserTimeZone()}`,
+    `- Display Time Zone Preference: ${preferredUserTimeZone()}`,
+    `- Effective Time Zone: ${userTimeZone()}`,
+    `- Display Local Time: ${formatUserMinute(new Date())}`,
     "",
     "Renderer",
     `- Location: ${locationText}`,
@@ -3717,16 +3772,13 @@ function normalizeQuotaReviewNote(value: string | null): string | null {
 
 function formatQuotaNextAllowedAt(epochMs: number, language: "zh-CN" | "en-US" | "th-TH"): string {
   const date = new Date(epochMs);
-  if (language === "zh-CN") {
-    const pad = (value: number) => String(value).padStart(2, "0");
-    return `${date.getMonth() + 1} \u6708 ${date.getDate()} \u65e5 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(language, {
+    timeZone: userTimeZone(),
     month: "short",
     day: "numeric",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    hourCycle: "h23"
   }).format(date);
 }
 
@@ -3737,13 +3789,7 @@ function formatQuotaNextAllowedAt(epochMs: number, language: "zh-CN" | "en-US" |
  * @returns A local detail-page time trimmed to the minute.
  */
 export function formatUsageUpdatedAt(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  const pad = (n: number) => String(n).padStart(2, "0");
-  // Display in the local time zone (the original implementation just truncated the ISO string, showing UTC directly, off by 8 hours).
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return formatUserMinute(value);
 }
 
 /**

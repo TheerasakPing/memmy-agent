@@ -5,19 +5,19 @@ export function systemUtcOffset(): string {
   return formatOffset(-new Date().getTimezoneOffset());
 }
 
-/** Normalizes fixed offsets and converts legacy IANA zones to their current offset. */
+/** Normalizes fixed offsets and preserves named IANA zones for DST-aware scheduling. */
 export function normalizeTimeZoneOffset(value?: string | null): string {
   const timeZone = value?.trim();
   if (!timeZone) return systemUtcOffset();
   const fixed = parseOffset(timeZone);
   if (fixed !== null) return formatOffset(fixed);
-  const offsetName = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    timeZoneName: "longOffset"
-  }).formatToParts(new Date()).find((part) => part.type === "timeZoneName")?.value ?? "";
-  const offset = parseOffset(offsetName);
-  if (offset === null) throw new Error(`invalid timezone: ${timeZone}`);
-  return formatOffset(offset);
+  // Preserve IANA zone names rather than snapshotting today's UTC offset:
+  // cron schedules must observe daylight-saving transitions correctly.
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone }).resolvedOptions().timeZone;
+  } catch {
+    throw new Error(`invalid timezone: ${timeZone}`);
+  }
 }
 
 function parseOffset(value: string): number | null {

@@ -1,5 +1,6 @@
 /** Settings page tests. */
 import { renderToString } from "react-dom/server";
+import { configureUserTimeZone } from "../../lib/user-time-zone.js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -253,6 +254,18 @@ describe("日志级别本地持久化", () => {
     const storage = createMemoryStorage();
     storage.setItem(LOG_LEVEL_STORAGE_KEY, "verbose");
     expect(readLogLevel(storage)).toBe("info");
+  });
+});
+
+describe("formatUsageUpdatedAt respects the selected timezone", () => {
+  it("formats UTC instants in Asia/Bangkok regardless of the test host timezone", () => {
+    configureUserTimeZone("Asia/Bangkok");
+    try {
+      expect(formatUsageUpdatedAt("2026-10-27T15:30:00.000Z")).toBe("2026-10-27 22:30");
+      expect(formatUsageUpdatedAt("2026-10-27T18:05:00.000Z")).toBe("2026-10-28 01:05");
+    } finally {
+      configureUserTimeZone();
+    }
   });
 });
 

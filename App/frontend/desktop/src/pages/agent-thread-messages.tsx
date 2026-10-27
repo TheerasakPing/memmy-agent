@@ -927,7 +927,7 @@ function recallLayerLabel(layer: RecallHit["memoryLayer"], t: (key: MessageKey) 
 
 function formatRecallMemberTime(value: string, language: ResolvedLanguage): string {
   const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString(language) : value;
+  return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString(language, { timeZone: userTimeZone() }) : value;
 }
 
 function contextCompactionFallbackText(status: AgentCompactionStatus): string {
