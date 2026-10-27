@@ -220,7 +220,9 @@ describe("config schema validation", () => {
     expect(new AgentDefaults().maxTokens).toBe(DEFAULT_MAX_TOKENS);
     expect(new AgentDefaults().temperature).toBe(0.7);
     expect(new AgentDefaults().timezone).toBe(systemUtcOffset());
-    expect(new AgentDefaults({ timezone: "Asia/Shanghai" }).timezone).toBe("+08:00");
+    expect(new AgentDefaults({ timezone: "Asia/Shanghai" }).timezone).toBe("Asia/Shanghai");
+    expect(new AgentDefaults({ timezone: "Asia/Bangkok" }).timezone).toBe("Asia/Bangkok");
+    expect(new AgentDefaults({ timezone: "UTC+7" }).timezone).toBe("+07:00");
     expect(() => new AgentDefaults({ maxConcurrentSubagents: 0 })).toThrow(/maxConcurrentSubagents/);
     expect(() => new AgentDefaults({ providerRetryMode: "forever" })).toThrow(/providerRetryMode/);
     expect(() => new AgentDefaults({ toolHintMaxLength: 19 })).toThrow(/toolHintMaxLength/);
