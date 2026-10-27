@@ -12,7 +12,6 @@ export function normalizeTimeZoneOffset(value?: string | null): string {
   const fixed = parseOffset(timeZone);
   if (fixed !== null) return formatOffset(fixed);
   try {
-    try {
     // Keep the original IANA name for future DST-aware cron calculations.
     return new Intl.DateTimeFormat("en-US", { timeZone }).resolvedOptions().timeZone;
   } catch {
