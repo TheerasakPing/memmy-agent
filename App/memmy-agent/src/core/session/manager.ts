@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -360,6 +361,14 @@ export class SessionManager {
   private readonly legacyWebuiWorkspaceCwd: string | null;
   private readonly webuiBindingReservations = new Map<string, WebuiSessionBindingReservation>();
   private readonly permanentlyDeletedSessionKeys = new Set<string>();
+  // Fence overlapping async saves and synchronous deletes/updates for each chat.
+  private readonly sessionWriteRevisions = new Map<string, number>();
+
+  private nextWriteRevision(key: string): number {
+    const revision = (this.sessionWriteRevisions.get(key) ?? 0) + 1;
+    this.sessionWriteRevisions.set(key, revision);
+    return revision;
+  }
 
   constructor(root: string, options: SessionManagerOptions = {}) {
     this.root = path.resolve(String(root));
@@ -612,6 +621,7 @@ export class SessionManager {
 
   save(session: Session, options: { fsync?: boolean } | boolean = {}): void {
     if (this.permanentlyDeletedSessionKeys.has(session.key)) return;
+    this.nextWriteRevision(session.key);
     const shouldFsync = typeof options === "boolean" ? options : Boolean(options.fsync);
     fs.mkdirSync(this.root, { recursive: true });
     const file = this.pathFor(session.key);
@@ -666,20 +676,29 @@ export class SessionManager {
 
   async saveAsync(session: Session): Promise<void> {
     if (this.permanentlyDeletedSessionKeys.has(session.key)) return;
-    await fsp.mkdir(this.root, { recursive: true });
+    const revision = this.nextWriteRevision(session.key);
+    // Snapshot before yielding: newer messages must never change an in-flight write.
+    const payload = this.encodeJsonl(session);
     const file = this.pathFor(session.key);
-    const tmp = `${file}.tmp`;
+    // Unique per attempt, including across SessionManager instances in this process.
+    const tmp = `${file}.${randomUUID()}.tmp`;
     try {
-      await fsp.writeFile(tmp, this.encodeJsonl(session), "utf8");
-      await fsp.rename(tmp, file);
+      await fsp.mkdir(this.root, { recursive: true });
+      await fsp.writeFile(tmp, payload, "utf8");
+      if (this.permanentlyDeletedSessionKeys.has(session.key)
+        || this.sessionWriteRevisions.get(session.key) !== revision) return;
+      // Check + rename is indivisible on this JS thread, preventing a synchronous
+      // delete/save between the revision check and the atomic replacement.
+      fs.renameSync(tmp, file);
       this.sessions.set(session.key, session);
-    } catch (error) {
+    } finally {
       await fsp.unlink(tmp).catch(() => undefined);
-      throw error;
     }
   }
 
   delete(key: string): boolean {
+    // A pending async writer must never resurrect a deleted Session.
+    this.nextWriteRevision(key);
     this.webuiBindingReservations.delete(key);
     this.sessions.delete(key);
     const file = this.pathFor(key);
