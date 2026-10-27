@@ -14,6 +14,14 @@ describe("RuntimeApp bootstrap loading", () => {
     expect(source).not.toContain("bootstrapLoaded(bootstrap");
   });
 
+  it("initializes the display timezone automatically before the first routed frame", () => {
+    const source = readFileSync(resolve(__dirname, "../..", "app.tsx"), "utf8");
+    expect(source).toContain("initializeUserTimeZone(effectiveLanguage, localOnly);");
+    expect(source).toContain('!effectiveBootstrap.app.language || effectiveBootstrap.app.language === "system"');
+    expect(source.indexOf("initializeUserTimeZone(effectiveLanguage, localOnly);"))
+      .toBeLessThan(source.indexOf("dispatch(appActions.bootstrapLoaded(effectiveBootstrap, initialPath));"));
+  });
+
   it("includes machine-level guidance completion in initial window routing", () => {
     const source = readFileSync(resolve(__dirname, "../..", "app.tsx"), "utf8");
 
