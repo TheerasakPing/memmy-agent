@@ -24,7 +24,7 @@ import { maskAccountIdentifier } from "../utils/mask-account-identifier.js";
 import { isComposingKeyboardEvent } from "../utils/keyboard.js";
 import { openExternalUrl } from "../utils/open-url.js";
 import { useTranslation } from "../i18n/use-translation.js";
-import { formatUserMinute, preferredUserTimeZone, savePreferredUserTimeZone, userTimeZone } from "../lib/user-time-zone.js";
+import { detectedUserTimeZone, formatUserMinute, preferredUserTimeZone, savePreferredUserTimeZone, userTimeZone } from "../lib/user-time-zone.js";
 import { appActions, type AppAction } from "../state/app-actions.js";
 import type { AppState } from "../state/app-reducer.js";
 import { useAppState } from "../state/app-state.js";
@@ -3479,6 +3479,10 @@ function buildRendererDiagnosticsReport(input: RendererDiagnosticsReportInput): 
     "",
     "Generated At",
     `- ISO Time: ${new Date().toISOString()}`,
+    `- System Time Zone: ${detectedUserTimeZone()}`,
+    `- Display Time Zone Preference: ${preferredUserTimeZone()}`,
+    `- Effective Time Zone: ${userTimeZone()}`,
+    `- Display Local Time: ${formatUserMinute(new Date())}`,
     "",
     "Renderer",
     `- Location: ${locationText}`,
