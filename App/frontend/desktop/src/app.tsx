@@ -61,6 +61,7 @@ import {
 import type { AgentState } from "./state/agent-chat-slice.js";
 import { useAppState } from "./state/app-state.js";
 import { useComputerHistoryTrayIndicator } from "./app/computer-history-tray-indicator.js";
+import { initializeUserTimeZone } from "./lib/user-time-zone.js";
 
 /** Handles app. */
 export function App() {
@@ -223,6 +224,9 @@ function RuntimeApp() {
         const effectiveBootstrap = localOnly
           ? { ...bootstrap, app: { ...bootstrap.app, userMode: "byok" as const }, onboarding: { ...bootstrap.onboarding, completed: true, currentStep: "completed" as const } }
           : reconcileInitialOnboarding({ bootstrap, accountSession });
+        // Always initialize the selected display zone on launch *before*
+        // rendering the first chat/history timestamp. Existing choices win.
+        initializeUserTimeZone(effectiveBootstrap.app.language, localOnly);
         const persistedPreferredMode = resolvePreferredLaunchMode({
           defaultLaunchMode: effectiveBootstrap.app.defaultLaunchMode,
           lastLaunchMode: effectiveBootstrap.app.lastLaunchMode
