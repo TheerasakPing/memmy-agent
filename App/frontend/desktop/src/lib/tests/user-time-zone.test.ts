@@ -5,6 +5,7 @@ import {
   formatUserDateTime,
   formatUserMinute,
   formatUserTime,
+  initializeUserTimeZone,
   normalizeUserTimeZone,
   preferredUserTimeZone,
   savePreferredUserTimeZone,
@@ -41,6 +42,55 @@ describe("userTimeZone", () => {
     savePreferredUserTimeZone("system");
     expect(preferredUserTimeZone()).toBe("system");
     expect(userTimeZone()).toBe(detectedUserTimeZone());
+  });
+
+  it("automatically initializes Bangkok on a Thai local macOS launch only once", () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); }
+      }
+    });
+    expect(initializeUserTimeZone("th-TH", true)).toBe("Asia/Bangkok");
+    expect(preferredUserTimeZone()).toBe("Asia/Bangkok");
+    expect(formatUserMinute("2026-10-27T15:30:00.000Z")).toBe("2026-10-27 22:30");
+    expect(initializeUserTimeZone("en-US", true)).toBe("Asia/Bangkok");
+    savePreferredUserTimeZone("system");
+    expect(initializeUserTimeZone("th-TH", true)).toBe(detectedUserTimeZone());
+    expect(preferredUserTimeZone()).toBe("system");
+    savePreferredUserTimeZone("America/New_York");
+    expect(initializeUserTimeZone("th-TH", true)).toBe("America/New_York");
+    expect(preferredUserTimeZone()).toBe("America/New_York");
+  });
+
+  it("does not force Bangkok on a non-Thai or non-Tauri launch", () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); }
+      }
+    });
+    expect(initializeUserTimeZone("en-US", true)).toBe(detectedUserTimeZone());
+    expect(preferredUserTimeZone()).toBe("system");
+    expect(initializeUserTimeZone("th-TH", false)).toBe(detectedUserTimeZone());
+    expect(preferredUserTimeZone()).toBe("system");
+  });
+
+  it("recovers from an invalid previous preference during auto-start", () => {
+    const values = new Map<string, string>([["memmy.display.timeZone.v1", "Mars/Base"]]);
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); }
+      }
+    });
+    expect(initializeUserTimeZone("th-TH", true)).toBe("Asia/Bangkok");
+    expect(preferredUserTimeZone()).toBe("Asia/Bangkok");
   });
 
   it("preserves IANA names, including the Bangkok time zone", () => {
